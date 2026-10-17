@@ -1,0 +1,24 @@
+packages:
+  - apps/*
+  - packages/*
+
+# 延续移动端的依赖提升策略，兼容现有 Expo 和原生模块。
+nodeLinker: hoisted
+
+# 两个应用共用根锁文件；本轮保留原有直接依赖版本。
+sharedWorkspaceLockfile: true
+
+# 从原桌面端迁入，暂不调整已有的依赖覆盖规则。
+overrides:
+  node-abi: latest
+
+# 集中管理构建脚本；SQLite 的 Electron ABI 由 setup:desktop 单独处理。
+allowBuilds:
+  electron: true
+  esbuild: true
+  vue-demi: true
+  better-sqlite3: false
+  '@parcel/watcher': false
+  # 移动原生模块随 Expo 原生工程构建，使用包中已有的 JavaScript 产物。
+  react-native-mmkv: false
+  react-native-nitro-modules: false

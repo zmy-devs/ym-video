@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.flex-center {
+  @apply flex justify-center items-center;
+}
+
+.wh-full {
+  @apply w-full h-full;
+}
+
+.bg-track {
+  background-color: rgba(130, 130, 130, 0.9);
+}

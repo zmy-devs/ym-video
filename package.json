@@ -1,65 +1,35 @@
 {
-  "name": "ym-video",
-  "version": "5.1.0",
-  "type": "module",
-  "main": "./out/main/index.js",
-  "scripts": {
-    "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
-    "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json --composite false",
-    "typecheck": "npm run typecheck:node && npm run typecheck:web ",
-    "start": "electron-vite preview",
-    "dev": "chcp 65001 && electron-vite dev",
-    "build": "npm run typecheck && electron-vite build",
-    "postinstall": "electron-builder install-app-deps",
-    "build:unpack": "npm run build && electron-builder --dir",
-    "build:win": "npm run build && electron-builder --win",
-    "release": "node ./scripts/publish.mjs"
-  },
-  "devDependencies": {
-    "@electron-toolkit/tsconfig": "^2.0.0",
-    "@electron/rebuild": "^4.0.1",
-    "@iconify/icons-fluent": "^1.2.38",
-    "@iconify/vue": "^5.0.0",
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^22.18.6",
-    "@vitejs/plugin-vue": "^6.0.1",
-    "@vueuse/core": "^14.1.0",
-    "autoprefixer": "^10.4.21",
-    "dayjs": "^1.11.19",
-    "electron": "^38.6.0",
-    "electron-builder": "^25.1.8",
-    "electron-store": "^11.0.2",
-    "electron-vite": "^4.0.1",
-    "element-plus": "^2.11.7",
-    "hls.js": "^1.6.12",
-    "pinia": "^2.1.7",
-    "postcss": "^8.5.3",
-    "sass": "^1.75.0",
-    "sass-loader": "^14.2.1",
-    "tailwindcss": "3",
-    "typescript": "^5.9.2",
-    "unplugin-auto-import": "^20.2.0",
-    "unplugin-element-plus": "^0.8.0",
-    "vite": "^7.2.2",
-    "vue": "^3.5.21",
-    "vue-router": "^4.4.5",
-    "vue-tsc": "^3.0.7",
-    "ym-electron.js": "^4.1.0",
-    "ym-publish": "^1.4.3"
+  "name": "ym-video-workspace",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": ">=22.21.1",
+    "pnpm": ">=11.20.0 <12"
   },
   "volta": {
     "node": "22.21.1"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "electron",
-      "esbuild"
-    ],
-    "overrides": {
-      "node-abi": "latest"
-    }
-  },
-  "dependencies": {
-    "better-sqlite3": "^12.2.0"
+  "scripts": {
+    "dev": "pnpm run dev:desktop",
+    "dev:desktop": "pnpm --filter @ym-video/desktop run dev",
+    "dev:mobile": "pnpm --filter @ym-video/mobile run dev",
+    "setup:desktop": "pnpm --filter @ym-video/desktop run setup:native",
+    "start": "pnpm --filter @ym-video/desktop run start",
+    "typecheck": "pnpm -r run typecheck",
+    "typecheck:desktop": "pnpm --filter @ym-video/desktop run typecheck",
+    "typecheck:mobile": "pnpm --filter @ym-video/mobile run typecheck",
+    "check": "pnpm run typecheck",
+    "check:mobile": "pnpm --filter @ym-video/mobile run check",
+    "build": "pnpm run build:desktop",
+    "build:desktop": "pnpm --filter @ym-video/desktop run build",
+    "build:unpack": "pnpm --filter @ym-video/desktop run build:unpack",
+    "build:win": "pnpm --filter @ym-video/desktop run build:win",
+    "build:mobile": "pnpm --filter @ym-video/mobile run build",
+    "prebuild:mobile": "pnpm --filter @ym-video/mobile run prebuild",
+    "android": "pnpm --filter @ym-video/mobile run android",
+    "ios": "pnpm --filter @ym-video/mobile run ios",
+    "release:desktop": "pnpm --filter @ym-video/desktop run release",
+    "release:mobile": "pnpm --filter @ym-video/mobile run release"
   }
 }

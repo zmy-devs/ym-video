@@ -1,25 +1,25 @@
 import { useGiteeReleases, useGithubReleases } from "ym-publish";
-import { join } from "path";
 import { readFileSync } from "fs";
+import { join } from "path";
 import { createRequire } from "module";
 
 const __dirname = import.meta.dirname;
 
 const require = createRequire(import.meta.url);
 
-const { version, name } = require("../package.json");
+const { version } = require("../package.json");
 
 const { GITEE_TOKEN, GH_TOKEN } = process.env;
 
 const giteeRelease = useGiteeReleases({
   token: GITEE_TOKEN,
-  repo: name,
+  repo: "ym-video-app",
   owner: "yxingyus",
 });
 
 const githubRelease = useGithubReleases({
   token: GH_TOKEN,
-  repo: name,
+  repo: "ym-video-app",
   owner: "2514765066",
 });
 
@@ -39,7 +39,7 @@ const getDoc = version => {
 const main = async () => {
   const body = getDoc(version);
 
-  const updatePackPath = join(__dirname, `../dist/${name}-${version}.exe`);
+  const updatePackPath = join(__dirname, `../dist/ym-video-${version}.apk`);
 
   await giteeRelease({
     version,

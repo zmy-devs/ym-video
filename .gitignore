@@ -6,3 +6,19 @@ out
 *.log*
 dev-app-update.yml
 test/*
+
+.agents
+.codegraph
+
+# Monorepo 中各应用的缓存、原生产物和本地配置
+.expo/
+.metro-health-check*
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+!**/.env.example
+/apps/mobile/android/
+/apps/mobile/ios/
+/apps/mobile/release/

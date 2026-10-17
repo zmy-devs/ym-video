@@ -1,0 +1,33 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+expo-env.d.ts
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# local env files
+.env*.local
+
+# generated native folders
+/ios
+/android
+
+.vscode
+
+# nativewind
+nativewind-env.d.ts
+
+release
+
+src/assets/test.mp4

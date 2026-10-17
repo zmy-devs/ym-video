@@ -1,0 +1,22 @@
+{
+  "cli": {
+    "version": ">= 16.24.1",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "production": {
+      "developmentClient": false,
+      "distribution": "internal",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_NO_DEBUG_SYMBOLS": "1"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

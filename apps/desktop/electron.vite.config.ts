@@ -3,7 +3,7 @@ import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 import vue from "@vitejs/plugin-vue";
 import ElementPlus from "unplugin-element-plus/vite";
 import AutoImport from "unplugin-auto-import/vite";
-import { version, name } from "./package.json";
+import { version, productName } from './package.json';
 
 export default defineConfig({
   main: {
@@ -31,7 +31,7 @@ export default defineConfig({
   renderer: {
     define: {
       __APP_VERSION__: JSON.stringify(version),
-      __APP_NAME__: JSON.stringify(name),
+      __APP_NAME__: JSON.stringify(productName),
     },
     resolve: {
       alias: {

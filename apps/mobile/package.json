@@ -1,0 +1,82 @@
+{
+  "name": "@ym-video/mobile",
+  "private": true,
+  "volta": {
+    "extends": "../../package.json"
+  },
+  "main": "expo-router/entry",
+  "version": "1.6.0",
+  "scripts": {
+    "prebuild": "expo prebuild",
+    "dev": "pnpm prebuild && expo run:android",
+    "build": "pnpm check && pnpm prebuild && eas build --profile production --platform android",
+    "release": "node ./scripts/publish.mjs",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "typecheck": "tsc --noEmit",
+    "check": "pnpm run typecheck && npx expo-doctor"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "~6.1.2",
+    "@gorhom/bottom-sheet": "^5.2.6",
+    "@react-navigation/bottom-tabs": "^7.4.0",
+    "@react-navigation/elements": "^2.6.3",
+    "@react-navigation/native": "^7.1.8",
+    "dayjs": "^1.11.18",
+    "expo": "~54.0.26",
+    "expo-application": "^7.0.7",
+    "expo-battery": "^10.0.7",
+    "expo-blur": "~15.0.7",
+    "expo-brightness": "^14.0.7",
+    "expo-build-properties": "~1.0.9",
+    "expo-constants": "~18.0.10",
+    "expo-file-system": "~19.0.19",
+    "expo-image": "~3.0.10",
+    "expo-intent-launcher": "~13.0.7",
+    "expo-linear-gradient": "^15.0.7",
+    "expo-linking": "~8.0.9",
+    "expo-network": "~8.0.7",
+    "expo-router": "~6.0.16",
+    "expo-screen-orientation": "^9.0.7",
+    "expo-splash-screen": "~31.0.11",
+    "expo-sqlite": "^16.0.9",
+    "expo-system-ui": "~6.0.8",
+    "expo-toast": "^1.0.3",
+    "nativewind": "^4.2.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-edge-to-edge": "^1.7.0",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-mmkv": "^4.0.0",
+    "react-native-reanimated": "^4.1.2",
+    "react-native-restart": "^0.0.27",
+    "react-native-safe-area-context": "^5.6.1",
+    "react-native-screens": "~4.16.0",
+    "react-native-svg": "15.12.1",
+    "react-native-video": "^6.16.1",
+    "react-native-web": "~0.21.0",
+    "react-native-worklets": "0.5.1",
+    "valtio": "^2.1.8",
+    "derive-valtio": "^0.2.0"
+  },
+  "devDependencies": {
+    "@iconify/icons-fluent": "^1.2.38",
+    "@types/react": "~19.1.0",
+    "babel-plugin-module-resolver": "^5.0.2",
+    "expo-dev-client": "~6.0.19",
+    "prettier-plugin-tailwindcss": "0.5.11",
+    "tailwindcss": "3.4.17",
+    "typescript": "~5.9.2",
+    "ym-publish": "^1.4.1"
+  },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": [
+          "react-native-restart"
+        ]
+      }
+    }
+  }
+}
