@@ -19,6 +19,8 @@ coverage/
 .env.*
 !.env.example
 !**/.env.example
+.wrangler/
+/apps/api/worker-configuration.d.ts
 /apps/mobile/android/
 /apps/mobile/ios/
 /apps/mobile/release/

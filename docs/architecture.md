@@ -8,11 +8,11 @@
 | -------------- | -------------------------- | ----------------------------- |
 | `apps/desktop` | 已有完整实现，迁移期间保留 | 原 Electron 桌面客户端        |
 | `apps/mobile`  | 已导入原移动端实现         | Expo／React Native 安卓客户端 |
-| `apps/web`     | 仅迁移说明，无可运行代码   | 后续 Vue 3 浏览器客户端       |
-| `apps/api`     | 仅建设说明，无可运行代码   | 后续 Fastify 公共后端         |
+| `apps/web`     | 已实现独立 PC Web          | Vue 3 浏览器客户端            |
+| `apps/api`     | 已实现本地可运行 API       | Fastify 登录、会话和资源代理  |
 | `packages`     | 仅共享边界说明，无工作区包 | 后续跨端契约和纯业务逻辑      |
 
-Web、API、登录和云端历史都尚未接入。本轮不会通过创建空接口或空共享包来假装实现这些能力。
+Web 已从桌面布局迁出，使用 shadcn-vue、Tailwind CSS 4 与 IndexedDB；不依赖桌面进程。API 已接入 Better Auth 登录、会话查询、退出和受限资源代理。云端用户偏好、观看历史和同步数据暂未设计。
 
 ## 源码归属与版本
 
@@ -91,16 +91,16 @@ Workers Static Assets ── Vue 构建产物                  │       │
 客户端播放器 ───────────────────────────────> 可直连的视频资源
 ```
 
-目标方案采用 Vue 3＋Vite、Fastify、Better Auth、Drizzle ORM 与 Cloudflare D1；Web 和 API 部署在 Cloudflare Workers，Web 使用 Static Assets 与 API 同域。Web 状态与路由优先复用已有 Vue Router／Pinia，安卓保持 RN。选型已记录，应用代码、依赖安装、数据库创建及部署均尚未开展。
+目标方案采用 Vue 3＋Vite、Fastify、Better Auth、Drizzle ORM 与 Cloudflare D1；Web 和 API 部署在 Cloudflare Workers，Web 使用 Static Assets 与 API 同域。API 已完成本地 Workers 运行链路和认证迁移，Web 使用 Vue Router／Pinia 与 shadcn-vue，安卓保持 RN。生产资源和部署尚未配置。
 
 - Web 负责浏览器页面、播放、浏览器缓存与交互。
-- API 负责资源接口兼容、用户身份与访问控制、云端历史和同步规则；服务端数据访问不下放到客户端。
+- API 按 `auth`、`user-data`、`proxy` 三个模块组织，分别负责登录与会话、用户数据保存与同步、第三方资源接口转发；服务端数据访问不下放到客户端。
 - 安卓保持原生播放能力，逐步接入同一账号与历史 API。
 - 共享包只承载真实复用的请求／响应契约和平台无关逻辑，不混入 Vue／RN 组件或平台存储。
 
-后端运行在 Workers 的 Node.js HTTP 兼容层，不是传统 Node 常驻服务。Fastify 默认校验／序列化使用动态代码生成，需要改为构建期预编译或兼容实现；创建 API 时先在 Wrangler／workerd 环境验证注册登录、会话及 D1 读写。认证会话与云端历史统一存入 D1，Web 使用 Cookie，安卓使用 Better Auth Expo 插件及 SecureStore；原本的端内存储继续承担未登录历史与离线缓存。
+后端运行在 Workers 的 Node.js HTTP 兼容层，不是传统 Node 常驻服务。当前 API 不声明 Fastify JSON Schema，路由在 Worker 初始化阶段编译，并已在 Wrangler／workerd 环境验证注册登录、会话及 D1 读写。认证会话存入 D1，Web 使用 Cookie，安卓使用 Better Auth Expo 插件及 SecureStore；原本的端内存储继续承担未登录历史与离线缓存。
 
-后端模块、目录规划、D1 迁移、环境隔离和同步约束见 [API 建设文档](../apps/api/README.md)。
+后端模块、目录、D1 认证迁移和环境隔离见 [API 建设文档](../apps/api/README.md)。用户数据同步约束仍是后续工作。
 
 ## 下一阶段
 

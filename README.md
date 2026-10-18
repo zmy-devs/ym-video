@@ -2,7 +2,7 @@
 
 视频聚合播放器 monorepo，统一管理桌面端和安卓端，后续迁移为 **Vue 3 Web＋Fastify API＋React Native 安卓应用**。目标后端采用 Better Auth 登录、Drizzle ORM 和 Cloudflare D1，Web 与 API 部署在 Cloudflare Workers。
 
-当前完成的是工程目录与工作区迁移。现有 Electron 桌面端和 Expo 移动端保留原业务；Web、API、登录及云端历史尚未实现。
+已实现独立 PC Web：Vue 3＋shadcn-vue，支持浏览、搜索、播放、本地历史及邮箱注册登录。API 提供 Better Auth 会话和受限资源代理；旧桌面端与安卓端保留。云端历史和跨设备同步尚未实现。
 
 ## 目录
 
@@ -11,8 +11,8 @@ ym-video/
 ├─ apps/
 │  ├─ desktop/       # 现有 Electron＋Vue 3 桌面端，迁移期间保留
 │  ├─ mobile/        # 从 ym-video-app 导入的 Expo＋React Native 应用
-│  ├─ web/           # Vue 3 Web 的迁移说明，尚无应用代码
-│  └─ api/           # Fastify API 的建设说明，尚无服务代码
+│  ├─ web/           # Vue 3＋shadcn-vue PC Web
+│  └─ api/           # Fastify＋Better Auth API 与 Web 静态托管
 ├─ packages/         # 后续按实际需要提取共享契约和纯业务逻辑
 ├─ docs/
 │  └─ architecture.md
@@ -24,7 +24,7 @@ ym-video/
 
 架构、应用内部目录和迁移边界见 [架构文档](docs/architecture.md)。
 
-认证、数据库和 Cloudflare 部署方案见 [API 建设文档](apps/api/README.md)，目前为设计方案，尚未实现和部署。
+API 的目录、接口、认证表和 Cloudflare 配置见 [API 建设文档](apps/api/README.md)。当前只在本地验证，生产资源尚未配置或部署。
 
 本轮实际检查结果和已知问题见[迁移验证记录](docs/monorepo-validation.md)。
 
@@ -49,9 +49,9 @@ pnpm install --frozen-lockfile
 
 | 命令                                | 用途                                                    |
 | ----------------------------------- | ------------------------------------------------------- |
-| `pnpm dev` / `pnpm dev:desktop`     | 启动现有 Electron 桌面端；当前开发脚本沿用 Windows 命令 |
+| `pnpm dev:desktop`                  | 启动现有 Electron 桌面端；当前开发脚本沿用 Windows 命令 |
 | `pnpm dev:mobile`                   | Expo 生成原生项目并运行安卓应用                         |
-| `pnpm typecheck` / `pnpm check`     | 检查桌面端和移动端的 TypeScript                         |
+| `pnpm typecheck` / `pnpm check`     | 检查 Web、桌面、移动和 API 的 TypeScript                |
 | `pnpm typecheck:desktop`            | 仅检查桌面端主进程与 Vue 前端                           |
 | `pnpm typecheck:mobile`             | 仅检查移动端 TypeScript                                 |
 | `pnpm check:mobile`                 | 移动端类型检查与 Expo Doctor；Doctor 可能访问网络       |
@@ -61,7 +61,7 @@ pnpm install --frozen-lockfile
 | `pnpm android` / `pnpm ios`         | 在对应平台构建并运行；iOS 本地构建需要 macOS            |
 | `pnpm build:mobile`                 | 沿用现有 EAS 安卓云构建流程，需要联网与账号             |
 
-`apps/web` 与 `apps/api` 当前仅有迁移说明，因此还没有 `dev:web`、`dev:api` 命令。`dev` 和 `build` 暂时指向旧桌面端，Web 完成迁移后再切换默认入口。
+Web 开发分别运行 `pnpm dev:api` 和 `pnpm dev:web`，访问 <http://localhost:5173>；首次配置 API 本地密钥后执行 `pnpm migrate:api`。Web 使用 `typecheck:web`、`build:web`、`preview:web`、`test:web` 验证，详情见 [Web 说明](apps/web/README.md)。根目录不再提供 `pnpm dev`；`pnpm build` 仍构建桌面端。
 
 移动端首次独立执行类型检查前，应先启动 Expo／Metro，以生成项目原有的 `nativewind-env.d.ts` 等类型声明。这些文件和原生目录均不提交。
 

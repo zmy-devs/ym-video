@@ -1,0 +1,24 @@
+@import './theme.css';
+@import 'vue-sonner/style.css';
+@import './catalogue.css';
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50 font-normal select-none;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  #app {
+    height: 100dvh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

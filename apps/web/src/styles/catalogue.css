@@ -1,0 +1,15 @@
+@layer components {
+  .page-content {
+    @apply mx-auto w-full max-w-[1400px] px-10 py-8;
+  }
+
+  .movie-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 28px 20px;
+  }
+
+  .empty-state {
+    @apply flex min-h-80 flex-col items-center justify-center gap-4 text-sm text-muted-foreground;
+  }
+}
