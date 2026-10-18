@@ -2,13 +2,13 @@ import { computed, onScopeDispose, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { useEventListener } from '@vueuse/core';
 import Hls from 'hls.js';
-import { toast } from 'vue-sonner';
 import type { HistoryEntry } from '@/types';
 import { getMovies } from '@/services/api';
 import { FilteredPlaylistLoader } from '@/services/hls';
 import { useHistoryStore } from '@/stores/history';
 import { movieKey } from '@/lib/movie';
 import { readLocal, writeLocal } from '@/lib/storage';
+import { errorToast, infoToast } from '@/utils/toast';
 
 // PC 浏览器播放器状态与生命周期，不依赖窗口消息。
 export const usePlayer = () => {
@@ -384,10 +384,10 @@ export const usePlayer = () => {
       ) {
         await container.value.requestFullscreen();
       } else {
-        toast.info('当前浏览器不支持全屏');
+        infoToast('当前浏览器不支持全屏');
       }
     } catch {
-      toast.error('浏览器未允许全屏');
+      errorToast('浏览器未允许全屏');
     }
   };
 
@@ -403,7 +403,7 @@ export const usePlayer = () => {
         await video.value.requestPictureInPicture();
       }
     } catch {
-      toast.error('当前无法开启画中画，请先播放视频');
+      errorToast('当前无法开启画中画，请先播放视频');
     }
   };
 

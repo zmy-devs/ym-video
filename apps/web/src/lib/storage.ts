@@ -1,4 +1,4 @@
-import { toast } from 'vue-sonner';
+import { errorToast } from '../utils/toast.ts';
 
 // 同类存储失败只提示一次，仍允许当前页面在内存中工作。
 const reported = new Set<string>();
@@ -9,7 +9,7 @@ export const storageError = (kind: string) => {
     return;
   }
   reported.add(kind);
-  toast.error(`${kind}保存不可用`, {
+  errorToast(`${kind}保存不可用`, {
     description: '当前操作仅在本次页面中生效，请检查浏览器存储权限或可用空间。',
   });
 };

@@ -11,6 +11,7 @@ export const user = sqliteTable('user', {
   image: text('image'),
   createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull(),
   updatedAt: integer('updatedAt', { mode: 'timestamp_ms' }).notNull(),
+  username: text('username').unique(),
 });
 
 export const session = sqliteTable(

@@ -14,7 +14,7 @@
   "secrets": { "required": ["BETTER_AUTH_SECRET"] },
   "vars": {
     "BETTER_AUTH_URL": "http://localhost:8787",
-    "WEB_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173",
+    "WEB_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173",
   },
   "d1_databases": [
     {

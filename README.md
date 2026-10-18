@@ -2,7 +2,7 @@
 
 视频聚合播放器 monorepo，统一管理桌面端和安卓端，后续迁移为 **Vue 3 Web＋Fastify API＋React Native 安卓应用**。目标后端采用 Better Auth 登录、Drizzle ORM 和 Cloudflare D1，Web 与 API 部署在 Cloudflare Workers。
 
-已实现独立 PC Web：Vue 3＋shadcn-vue，支持浏览、搜索、播放、本地历史及邮箱注册登录。API 提供 Better Auth 会话和受限资源代理；旧桌面端与安卓端保留。云端历史和跨设备同步尚未实现。
+已实现独立 PC Web：Vue 3＋shadcn-vue，支持浏览、搜索、播放、本地历史及已有账号通过用户名或邮箱登录。Web 业务页面要求登录，暂不开放注册。API 提供 Better Auth 会话和受限资源代理；旧桌面端与安卓端保留。云端历史和跨设备同步尚未实现。
 
 ## 目录
 

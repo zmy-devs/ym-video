@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { convertV4MiniflareOptions, Miniflare, Response } from 'miniflare';
+import { hashPassword } from 'better-auth/crypto';
 
 let worker;
 const outboundRequests = [];
@@ -103,6 +104,31 @@ const getCookie = (response) =>
     .map((value) => value.split(';', 1)[0])
     .join('; ');
 
+// 测试账号直接写入独立临时 D1，不依赖已经关闭的公开注册入口。
+const createAccount = async (email, name, options = {}) => {
+  // 为每个测试账号生成独立身份和随机密码。
+  const id = randomUUID();
+  const password = options.password ?? randomBytes(16).toString('hex');
+  const hashed = await hashPassword(password);
+  const now = Date.now();
+  const db = await worker.getD1Database('DB');
+
+  await db.batch([
+    db
+      .prepare(
+        'INSERT INTO user (id, name, email, emailVerified, createdAt, updatedAt, username) VALUES (?, ?, ?, 0, ?, ?, ?)',
+      )
+      .bind(id, name, email, now, now, options.username ?? null),
+    db
+      .prepare(
+        'INSERT INTO account (id, accountId, providerId, userId, password, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      )
+      .bind(randomUUID(), id, 'credential', id, hashed, now, now),
+  ]);
+
+  return { email, password };
+};
+
 test('健康检查、JSON 404 与未登录身份校验', async () => {
   assert.deepEqual(await (await request('/api/v1/health')).json(), {
     status: 'ok',
@@ -129,35 +155,28 @@ test('静态页面支持 SPA 深层路由，API 导航仍进入 Worker', async (
   }
 });
 
-test('注册、登录、用户隔离、错误密码与退出后的会话撤销', async () => {
-  const account = {
-    email: 'first@example.com',
-    name: 'First',
-    password: randomBytes(16).toString('hex'),
-  };
-  const signUp = await post('/api/auth/sign-up/email', account);
-  assert.equal(signUp.status, 200, await signUp.clone().text());
+test('已有账号登录、用户隔离、错误密码与退出后的会话撤销', async () => {
+  const account = await createAccount('first@example.com', 'First');
+  const firstSignIn = await post('/api/auth/sign-in/email', account);
+  assert.equal(firstSignIn.status, 200, await firstSignIn.clone().text());
   assert.ok(
-    signUp.headers
+    firstSignIn.headers
       .getSetCookie()
       .some((value) => /HttpOnly/i.test(value) && /Secure/i.test(value)),
   );
-  const firstCookie = getCookie(signUp);
+  const firstCookie = getCookie(firstSignIn);
   const first = await (
     await request('/api/v1/me', { headers: { cookie: firstCookie } })
   ).json();
   assert.equal(first.user.email, account.email);
   assert.equal(JSON.stringify(first).includes('token'), false);
 
-  const secondSignUp = await post('/api/auth/sign-up/email', {
-    ...account,
-    email: 'second@example.com',
-    name: 'Second',
-  });
-  assert.equal(secondSignUp.status, 200, await secondSignUp.clone().text());
+  const secondAccount = await createAccount('second@example.com', 'Second');
+  const secondSignIn = await post('/api/auth/sign-in/email', secondAccount);
+  assert.equal(secondSignIn.status, 200, await secondSignIn.clone().text());
   const second = await (
     await request('/api/v1/me', {
-      headers: { cookie: getCookie(secondSignUp) },
+      headers: { cookie: getCookie(secondSignIn) },
     })
   ).json();
   assert.notEqual(first.user.id, second.user.id);
@@ -198,30 +217,96 @@ test('注册、登录、用户隔离、错误密码与退出后的会话撤销',
   assert.notEqual(stored.password, account.password);
 });
 
-test('拒绝弱密码、未知来源、跨站退出与超大请求', async () => {
+test('用户名或邮箱登录同一账号，支持六位密码并撤销退出会话', async () => {
+  const account = await createAccount('username@example.com', 'Username', {
+    username: 'test_admin',
+    password: randomBytes(3).toString('hex'),
+  });
+  const signIn = await post('/api/auth/sign-in/username', {
+    username: 'TEST_ADMIN',
+    password: account.password,
+  });
+  assert.equal(signIn.status, 200, await signIn.clone().text());
+  const cookie = getCookie(signIn);
+  assert.ok(cookie);
+  const session = await (
+    await request('/api/auth/get-session', { headers: { cookie } })
+  ).json();
+  assert.equal(session.user.username, 'test_admin');
+  assert.equal(session.user.email, account.email);
+
+  const emailSignIn = await post('/api/auth/sign-in/email', account);
+  assert.equal(emailSignIn.status, 200, await emailSignIn.clone().text());
+  assert.equal((await emailSignIn.json()).user.id, session.user.id);
+
+  for (const body of [
+    { username: 'test_admin', password: 'incorrect' },
+    { username: 'unknown_user', password: account.password },
+  ]) {
+    const failed = await post('/api/auth/sign-in/username', body);
+    assert.equal(failed.status, 401);
+    assert.equal((await failed.json()).code, 'INVALID_USERNAME_OR_PASSWORD');
+    assert.equal(getCookie(failed), '');
+  }
+
+  assert.equal((await post('/api/auth/sign-out', {}, cookie)).status, 200);
   assert.equal(
-    (
-      await post('/api/auth/sign-up/email', {
-        email: 'weak@example.com',
-        name: 'Weak',
-        password: 'short',
-      })
-    ).status,
-    400,
+    (await request('/api/v1/me', { headers: { cookie } })).status,
+    401,
   );
-  const nativeSignUp = await request('/api/auth/sign-up/email', {
+});
+
+test('网页与 Expo 均禁止公开注册，拒绝后不会创建账号', async () => {
+  const email = 'blocked@example.com';
+
+  for (const headers of [{ origin }, { 'expo-origin': 'ymvideo://' }]) {
+    const response = await request('/api/auth/sign-up/email', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...headers },
+      body: JSON.stringify({
+        email,
+        name: 'Blocked',
+        username: 'blocked_user',
+        password: randomBytes(16).toString('hex'),
+      }),
+    });
+
+    assert.equal(response.status, 400);
+    assert.equal(
+      (await response.json()).code,
+      'EMAIL_PASSWORD_SIGN_UP_DISABLED',
+    );
+  }
+
+  const db = await worker.getD1Database('DB');
+  const account = await db
+    .prepare('SELECT id FROM user WHERE email = ?')
+    .bind(email)
+    .first();
+
+  assert.equal(account, null);
+});
+
+test('Expo 已有账号可以登录，拒绝未知来源、跨站退出与超大请求', async () => {
+  const nativeAccount = await createAccount('native@example.com', 'Native');
+  const nativeSignIn = await request('/api/auth/sign-in/email', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       'expo-origin': 'ymvideo://',
     },
-    body: JSON.stringify({
-      email: 'native@example.com',
-      name: 'Native',
-      password: randomBytes(16).toString('hex'),
-    }),
+    body: JSON.stringify(nativeAccount),
   });
-  assert.equal(nativeSignUp.status, 200, await nativeSignUp.clone().text());
+  assert.equal(nativeSignIn.status, 200, await nativeSignIn.clone().text());
+
+  assert.equal(
+    (
+      await request('/api/v1/me', {
+        headers: { cookie: getCookie(nativeSignIn) },
+      })
+    ).status,
+    200,
+  );
   assert.equal(
     (
       await request('/api/v1/me', {
@@ -244,7 +329,7 @@ test('拒绝弱密码、未知来源、跨站退出与超大请求', async () =>
     403,
   );
   assert.equal(
-    (await post('/api/auth/sign-up/email', { name: 'x'.repeat(20_000) }))
+    (await post('/api/auth/sign-in/email', { email: 'x'.repeat(20_000) }))
       .status,
     413,
   );

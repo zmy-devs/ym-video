@@ -5,7 +5,7 @@
 ## 技术栈
 
 - TypeScript、Fastify 5、Cloudflare Node.js HTTP 兼容层
-- Better Auth（邮箱密码、Cookie 会话、Expo 插件）
+- Better Auth（用户名或邮箱＋密码、Cookie 会话、Expo 插件）
 - Drizzle ORM、D1 SQLite 适配器
 - Cloudflare Workers、D1、Rate Limit bindings
 - Wrangler、Drizzle Kit、Miniflare（本地测试）
@@ -47,8 +47,9 @@ apps/api/
 
 Better Auth 原生接口统一挂载在 `/api/auth/*`，包括：
 
-- `POST /api/auth/sign-up/email` 注册
+- `POST /api/auth/sign-up/email` 已禁用，网页和 Expo 均不能公开注册
 - `POST /api/auth/sign-in/email` 登录并设置会话 Cookie
+- `POST /api/auth/sign-in/username` 通过用户名登录，共用相同的会话与密码
 - `GET /api/auth/get-session` 查询 Better Auth 会话
 - `POST /api/auth/sign-out` 撤销当前会话
 
@@ -87,7 +88,7 @@ pnpm build:api
 pnpm test:api
 ```
 
-测试使用独立的临时 D1 和模拟上游，不会请求真实资源源。`pnpm test:api` 会先执行 Workers dry-run 构建，再运行 9 组认证、CORS、代理、限流和静态页面路由测试。
+测试使用独立的临时 D1 和模拟上游，不会请求真实资源源。测试账号直接写入临时 D1，不依赖公开注册。`pnpm test:api` 会先执行 Workers dry-run 构建，再运行 11 组认证、注册禁用、CORS、代理、限流和静态页面路由测试。
 
 ## 迁移和部署
 
@@ -99,7 +100,7 @@ pnpm --filter @ym-video/api run db:generate
 pnpm --filter @ym-video/api run db:migrate:local
 ```
 
-当前迁移只创建 Better Auth 所需的 `user`、`session`、`account`、`verification` 四张表，没有用户设置、历史或同步表。后续数据库结构确定后新增独立迁移，不在服务启动时自动建表。
+当前迁移只创建 Better Auth 所需的 `user`、`session`、`account`、`verification` 四张表，并为 `user` 增加可空且唯一的 `username` 字段；旧账号仍可用邮箱登录。没有用户设置、历史或同步表。后续数据库结构确定后新增独立迁移，不在服务启动时自动建表。
 
 部署前需要把 `wrangler.jsonc` 的 production D1 ID、域名和 Rate Limit namespace ID 换成真实资源，并设置密钥：
 

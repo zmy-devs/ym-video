@@ -1,7 +1,7 @@
 <template>
   <TooltipProvider>
     <RouterView />
-    <Toaster :theme="theme.resolved" rich-colors position="top-right" />
+    <Toaster :theme="theme.resolved" rich-colors position="top-center" />
     <div
       v-if="offline"
       role="status"
@@ -13,16 +13,48 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 import { useEventListener } from '@vueuse/core';
-import { RouterView } from 'vue-router';
+import { RouterView, useRoute, useRouter } from 'vue-router';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useHistoryStore } from '@/stores/history';
 import { useThemeStore } from '@/stores/theme';
+import { authClient } from '@/services/auth';
+import { errorToast } from '@/utils/toast';
 
 // 应用启动时恢复主题，并让提示消息同步明暗模式。
 const theme = useThemeStore();
+
+// 监听退出、会话到期和其他标签页同步的登录状态。
+const session = authClient.useSession();
+
+// 当前业务页面用于登录后的站内回跳。
+const route = useRoute();
+
+// 会话失效时替换当前页面，避免继续停留在业务界面。
+const router = useRouter();
+
+watch(session, async (value) => {
+  if (
+    value.isPending ||
+    value.error ||
+    value.data?.user ||
+    route.name === 'login' ||
+    !route.matched.length
+  ) {
+    return;
+  }
+
+  await router
+    .replace({
+      name: 'login',
+      query: { redirect: route.fullPath },
+    })
+    .catch(() => {
+      errorToast('无法打开登录页面，请刷新后重试');
+    });
+});
 
 // 返回主标签页时重新读取播放器保存的本地历史。
 const history = useHistoryStore();
