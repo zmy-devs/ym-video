@@ -15,6 +15,27 @@
       "when": 1792297358847,
       "tag": "0001_add_username",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792301409299,
+      "tag": "0002_cloud_watch_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1792333606070,
+      "tag": "0003_accounts_and_invitations",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1792340270775,
+      "tag": "0004_invitation_name",
+      "breakpoints": true
     }
   ]
 }

@@ -1,116 +1,89 @@
-# API 服务
+# ym-video API
 
-这是运行在 Cloudflare Workers 上的 Fastify API，为 Vue Web 和 Expo 安卓端提供登录、会话和第三方资源接口代理。当前提供认证、代理和同域 Web 静态托管；观看历史由 Web 的 IndexedDB 保存，云端用户偏好、历史和跨设备同步等业务数据尚未实现。
+运行在 Cloudflare Workers 上的 API 服务，提供邮箱登录、账号管理、邀请注册、观看历史同步和第三方资源代理，同时托管 Web 页面。
 
 ## 技术栈
 
-- TypeScript、Fastify 5、Cloudflare Node.js HTTP 兼容层
-- Better Auth（用户名或邮箱＋密码、Cookie 会话、Expo 插件）
-- Drizzle ORM、D1 SQLite 适配器
-- Cloudflare Workers、D1、Rate Limit bindings
-- Wrangler、Drizzle Kit、Miniflare（本地测试）
+TypeScript、Fastify 5、Better Auth、Drizzle ORM、Cloudflare Workers、D1、Wrangler。
 
-Fastify 的路由会在 Worker 初始化阶段编译，避免请求中动态生成代码；入口使用 `cloudflare:node` 的 `handleAsNodeRequest`。生产部署前仍需在目标账号验证密码哈希的资源配额。
+## 本地启动
 
-## 目录
-
-```text
-apps/api/
-├─ src/
-│  ├─ worker.ts                 Worker 入口和 Fastify Node HTTP 适配
-│  ├─ app.ts                    Fastify 实例、CORS、安全响应头和限流
-│  ├─ env.ts                    BETTER_AUTH_* 和 WEB_ORIGINS 校验
-│  ├─ errors.ts                 统一错误响应
-│  ├─ db/
-│  │  ├─ index.ts               D1 binding 创建 Drizzle 实例
-│  │  └─ schema/auth.ts         Better Auth 生成的认证表
-│  └─ modules/
-│     ├─ auth/
-│     │  ├─ options.ts           Better Auth 和 Expo 插件选项
-│     │  ├─ auth.ts              D1 适配器和会话配置
-│     │  ├─ routes.ts            /api/auth/*、/api/v1/me
-│     │  └─ guard.ts             当前会话校验
-│     └─ proxy/
-│        ├─ targets.ts           允许的资源源白名单
-│        ├─ service.ts            参数校验、超时、大小和 JSON 检查
-│        └─ routes.ts             /api/v1/proxy/*
-├─ migrations/                  D1 迁移（当前只有认证表）
-├─ scripts/generate-auth-schema.mjs
-├─ tests/api.test.mjs            Miniflare workerd 集成测试
-├─ wrangler.jsonc               Workers、D1 和 Rate Limit 配置
-├─ drizzle.config.ts
-├─ tsconfig.json
-└─ package.json
-```
-
-## 接口
-
-Better Auth 原生接口统一挂载在 `/api/auth/*`，包括：
-
-- `POST /api/auth/sign-up/email` 已禁用，网页和 Expo 均不能公开注册
-- `POST /api/auth/sign-in/email` 登录并设置会话 Cookie
-- `POST /api/auth/sign-in/username` 通过用户名登录，共用相同的会话与密码
-- `GET /api/auth/get-session` 查询 Better Auth 会话
-- `POST /api/auth/sign-out` 撤销当前会话
-
-自有接口：
-
-- `GET /api/v1/health` 健康检查
-- `GET /api/v1/me` 登录后返回当前用户安全字段
-- `GET /api/v1/proxy/sources` 返回可用资源源
-- `GET /api/v1/proxy/:sourceId` 转发白名单资源源的 JSON 接口
-
-代理只允许固定源和 `ac`、`pg`、`t`、`ids`、`wd` 参数，只发起 GET 请求；客户端不能传入目标 URL。服务端不转发客户端 Cookie、Authorization，也不下发上游 `Set-Cookie`。响应超过 2 MiB、上游跳转、无效 JSON、错误和 10 秒超时都会被拒绝。视频媒体仍建议客户端直连，不把媒体流经此 JSON 代理。
-
-认证和代理分别使用 Workers Rate Limit binding；跨来源请求必须命中 `WEB_ORIGINS`，Cookie 请求启用凭证 CORS。生产环境的 `BETTER_AUTH_URL` 必须是 HTTPS，认证密钥只通过 Secret 提供。
-
-## 本地运行
-
-在仓库根目录执行：
-
-先复制 `apps/api/.env.example` 为 `apps/api/.env`，填写至少 32 个字符的随机 `BETTER_AUTH_SECRET`，再执行：
+在仓库根目录安装依赖：
 
 ```sh
 pnpm install --frozen-lockfile
+```
+
+复制 `apps/api/.env.example` 为 `apps/api/.env`，将 `BETTER_AUTH_SECRET` 替换为至少 32 个字符的随机密钥，然后运行：
+
+```sh
 pnpm migrate:api
 pnpm dev:api
 ```
 
-`dev:api`、`build:api` 和部署脚本会先构建 Web，静态产物来自 `apps/web/dist`；API 路径优先执行 Worker，其他导航请求回退到 Web 入口。另开终端运行 `pnpm dev:web`，Web 开发访问 http://localhost:5173，Vite 将 `/api` 转发至本地 Worker；生产 Web 与 API 使用相同域名。
+服务地址为 <http://localhost:8787>，健康检查地址为 <http://localhost:8787/api/v1/health>。启动命令会先构建 Web。
 
-`apps/api/.env` 只用于本地 Wrangler，已被 Git 忽略；生产环境不读取它，而是通过 Cloudflare Secret 提供密钥。
+另开终端运行 `pnpm dev:web`，通过 <http://localhost:5173> 使用 Web 页面。
 
-常用检查：
+## 账号使用
 
-```sh
-pnpm typecheck:api
-pnpm build:api
-pnpm test:api
+Web 使用邮箱和密码登录。新账号由管理员在后台创建，或通过邀请链接注册，不提供公开注册入口。
+
+本地已有 `admin@ym-video.local` 账号时，可运行以下 PowerShell 命令，将其设为管理员，并在缺少普通账号时创建 `user@ym-video.local`：
+
+```powershell
+$env:YM_INITIAL_USER_PASSWORD = '<6～128 位初始密码>'
+pnpm --filter @ym-video/api run db:init:local
+Remove-Item Env:YM_INITIAL_USER_PASSWORD
 ```
 
-测试使用独立的临时 D1 和模拟上游，不会请求真实资源源。测试账号直接写入临时 D1，不依赖公开注册。`pnpm test:api` 会先执行 Workers dry-run 构建，再运行 11 组认证、注册禁用、CORS、代理、限流和静态页面路由测试。
+该脚本只操作本地数据库，不会重置已有账号密码；本地没有上述管理员账号时会提示错误。
 
-## 迁移和部署
+## 接口
 
-认证 schema 由当前 Better Auth 配置生成，Drizzle Kit 生成 SQL，Wrangler 应用迁移：
+认证后的请求需携带登录接口返回的会话 Cookie。Web 与 API 使用同源地址。
 
-```sh
-pnpm --filter @ym-video/api run db:schema
-pnpm --filter @ym-video/api run db:generate
-pnpm --filter @ym-video/api run db:migrate:local
-```
+| 接口                                       | 用途                               |
+| ------------------------------------------ | ---------------------------------- |
+| `GET /api/v1/health`                       | 健康检查                           |
+| `POST /api/auth/sign-in/email`             | 邮箱密码登录                       |
+| `GET /api/auth/get-session`                | 查询当前会话                       |
+| `POST /api/auth/sign-out`                  | 退出登录                           |
+| `POST /api/auth/update-user`               | 修改用户名和展示名                 |
+| `POST /api/auth/change-password`           | 修改密码                           |
+| `GET /api/v1/me`                           | 查询当前账号                       |
+| `GET /api/v1/history`                      | 读取当前账号的观看历史             |
+| `POST /api/v1/history/sync`                | 同步观看进度、删除或清空历史       |
+| `GET /api/v1/proxy/sources`                | 获取平台播放源                     |
+| `GET /api/v1/proxy/:sourceId`              | 查询平台源的分类、列表、搜索和详情 |
+| `GET/POST /api/v1/admin/users`             | 管理员查询／创建账号               |
+| `PATCH/DELETE /api/v1/admin/users/:id`     | 管理员停用、启用／删除账号         |
+| `GET/POST /api/v1/admin/invitations`       | 管理员查询／创建邀请               |
+| `DELETE /api/v1/admin/invitations/:id`     | 管理员删除邀请                     |
+| `GET /api/v1/invitations/:token`           | 查询邀请状态                       |
+| `POST /api/v1/invitations/:token/register` | 通过邀请注册                       |
 
-当前迁移只创建 Better Auth 所需的 `user`、`session`、`account`、`verification` 四张表，并为 `user` 增加可空且唯一的 `username` 字段；旧账号仍可用邮箱登录。没有用户设置、历史或同步表。后续数据库结构确定后新增独立迁移，不在服务启动时自动建表。
+代理只接受已配置的平台源，视频媒体由播放器直连。观看历史属于当前登录账号，管理员账号仅使用后台。
 
-部署前需要把 `wrangler.jsonc` 的 production D1 ID、域名和 Rate Limit namespace ID 换成真实资源，并设置密钥：
+## 配置与部署
+
+本地密钥保存在 `apps/api/.env`，生产密钥通过 Cloudflare Secret 设置。
+
+| 配置                 | 用途                                         |
+| -------------------- | -------------------------------------------- |
+| `BETTER_AUTH_SECRET` | 认证密钥                                     |
+| `BETTER_AUTH_URL`    | API 对外访问地址                             |
+| `WEB_ORIGINS`        | 允许访问 API 的 Web 来源，多个地址以逗号分隔 |
+| `DB`                 | D1 数据库 binding                            |
+
+在 `apps/api/wrangler.jsonc` 中填写生产环境的 D1 数据库 ID、域名和限流 namespace ID；生产 Web 与 API 使用同一个 HTTPS 域名。当前生产配置包含占位值，需先替换。
+
+从仓库根目录运行：
 
 ```sh
 pnpm --filter @ym-video/api exec wrangler secret put BETTER_AUTH_SECRET --env production
+pnpm --filter @ym-video/api exec wrangler d1 migrations apply DB --remote --env production
 pnpm --filter @ym-video/api run deploy
 ```
 
-本仓库目前没有创建 Cloudflare 资源，也没有执行远程部署；配置中的 production 域名和 D1 ID 是占位值。`scripts/generate-auth-schema.mjs` 只在认证配置变化后手动运行，不参与 Worker 运行时和部署产物。
-
-## 后续范围
-
-前端完成后再确定用户数据表和接口：首次登录本地历史合并、按账号隔离、离线重试、定期进度上报和多设备冲突处理都不属于当前实现。业务接口必须始终从服务端会话取得 `user.id`，不能信任客户端传入的用户 ID。
+部署命令会构建 Web，并将网页和 API 一起发布到同一个 Worker。

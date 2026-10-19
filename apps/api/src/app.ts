@@ -4,6 +4,9 @@ import { getAuthConfig } from './env';
 import { createAuth } from './modules/auth/auth';
 import { registerAuthRoutes } from './modules/auth/routes';
 import { registerProxyRoutes } from './modules/proxy/routes';
+import { registerUserDataRoutes } from './modules/user-data/routes';
+import { registerAdminRoutes } from './modules/admin/routes';
+import { registerInvitationRoutes } from './modules/invitations/routes';
 
 export const createApp = (env: Env) => {
   const config = getAuthConfig(env);
@@ -28,7 +31,10 @@ export const createApp = (env: Env) => {
       reply.header('vary', 'Origin');
     }
     if (request.method === 'OPTIONS') {
-      reply.header('access-control-allow-methods', 'GET,POST,OPTIONS');
+      reply.header(
+        'access-control-allow-methods',
+        'GET,POST,PATCH,DELETE,OPTIONS',
+      );
       reply.header(
         'access-control-allow-headers',
         'Content-Type,Authorization,Expo-Origin',
@@ -39,7 +45,11 @@ export const createApp = (env: Env) => {
 
     const path = request.url.split('?', 1)[0];
     const limiter =
-      path.startsWith('/api/auth/') || path === '/api/v1/me'
+      path.startsWith('/api/auth/') ||
+      path === '/api/v1/me' ||
+      path.startsWith('/api/v1/admin/') ||
+      path.startsWith('/api/v1/invitations/') ||
+      path.startsWith('/api/v1/history')
         ? env.AUTH_RATE_LIMITER
         : path.startsWith('/api/v1/proxy/')
           ? env.PROXY_RATE_LIMITER
@@ -59,6 +69,9 @@ export const createApp = (env: Env) => {
   app.options('/*', (_request, reply) => reply.code(204).send());
   app.get('/api/v1/health', () => ({ status: 'ok' }));
   registerAuthRoutes(app, auth, config.baseURL);
+  registerAdminRoutes(app, auth, env.DB);
+  registerInvitationRoutes(app, auth, env.DB);
+  registerUserDataRoutes(app, auth, env.DB);
   registerProxyRoutes(app);
   return app;
 };
