@@ -12,8 +12,8 @@
   --card: var(--background);
   --card-foreground: var(--foreground);
 
-  --popover: var(--background);
-  --popover-foreground: var(--foreground);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
 
   --theme-color-default: oklch(0.205 0 0);
   --primary: var(--theme-color-default);

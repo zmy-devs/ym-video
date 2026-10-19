@@ -19,6 +19,7 @@
           @click="togglePlay"
           @loadedmetadata="handleMetadata"
           @timeupdate="handleTime"
+          @seeked="handleSeeked"
           @play="playing = true"
           @pause="handlePause"
           @waiting="buffering = true"
@@ -180,6 +181,7 @@ const {
   selectEpisode,
   handleMetadata,
   handlePause,
+  handleSeeked,
   handleTime,
   togglePlay,
   seek,
@@ -187,6 +189,7 @@ const {
   setVolume,
   toggleFullscreen,
   togglePip,
+  save,
 } = usePlayer();
 
 // 标签页只更新片名，图标沿用应用入口中的 ym-video 图标。
@@ -288,9 +291,10 @@ const handleNext = () => {
 };
 
 // 本集结束后自动播放下一集。
-const handleEnded = () => {
+const handleEnded = async () => {
   playing.value = false;
-  return handleNext();
+  await save();
+  await handleNext();
 };
 
 // 浏览器解码失败时提供恢复入口。

@@ -1,7 +1,7 @@
 <template>
   <SidebarMenu class="w-auto">
     <SidebarMenuItem>
-      <DropdownMenu>
+      <DropdownMenu v-model:open="open">
         <DropdownMenuTrigger as-child>
           <Button
             id="account-menu-trigger"
@@ -12,17 +12,22 @@
             class="-mx-1 rounded-xl data-[state=open]:bg-accent"
           >
             <span
-              class="size-8 flex shrink-0 items-center justify-center rounded-full bg-primary font-medium text-primary-foreground"
+              class="size-8 flex shrink-0 items-center justify-center rounded-full bg-primary font-medium leading-none text-primary-foreground"
             >
               {{ userInitial }}
             </span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent side="right" align="end" class="w-60">
+        <DropdownMenuContent
+          side="right"
+          align="end"
+          class="w-60"
+          @close-auto-focus="handleMenuCloseFocus"
+        >
           <DropdownMenuLabel class="font-normal">
             <div class="flex items-center gap-3 py-1 text-left text-sm">
               <span
-                class="size-8 flex shrink-0 items-center justify-center rounded-full bg-primary font-medium text-primary-foreground"
+                class="size-8 flex shrink-0 items-center justify-center rounded-full bg-primary font-medium leading-none text-primary-foreground"
               >
                 {{ userInitial }}
               </span>
@@ -34,6 +39,11 @@
               </div>
             </div>
           </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem :disabled="signingOut" @select="handleSettings">
+            <Settings2 class="text-current" />
+            <span>设置</span>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem :disabled="signingOut" @select="handleSignOut">
             <LogOut class="text-current" />
@@ -47,7 +57,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { LogOut } from 'lucide-vue-next';
+import { LogOut, Settings2 } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import { SidebarMenu, SidebarMenuItem } from '@/components/ui/sidebar';
 import {
@@ -59,10 +69,36 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { authClient } from '@/services/auth';
+import { useHistoryStore } from '@/stores/history';
 import { errorToast, successToast } from '@/utils/toast';
+import { eventBus } from '@/utils/event-bus';
+
+// 打开设置时先关闭用户菜单，再让弹窗接管焦点。
+const open = ref(false);
+
+// 菜单关闭时避免抢回设置弹窗的焦点。
+let openingSettings = false;
+
+// 只有打开设置的关闭动作需要跳过默认焦点恢复。
+const handleMenuCloseFocus = (event: Event) => {
+  if (openingSettings) {
+    event.preventDefault();
+    openingSettings = false;
+  }
+};
+
+// 设置入口由前台和后台共用根弹窗。
+const handleSettings = () => {
+  openingSettings = true;
+  open.value = false;
+  eventBus.emit('settings:show');
+};
 
 // Better Auth 当前 Cookie 会话。
 const session = authClient.useSession();
+
+// 退出成功后立即清除其他账号可见的历史状态。
+const history = useHistoryStore();
 
 // 当前已登录账号，由路由守卫和全局会话监听保护。
 const user = computed(() => session.value.data?.user);
@@ -101,6 +137,7 @@ const handleSignOut = async () => {
       return;
     }
 
+    await history.setAccount(null);
     successToast('已退出登录');
   } catch {
     errorToast('退出失败，请检查网络后重试');

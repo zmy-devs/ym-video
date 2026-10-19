@@ -54,14 +54,6 @@ export const useThemeStore = defineStore('theme', () => {
     return writeLocal('theme-color', value);
   };
 
-  // 恢复默认主题，并向调用方报告持久化结果。
-  const reset = () => {
-    // 两项偏好均尝试写入，不因第一项失败跳过第二项。
-    const modeSaved = setMode('auto');
-    const colorSaved = setColor('default');
-    return modeSaved && colorSaved;
-  };
-
   watch(
     color,
     (value) => {
@@ -80,5 +72,5 @@ export const useThemeStore = defineStore('theme', () => {
     { immediate: true },
   );
 
-  return { mode, color, resolved, setMode, setColor, reset };
+  return { mode, color, resolved, setMode, setColor };
 });

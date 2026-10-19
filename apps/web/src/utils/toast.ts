@@ -11,10 +11,6 @@ export const successToast = (message: string, options?: ToastOptions) =>
 export const errorToast = (message: string, options?: ToastOptions) =>
   toast.error(message, { ...options, position: 'top-center' });
 
-// 显示警告提示并返回提示标识。
-export const warningToast = (message: string, options?: ToastOptions) =>
-  toast.warning(message, { ...options, position: 'top-center' });
-
 // 显示信息提示并返回提示标识。
 export const infoToast = (message: string, options?: ToastOptions) =>
   toast.info(message, { ...options, position: 'top-center' });

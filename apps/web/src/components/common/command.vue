@@ -4,6 +4,7 @@
     <DialogContent
       class="overflow-hidden p-0"
       overlay-class="bg-black/50 backdrop-blur-sm"
+      @close-auto-focus="emit('closeAutoFocus', $event)"
     >
       <DialogHeader class="sr-only">
         <DialogTitle>{{ title }}</DialogTitle>
@@ -31,4 +32,7 @@ defineProps<{ title: string; description: string }>();
 
 // 调用方统一控制按钮与快捷键打开弹窗。
 const open = defineModel<boolean>('open', { required: true });
+
+// 根组件挂载的命令弹窗由业务层恢复入口焦点。
+const emit = defineEmits<{ closeAutoFocus: [event: Event] }>();
 </script>

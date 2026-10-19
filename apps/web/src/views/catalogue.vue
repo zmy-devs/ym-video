@@ -3,14 +3,14 @@
     <div class="page-content">
       <h1
         v-if="isOverview"
-        class="mb-10 text-center text-3xl font-semibold tracking-tight"
+        class="mb-10 py-6 text-center text-3xl font-semibold tracking-tight"
       >
         {{ greeting }}，亲爱的用户<span class="ml-2" aria-hidden="true"
           >😊</span
         >
       </h1>
       <section
-        v-if="isOverview && history.sorted.length"
+        v-if="isOverview && history.entries.length"
         class="mb-10"
         aria-labelledby="continue-heading"
       >
@@ -19,7 +19,7 @@
         </h2>
         <div class="movie-grid">
           <MovieCard
-            v-for="item in history.sorted.slice(0, 6)"
+            v-for="item in history.entries.slice(0, 6)"
             :key="item.id"
             :movie="item"
             :entry="item"
@@ -125,8 +125,8 @@ import { useHistoryStore } from '@/stores/history';
 import { useCatalogue } from '@/composables/use-catalogue';
 import { getCategorySelection } from '@/lib/category';
 
-// 概览、分类与搜索沿用统一海报列表布局。
-const route = useRoute();
+// 每页沿用创建时的路由信息，缓存的概览不会跟随其他页面变成分类或搜索。
+const route = { ...useRoute() };
 
 // 页面导航与返回操作。
 const router = useRouter();
@@ -210,11 +210,11 @@ const { movies, loading, error, page, pageCount, load } = useCatalogue(() => {
     (isSearch.value && !keyword.value) ||
     (isCategory.value && !selection.value.selectedId)
   ) {
-    return { sourceId: '' };
+    return {};
   }
 
   return {
-    sourceId: library.selected,
+    source: library.source,
     category: isCategory.value ? String(selection.value.selectedId) : undefined,
     keyword: isSearch.value ? keyword.value : undefined,
   };

@@ -1,5 +1,8 @@
 import { errorToast } from '../utils/toast.ts';
 
+// 当前 Web 偏好的统一存储前缀。
+const storagePrefix = 'ym-video:';
+
 // 同类存储失败只提示一次，仍允许当前页面在内存中工作。
 const reported = new Set<string>();
 
@@ -22,13 +25,16 @@ export const readLocal = <T>(
 ): T => {
   try {
     // 浏览器存储中的原始字符串。
-    const raw = localStorage.getItem(`ym-web:${key}`);
+    const raw = localStorage.getItem(`${storagePrefix}${key}`);
     if (raw === null) {
       return fallback;
     }
     // 本次操作读取的数据。
     const value: unknown = JSON.parse(raw);
-    return validate(value) ? value : fallback;
+    if (!validate(value)) {
+      return fallback;
+    }
+    return value;
   } catch {
     storageError('浏览器设置');
     return fallback;
@@ -38,10 +44,10 @@ export const readLocal = <T>(
 // 本地偏好写入失败不阻断浏览和播放。
 export const writeLocal = (key: string, value: unknown) => {
   try {
-    localStorage.setItem(`ym-web:${key}`, JSON.stringify(value));
-    return true;
+    localStorage.setItem(`${storagePrefix}${key}`, JSON.stringify(value));
   } catch {
     storageError('浏览器设置');
     return false;
   }
+  return true;
 };

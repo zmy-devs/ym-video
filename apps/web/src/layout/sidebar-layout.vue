@@ -1,11 +1,23 @@
 <template>
   <SidebarProvider v-model:open="open" class="min-h-0">
-    <Sidebar
-      :collapsible="collapsible ? 'icon' : 'none'"
-      :class="collapsible ? undefined : 'shrink-0 border-r'"
-    >
-      <SidebarHeader v-if="$slots['sidebar-header']">
-        <slot name="sidebar-header" />
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <div
+          class="h-8 flex items-center justify-between group-data-[collapsible=icon]:justify-center"
+        >
+          <div
+            class="min-w-0 ml-1 flex items-center gap-2 group-data-[collapsible=icon]:hidden"
+          >
+            <img :src="icon" alt="" class="size-6 shrink-0 rounded-md" />
+            <span class="truncate text-sm font-semibold">Ym Video</span>
+          </div>
+          <CommonTooltip
+            :label="open ? '收起侧边栏' : '展开侧边栏'"
+            shortcut="Ctrl+B"
+          >
+            <SidebarTrigger :aria-label="open ? '收起侧边栏' : '展开侧边栏'" />
+          </CommonTooltip>
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <slot name="sidebar" />
@@ -15,13 +27,6 @@
       </SidebarFooter>
     </Sidebar>
     <SidebarInset class="min-h-0 min-w-0">
-      <header v-if="collapsible" class="flex h-12 shrink-0 items-center px-4">
-        <CommonTooltip
-          :label="open ? '收起侧边栏 · Ctrl+B' : '展开侧边栏 · Ctrl+B'"
-        >
-          <SidebarTrigger :aria-label="open ? '收起侧边栏' : '展开侧边栏'" />
-        </CommonTooltip>
-      </header>
       <div class="min-h-0 flex-1">
         <slot />
       </div>
@@ -41,16 +46,7 @@ import {
   SidebarInset,
 } from '@/components/ui/sidebar';
 import CommonTooltip from '@/components/common/tooltip.vue';
-
-// 侧栏使用默认宽度，业务内容通过具名插槽传入。
-withDefaults(
-  defineProps<{
-    collapsible?: boolean;
-  }>(),
-  {
-    collapsible: false,
-  },
-);
+import icon from '@/assets/icon.png';
 
 // 展开状态同步组件自带的收缩按钮与快捷键。
 const open = ref(true);

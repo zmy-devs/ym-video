@@ -2,10 +2,12 @@ import { computed, onScopeDispose, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { useEventListener } from '@vueuse/core';
 import Hls from 'hls.js';
-import type { HistoryEntry } from '@/types';
+import type { HistoryEntry, Movie } from '@/types';
+import type { HistoryToken } from '@ym-video/history';
 import { getMovies } from '@/services/api';
 import { FilteredPlaylistLoader } from '@/services/hls';
 import { useHistoryStore } from '@/stores/history';
+import { useLibraryStore } from '@/stores/library';
 import { movieKey } from '@/lib/movie';
 import { readLocal, writeLocal } from '@/lib/storage';
 import { errorToast, infoToast } from '@/utils/toast';
@@ -18,8 +20,11 @@ export const usePlayer = () => {
   // 页面导航与返回操作。
   const router = useRouter();
 
-  // 当前浏览器的观看历史。
+  // 当前登录账号的观看历史与本机待同步队列。
   const history = useHistoryStore();
+
+  // 直接打开播放页时也能恢复本机自定义源地址。
+  const library = useLibraryStore();
 
   // 浏览器原生视频元素。
   const video = ref<HTMLVideoElement | null>(null);
@@ -29,6 +34,9 @@ export const usePlayer = () => {
 
   // 当前影片、选集和播放进度。
   const entry = ref<HistoryEntry | null>(null);
+
+  // 播放页打开时捕获账号、清空版本和影片删除版本。
+  const playbackToken = ref<HistoryToken | null>(null);
 
   // 首次加载或刷新时的请求状态。
   const loading = ref(true);
@@ -95,23 +103,45 @@ export const usePlayer = () => {
   // 最后一次切集操作序号。
   let episodeRequest = 0;
 
-  // 只保存当前媒体的真实进度，零秒也可覆盖旧进度。
+  // 记录实际播放或操作的时间，暂停后的重复保存沿用原时间。
+  const markWatched = (value: HistoryEntry) => {
+    value.watchedAt = Math.max(Date.now(), value.watchedAt + 1);
+  };
+
+  // 只有媒体进度确实变化时才推进观看时间。
+  const captureProgress = () => {
+    const value = entry.value;
+    const element = video.value;
+    if (!value || !element || !mediaReady) {
+      return;
+    }
+    const key = String(value.episode);
+    const progress = {
+      currentTime: element.currentTime,
+      duration: Number.isFinite(element.duration) ? element.duration : 0,
+    };
+    const previous = value.progress[key];
+    if (
+      previous?.currentTime !== progress.currentTime ||
+      previous.duration !== progress.duration
+    ) {
+      markWatched(value);
+      value.progress[key] = progress;
+    }
+  };
+
+  // 只保存当前媒体的真实进度，写入本地队列后后台同步。
   const save = () => {
     // 本次操作读取的数据。
     const value = entry.value;
     if (!value) {
       return Promise.resolve();
     }
-    if (mediaReady && video.value) {
-      value.progress[String(value.episode)] = {
-        currentTime: video.value.currentTime,
-        duration: Number.isFinite(video.value.duration)
-          ? video.value.duration
-          : 0,
-      };
+    if (!value.episodes[value.episode]) {
+      return Promise.resolve();
     }
-    value.watchedAt = Date.now();
-    return history.save(value);
+    captureProgress();
+    return history.save(value, playbackToken.value);
   };
 
   // 清理旧媒体后才能进入新影片或新集数。
@@ -199,7 +229,7 @@ export const usePlayer = () => {
     }
   };
 
-  // 路由刷新先恢复本地影片；无历史时按源和影片 ID 查询。
+  // 打开或重载时刷新影片详情，历史仅提供续播进度与请求失败时的备用信息。
   const loadMovie = async () => {
     episodeRequest++;
     controller?.abort();
@@ -213,6 +243,7 @@ export const usePlayer = () => {
     }
     stopMedia();
     entry.value = null;
+    playbackToken.value = null;
     loading.value = true;
     error.value = '';
 
@@ -225,40 +256,74 @@ export const usePlayer = () => {
     // 是否明确要求从头播放当前集。
     const restart = route.query.restart === '1';
     try {
-      await history.init();
+      await history.init(movieKey(sourceId, vodId));
       if (signal.aborted || disposed) {
         return;
       }
+      playbackToken.value = history.token(movieKey(sourceId, vodId));
       // 当前浏览器中已有的同源影片记录。
       const old = history.entries.find(
         (item) => item.id === movieKey(sourceId, vodId),
       );
 
-      // 本次操作读取的数据。
-      let value: HistoryEntry;
-      if (old) {
-        value = JSON.parse(JSON.stringify(old));
-      } else {
-        // 本次异步操作返回结果。
-        const result = await getMovies(sourceId, { ids: vodId }, signal);
+      // 优先使用最新集数和地址，请求失败时才沿用历史。
+      let movie: Movie | undefined = old;
+      try {
+        // 自定义源需使用当前浏览器保存的接口地址。
+        const source = library.customSources.find(
+          (item) => item.id === sourceId,
+        );
 
-        // 接口转换后的有效影片。
-        const movie = result.movies.find((item) => item.vodId === vodId);
-        if (!movie) {
-          throw new Error('影片不存在或已下架，请返回选择其他影片');
+        if (!source && sourceId.startsWith('custom:')) {
+          throw new Error('此浏览器未添加该播放源，请先添加对应接口');
         }
-        value = { ...movie, episode: 0, progress: {}, watchedAt: Date.now() };
+
+        // 平台源只需 ID，自定义源携带已验证的直连接口地址。
+        const result = await getMovies(
+          source ?? { id: sourceId, name: '' },
+          { ids: vodId },
+          signal,
+        );
+
+        movie = result.movies.find((item) => item.vodId === vodId);
+      } catch (cause) {
+        if (signal.aborted || disposed) {
+          return;
+        }
+        if (!old) {
+          throw cause;
+        }
+        infoToast('无法更新影片信息，暂用上次的播放信息');
       }
       if (signal.aborted || disposed) {
         return;
       }
-      value.episode = Math.max(
-        0,
-        Math.min(value.episode, value.episodes.length - 1),
-      );
+      if (!movie) {
+        throw new Error('影片不存在或已下架，请返回选择其他影片');
+      }
+      if (!movie.episodes.length) {
+        throw new Error('当前影片暂无可播放集数');
+      }
+
+      // 复制历史中的可变进度，仅保留仍在最新集数范围内的记录。
+      const value: HistoryEntry = {
+        ...movie,
+        episodes: movie.episodes.map((item) => ({ ...item })),
+        episode: Math.max(
+          0,
+          Math.min(old?.episode ?? 0, movie.episodes.length - 1),
+        ),
+        progress: Object.fromEntries(
+          Object.entries(old?.progress ?? {})
+            .filter(([key]) => Number(key) < movie.episodes.length)
+            .map(([key, progress]) => [key, { ...progress }]),
+        ),
+        watchedAt: old?.watchedAt ?? Date.now(),
+      };
       if (restart) {
         value.progress[String(value.episode)] = { currentTime: 0, duration: 0 };
       }
+      markWatched(value);
       entry.value = value;
       await save();
       if (signal.aborted || disposed) {
@@ -299,6 +364,7 @@ export const usePlayer = () => {
     }
     stopMedia();
     entry.value.episode = index;
+    markWatched(entry.value);
     await save();
     if (!disposed && entry.value === target && request === episodeRequest) {
       startMedia();
@@ -342,9 +408,19 @@ export const usePlayer = () => {
     }
   };
 
+  // 拖动后媒体落到目标时间时立即保存。
+  const handleSeeked = () => {
+    if (mediaReady && video.value) {
+      currentTime.value = video.value.currentTime;
+      captureProgress();
+      save();
+    }
+  };
+
   // 媒体时间变化时更新控制栏。
   const handleTime = () => {
-    if (mediaReady && video.value) {
+    if (mediaReady && video.value && !video.value.seeking) {
+      captureProgress();
       currentTime.value = video.value.currentTime;
     }
   };
@@ -352,7 +428,10 @@ export const usePlayer = () => {
   // 把目标进度限制在有效媒体范围内。
   const seek = (seconds: number) => {
     if (video.value && mediaReady) {
-      video.value.currentTime = Math.max(0, Math.min(seconds, duration.value));
+      const target = Math.max(0, Math.min(seconds, duration.value));
+
+      currentTime.value = target;
+      video.value.currentTime = target;
     }
   };
 
@@ -488,16 +567,31 @@ export const usePlayer = () => {
 
   // 播放期间每十秒保存一次进度。
   const interval = setInterval(() => {
-    if (mediaReady) {
+    if (mediaReady && playing.value) {
       save();
     }
   }, 10_000);
   onBeforeRouteLeave(async () => {
     await save();
   });
-  watch(() => [route.params.sourceId, route.params.vodId], loadMovie, {
+  watch([() => route.params.sourceId, () => route.params.vodId], loadMovie, {
     immediate: true,
   });
+  // 会话切换立即释放旧账号的影片，路由守卫完成前也不会继续播放。
+  watch(
+    () => history.ownerId,
+    (nextOwnerId) => {
+      if (playbackToken.value && playbackToken.value.ownerId !== nextOwnerId) {
+        controller?.abort();
+        stopMedia();
+        entry.value = null;
+        playbackToken.value = null;
+        loading.value = false;
+        error.value = '账号已切换，请重新打开影片';
+      }
+    },
+    { flush: 'sync' },
+  );
   watch(video, (value) => {
     if (value && entry.value && !loading.value) {
       startMedia();
@@ -532,6 +626,7 @@ export const usePlayer = () => {
     selectEpisode,
     handleMetadata,
     handlePause,
+    handleSeeked,
     handleTime,
     togglePlay,
     seek,

@@ -53,7 +53,7 @@
             }}
           </p>
         </RouterLink>
-        <!-- 与桌面端一致，预览留在原卡片内，跟随列表原生滚动。 -->
+        <!-- 预览随列表滚动，最小尺寸比原卡片大一圈，避免短简介时露出底层内容。 -->
         <RouterLink
           :to="playerPath(movie)"
           target="_blank"
@@ -61,12 +61,12 @@
           :aria-label="`播放 ${movie.name}`"
           :tabindex="-1"
           data-slot="movie-preview"
-          class="pointer-events-none invisible absolute top-1/2 left-1/2 z-40 block w-[280px] -translate-x-1/2 -translate-y-1/2 scale-0 overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-xl outline-none transition-[scale,visibility] duration-150 ease-out group-hover:pointer-events-auto group-hover:visible group-hover:scale-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:scale-100 motion-reduce:transition-none"
+          class="pointer-events-none invisible absolute top-1/2 left-1/2 z-40 flex min-h-[calc(100%+2rem)] w-80 min-w-[calc(100%+2rem)] -translate-x-1/2 -translate-y-1/2 scale-0 flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-xl outline-none transition-[scale,visibility] duration-150 ease-out group-hover:pointer-events-auto group-hover:visible group-hover:scale-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:scale-100 motion-reduce:transition-none"
         >
           <MoviePoster
             :src="movie.pic"
             :alt="`${movie.name}海报`"
-            class="h-56 w-full"
+            class="h-64 w-full grow shrink-0"
           />
           <!-- 沿用桌面端正文同色的模糊阴影，让海报自然衔接正文。 -->
           <div

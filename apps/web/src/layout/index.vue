@@ -1,13 +1,12 @@
 <template>
-  <SidebarLayout collapsible class="h-dvh">
-    <template #sidebar-header><SourceSwitcher /></template>
+  <SidebarLayout class="h-dvh">
     <template #sidebar><AppSidebar /></template>
     <template #sidebar-footer>
       <div
-        class="flex items-center justify-between gap-2 group-data-[collapsible=icon]:flex-col"
+        class="flex items-center justify-between gap-2 group-data-[collapsible=icon]:flex-col-reverse"
       >
         <AccountMenu />
-        <SettingsMenu />
+        <SourceSwitcher />
       </div>
     </template>
     <div class="h-full min-h-0">
@@ -19,7 +18,20 @@
         <p class="text-muted-foreground">{{ library.error }}</p>
         <Button @click="library.init">重新连接</Button>
       </div>
-      <RouterView v-else />
+      <RouterView v-else v-slot="{ Component, route: pageRoute }">
+        <KeepAlive>
+          <component
+            :is="Component"
+            v-if="pageRoute.meta.keepAlive"
+            :key="pageRoute.path"
+          />
+        </KeepAlive>
+        <component
+          :is="Component"
+          v-if="!pageRoute.meta.keepAlive"
+          :key="pageRoute.fullPath"
+        />
+      </RouterView>
     </div>
   </SidebarLayout>
 </template>
@@ -30,7 +42,6 @@ import { RouterView, useRoute } from 'vue-router';
 import { Button } from '@/components/ui/button';
 import SourceSwitcher from '@/components/source-switcher.vue';
 import AccountMenu from '@/components/account-menu.vue';
-import SettingsMenu from '@/components/settings-menu.vue';
 import SidebarLayout from './sidebar-layout.vue';
 import AppSidebar from './app-sidebar.vue';
 import { useLibraryStore } from '@/stores/library';

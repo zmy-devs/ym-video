@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>观看历史浏览器测试</title>
+  </head>
+  <body>
+    <h1>观看历史浏览器测试</h1>
+    <p>
+      仅在独立测试源 localhost:5180 运行，使用真实 IndexedDB、Web Locks 和
+      BroadcastChannel。
+    </p>
+    <button id="run" type="button">运行测试</button>
+    <ol id="results" aria-live="polite"></ol>
+    <p id="status">等待运行</p>
+    <script type="module" src="./history.ts"></script>
+  </body>
+</html>

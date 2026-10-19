@@ -19,7 +19,7 @@
       class="text-destructive"
       @select="history.remove(entry.id)"
     >
-      <Trash2 class="text-current" />删除这条历史
+      <Trash2 class="text-current" />删除
     </ContextMenuItem>
   </ContextMenuContent>
 </template>
