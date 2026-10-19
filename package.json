@@ -11,6 +11,7 @@
     "node": "22.21.1"
   },
   "scripts": {
+    "dev": "pnpm dev:web && pnpm dev:api",
     "dev:web": "pnpm --filter @ym-video/web run dev",
     "typecheck:web": "pnpm --filter @ym-video/web run typecheck",
     "build:web": "pnpm --filter @ym-video/web run build",
