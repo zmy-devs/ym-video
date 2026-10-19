@@ -2,6 +2,8 @@
 
 默认用中文回答，结论优先、简洁直接。修改前读取受影响应用的配置与相邻实现，保留用户已有未提交改动。
 
+README 用于项目介绍、技术栈、安装启动和使用说明，不记录实现细节、迁移计划、调试过程或测试执行记录；开发协作约定放在 AGENTS.md。
+
 <!-- CODEGRAPH_START -->
 
 ## CodeGraph
@@ -50,8 +52,6 @@ apps/
   web/                         Vue 3＋shadcn-vue PC Web，IndexedDB 本地历史
   api/                         Fastify Workers API，已实现认证和资源代理
 packages/                      共享包预留，当前仅 README
-docs/architecture.md           架构现状、目标和迁移说明
-docs/monorepo-validation.md    本次验证结果、原代码类型问题与环境限制
 ```
 
 - 独立部署／运行的应用放在 `apps/`；有真实跨端调用方的契约与纯业务逻辑才提取到 `packages/`。
@@ -77,8 +77,8 @@ docs/monorepo-validation.md    本次验证结果、原代码类型问题与环�
 
 ## API 与 Cloudflare 约定
 
-- 详细设计以 [API 建设文档](apps/api/README.md) 为准。`apps/api` 和 `apps/web` 已可本地运行和测试，Web 静态产物与 API 使用同一 Worker；生产 Cloudflare 资源仍需另行配置。
-- 后端规划按 `src/modules/auth`（登录与会话）、`user-data`（用户偏好、历史与进度）、`proxy`（第三方接口转发）三个模块组织；目录详见 API 文档。用户数据统一要求登录并按会话用户隔离；代理只转发服务端配置允许的目标，不将登录凭证透传给上游。
+- API 的启动、配置与接口用法见 [API 说明](apps/api/README.md)。`apps/api` 和 `apps/web` 已可本地运行和测试，Web 静态产物与 API 使用同一 Worker；生产 Cloudflare 资源仍需另行配置。
+- 后端规划按 `src/modules/auth`（登录与会话）、`user-data`（用户偏好、历史与进度）、`proxy`（第三方接口转发）三个模块组织。用户数据统一要求登录并按会话用户隔离；代理只转发服务端配置允许的目标，不将登录凭证透传给上游。
 - Workers 开启 `nodejs_compat`，固定不早于 `2025-09-01` 的兼容日期，通过 `cloudflare:node` 的 Node HTTP 适配入口运行 Fastify；本地 Node／pnpm 是工程工具链，不代表生产使用常驻 Node 进程。
 - API 不声明 Fastify JSON Schema，避免请求期动态校验／序列化；路由在 Worker 初始化阶段编译，入口用 `cloudflare:node` 适配 Node HTTP。新增 schema 或插件前必须在 workerd 中验证。
 - Better Auth 挂载 `/api/auth/*`，业务接口使用 `/api/v1/*`。Web 使用会话 Cookie；安卓采用 Better Auth Expo 插件和 SecureStore，沿用 `ymvideo` scheme，核实与现有 Expo SDK 的兼容性。

@@ -1,37 +1,42 @@
 # ym-video 安卓端
 
-从独立 `ym-video-app` 仓库导入的 Expo／React Native 应用，工作区包名为 `@ym-video/mobile`。
+基于 Expo 和 React Native 的安卓视频聚合播放器，支持播放源切换、搜索、原生视频播放、续播和本地观看历史。
 
-本轮只整理 monorepo，保留原有路由、原生播放器、本地 SQLite／MMKV、更新逻辑与版本号。后续接入与 Vue Web 共用的 Fastify API、账号和云端历史。
+## 技术栈
 
-## 开发
+Expo SDK 54、React 19、React Native 0.81、TypeScript、Expo Router、NativeWind、Valtio、react-native-video、expo-sqlite、MMKV。
 
-在仓库根目录执行：
+## 安装与启动
+
+从 [GitHub Releases](https://github.com/2514765066/ym-video-app/releases) 或 [Gitee Releases](https://gitee.com/yxingyus/ym-video-app/releases) 下载 APK，安装后即可使用。
+
+从源码运行需要 Node.js 22.21.1、pnpm 11.20.0、Android SDK、JDK，以及安卓设备或模拟器。在仓库根目录执行：
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm dev:mobile
 ```
 
-`dev:mobile` 沿用原有流程，先 `expo prebuild` 再运行安卓，需要 Android SDK、JDK 和设备／模拟器。仅运行 Metro 时可使用 `pnpm --filter @ym-video/mobile exec expo start`。
+该命令会生成原生工程并构建、运行安卓应用。已有原生工程时，可通过 `pnpm android` 再次运行。
 
-首次启动 Expo／Metro 会生成 NativeWind 和 Expo 类型声明，随后可运行 `pnpm typecheck:mobile`；`pnpm check:mobile` 另包含可能联网的 Expo Doctor。
+仅启动 Metro：
 
-## 构建与发布
+```sh
+pnpm --filter @ym-video/mobile exec expo start
+```
 
-- `pnpm build:mobile` 沿用现有 EAS 安卓云构建，需要 EAS CLI、账号与 `EAS_PROJECTID_YMVIDEO`。
-- 手动运行 EAS 命令时进入本目录；`eas.json` 与 `app.config.js` 必须保留在这里。
-- 工作区包名不影响应用标识：显示名／slug 仍为 `ym-video`，scheme 为 `ymvideo`，安卓包名为 `com.zhangmingyang.ymvideo`。
-- 更新仓库仍使用 `ym-video-app`。发布前把 APK 放到本目录 `dist/ym-video-<版本>.apk`，再从根运行 `pnpm release:mobile`；发布凭据只读取进程环境。
+## 使用
 
-原生工程、缓存、生成类型和 APK 不提交。不要在本目录创建单独的锁文件或 workspace 配置。
+选择播放源后，可按分类浏览或搜索影片，打开影片选择集数播放。观看历史和偏好保存在本机，可从历史记录继续播放。
 
-架构和全仓命令见[根 README](../../README.md)、[架构文档](../../docs/architecture.md)。
+## 云构建
 
-## 既有待办
+需要 EAS CLI、Expo 账号，并通过环境变量 `EAS_PROJECTID_YMVIDEO` 提供项目 ID。在仓库根目录运行：
 
-以下为原仓库尚未处理的事项，保留以供后续评估，并非本次实现内容：
+```sh
+pnpm build:mobile
+```
 
-- 后台下载、网络问题处理。
-- 调整 `hooks/useEpisode`、dialog／episode 样式、长按菜单与导航 UI。
-- 云端存储与跨端历史同步，方案统一到后续 Fastify 服务。
+该命令使用 `production` 配置执行安卓云构建，完成后从 EAS 下载 APK。手动运行 EAS 命令时，进入 `apps/mobile` 目录。
+
+项目介绍和使用声明见[根 README](../../README.md)。
