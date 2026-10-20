@@ -8,7 +8,7 @@
 | -------------------------------- | ----------------------------------- | ------------------------------------------------------------------ |
 | [Web](apps/web/README.md)        | PC 浏览器应用                       | Vue 3、TypeScript、Vite、Pinia、shadcn-vue、Tailwind CSS 4、hls.js |
 | [API](apps/api/README.md)        | 账号、观看历史、资源代理与 Web 托管 | Fastify、Better Auth、Drizzle ORM、Cloudflare Workers、D1          |
-| [桌面端](apps/desktop/README.md) | Windows 客户端                      | Electron、Vue 3、Element Plus、hls.js、SQLite                      |
+| [桌面端](apps/desktop/README.md) | 加载 Web 的 Windows 桌面客户端      | Electron 43、electron-vite 5、electron-updater 6                    |
 | [安卓端](apps/mobile/README.md)  | Android 客户端                      | Expo、React Native、TypeScript、NativeWind、Valtio、SQLite、MMKV   |
 | [共享包](packages/README.md)     | Web 与 API 共用的观看历史模型       | TypeScript                                                         |
 
@@ -44,10 +44,9 @@ pnpm dev:web
 
 ### 桌面端
 
-首次启动前准备 SQLite 原生模块：
+在 `apps/desktop/.env` 配置 `YM_VIDEO_WEB_URL` 后启动：
 
 ```sh
-pnpm setup:desktop
 pnpm dev:desktop
 ```
 
