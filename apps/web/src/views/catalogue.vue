@@ -1,5 +1,5 @@
 <template>
-  <ScrollArea class="h-full">
+  <ScrollArea class="h-full" @scroll.capture="handleScroll">
     <div class="page-content">
       <h1
         v-if="isOverview"
@@ -111,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onActivated, onDeactivated, ref } from 'vue';
 import { useIntersectionObserver, useNow } from '@vueuse/core';
 import { useRoute, useRouter } from 'vue-router';
 import { ArrowDown, SearchX } from 'lucide-vue-next';
@@ -127,6 +127,35 @@ import { getCategorySelection } from '@/lib/category';
 
 // 每页沿用创建时的路由信息，缓存的概览不会跟随其他页面变成分类或搜索。
 const route = { ...useRoute() };
+
+// 暂存页面在 DOM 中重新挂载时恢复原来的滚动位置。
+let scrollViewport: HTMLElement | undefined;
+let scrollTop = 0;
+let active = true;
+
+// 只记录当前列表的滚动，忽略隐藏页面和横向分类滚动。
+const handleScroll = (event: Event) => {
+  if (
+    active &&
+    event.target instanceof HTMLElement &&
+    event.target.dataset.slot === 'scroll-area-viewport'
+  ) {
+    scrollViewport = event.target;
+    scrollTop = event.target.scrollTop;
+  }
+};
+
+onDeactivated(() => {
+  active = false;
+});
+
+onActivated(() => {
+  active = true;
+
+  if (scrollViewport) {
+    scrollViewport.scrollTop = scrollTop;
+  }
+});
 
 // 页面导航与返回操作。
 const router = useRouter();
@@ -224,7 +253,7 @@ const { movies, loading, error, page, pageCount, load } = useCatalogue(() => {
 const loadMoreTarget = ref<HTMLElement | null>(null);
 
 useIntersectionObserver(loadMoreTarget, ([entry]) => {
-  if (entry?.isIntersecting && !loading.value && !error.value) {
+  if (active && entry?.isIntersecting && !loading.value && !error.value) {
     return load();
   }
 });

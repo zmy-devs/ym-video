@@ -46,6 +46,9 @@ import SidebarLayout from './sidebar-layout.vue';
 import AppSidebar from './app-sidebar.vue';
 import { useLibraryStore } from '@/stores/library';
 
+// 根路由仅缓存主布局，进入播放器时保留列表，退出时正常释放媒体。
+defineOptions({ name: 'AppLayout' });
+
 // 当前路由用于决定历史页是否跳过资源连接错误。
 const route = useRoute();
 
