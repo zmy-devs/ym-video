@@ -20,7 +20,7 @@ pnpm dev:api
 pnpm dev:web
 ```
 
-访问 <http://localhost:5173>。Web 的 `/api` 请求会转发到 <http://localhost:8787>。
+访问 <http://localhost:3000>。Web 的 `/api` 请求会转发到 <http://localhost:8787>。
 
 默认端口被占用时可运行 `pnpm dev:web --port 3000`。使用其他端口时，需要在 `apps/api/wrangler.jsonc` 的 `WEB_ORIGINS` 中添加对应来源。
 

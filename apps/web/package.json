@@ -7,7 +7,7 @@
     "extends": "../../package.json"
   },
   "scripts": {
-    "dev": "vite --host localhost --port 5173 --strictPort",
+    "dev": "vite --host localhost",
     "typecheck": "vue-tsc --noEmit && tsc --noEmit -p tsconfig.node.json && vue-tsc --noEmit -p tests/tsconfig.browser.json",
     "build": "pnpm run typecheck && vite build",
     "preview": "vite preview --host localhost --port 4173 --strictPort",
