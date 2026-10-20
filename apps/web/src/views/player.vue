@@ -3,6 +3,36 @@
     class="player-page dark h-full flex flex-col overflow-hidden bg-background text-foreground"
     :data-theme-color="theme.color"
   >
+    <header
+      v-if="isDesktop"
+      class="desktop-title-bar desktop-title-bar-standalone fixed inset-x-0 top-0 z-40 flex items-center gap-2.5 pl-[calc((var(--desktop-window-controls-height)-1.75rem)/2)] pr-36 bg-background text-foreground"
+    >
+      <Tooltip>
+        <TooltipTrigger as-child>
+          <Button
+            as-child
+            variant="ghost"
+            size="icon"
+            class="size-7 shrink-0 [-webkit-app-region:no-drag]"
+          >
+            <RouterLink to="/overview" aria-label="返回主页">
+              <ArrowLeft class="size-4" aria-hidden="true" />
+            </RouterLink>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">返回主页</TooltipContent>
+      </Tooltip>
+      <MoviePoster
+        v-if="entry"
+        :src="entry.pic"
+        alt=""
+        aria-hidden="true"
+        class="size-5 shrink-0 rounded-full [&_svg]:size-3"
+      />
+      <span class="min-w-0 truncate text-sm" :title="entry?.name">
+        {{ entry?.name || '播放器' }}
+      </span>
+    </header>
     <div class="min-h-0 flex flex-1">
       <main
         ref="container"
@@ -29,18 +59,26 @@
           @error="handleMediaError"
         />
 
-        <div
+        <Empty
           v-if="error"
           role="alert"
-          class="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/90 px-12 text-center"
+          class="absolute inset-0 rounded-none bg-black/90"
         >
-          <CircleAlert class="size-10 text-white/60" />
-          <p class="max-w-lg text-sm text-white">{{ error }}</p>
-          <div class="flex gap-3">
-            <Button variant="secondary" @click="loadMovie">重新加载</Button>
-            <Button variant="outline" @click="handleBack">返回换源</Button>
-          </div>
-        </div>
+          <EmptyHeader class="max-w-full">
+            <EmptyMedia variant="icon">
+              <CircleAlert aria-hidden="true" />
+            </EmptyMedia>
+            <EmptyTitle>播放失败</EmptyTitle>
+            <EmptyDescription class="max-w-full truncate">
+              {{ error }}
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button type="button" @click="loadMovie">
+              <RotateCw aria-hidden="true" />重新加载
+            </Button>
+          </EmptyContent>
+        </Empty>
         <div
           v-else-if="loading || buffering"
           role="status"
@@ -145,17 +183,38 @@
 
 <script setup lang="ts">
 import { computed, onScopeDispose, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { RouterLink } from 'vue-router';
 import { useEventListener, useTitle } from '@vueuse/core';
-import { Volume2, VolumeX, LoaderCircle, CircleAlert } from 'lucide-vue-next';
+import {
+  ArrowLeft,
+  Volume2,
+  VolumeX,
+  LoaderCircle,
+  CircleAlert,
+  RotateCw,
+} from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import MoviePoster from '@/components/movie-poster.vue';
 import PlayerControls from '@/components/player/player-controls.vue';
 import PlayerEpisodesSheet from '@/components/player/player-episodes-sheet.vue';
 import { usePlayer } from '@/composables/use-player';
 import { useThemeStore } from '@/stores/theme';
 
-// 播放页的返回导航。
-const router = useRouter();
+// 仅桌面播放器显示带影片信息的可拖动标题栏。
+const isDesktop = Boolean(window.ipc);
 
 // 播放器使用公共暗色主题，并沿用用户选择的强调色。
 const theme = useThemeStore();
@@ -258,15 +317,6 @@ watch([menuOpen, episodesOpen], ([menu, episodes]) => {
     handleScheduleHide();
   }
 });
-
-// 站内进入时返回原列表，直接访问时返回概览。
-const handleBack = () => {
-  if (window.history.state.back) {
-    router.back();
-  } else {
-    return router.push('/overview');
-  }
-};
 
 // 与桌面端一致，选择进度后继续播放。
 const handleSeek = (seconds: number) => {

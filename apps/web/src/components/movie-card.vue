@@ -1,10 +1,17 @@
 <template>
   <ContextMenu>
     <ContextMenuTrigger as-child :disabled="!entry">
-      <article class="group relative min-w-0 hover:z-40 focus-within:z-40">
+      <article
+        ref="card"
+        class="group relative min-w-0"
+        @pointerenter="handleOpenPreview"
+        @pointerleave="handleClosePreview"
+        @focusin="handleOpenPreview"
+        @focusout="handleClosePreview"
+      >
         <RouterLink
           :to="playerPath(movie)"
-          target="_blank"
+          :target="playbackTarget"
           rel="noopener"
           class="block rounded-lg"
           :aria-label="`播放 ${movie.name}`"
@@ -53,66 +60,80 @@
             }}
           </p>
         </RouterLink>
-        <!-- 预览随列表滚动，最小尺寸比原卡片大一圈，避免短简介时露出底层内容。 -->
-        <RouterLink
-          :to="playerPath(movie)"
-          target="_blank"
-          rel="noopener"
-          :aria-label="`播放 ${movie.name}`"
-          :tabindex="-1"
-          data-slot="movie-preview"
-          class="pointer-events-none invisible absolute top-1/2 left-1/2 z-40 flex min-h-[calc(100%+2rem)] w-80 min-w-[calc(100%+2rem)] -translate-x-1/2 -translate-y-1/2 scale-0 flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-xl outline-none transition-[scale,visibility] duration-150 ease-out group-hover:pointer-events-auto group-hover:visible group-hover:scale-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:scale-100 motion-reduce:transition-none"
-        >
-          <MoviePoster
-            :src="movie.pic"
-            :alt="`${movie.name}海报`"
-            class="h-64 w-full grow shrink-0"
-          />
-          <!-- 沿用桌面端正文同色的模糊阴影，让海报自然衔接正文。 -->
-          <div
-            class="relative flex flex-col gap-2 bg-popover px-4 py-3 shadow-[0_0_8px_8px_var(--popover)]"
-          >
-            <h3 class="line-clamp-2 text-lg font-semibold">
-              {{ movie.name }}
-            </h3>
-            <template v-if="entry">
-              <p class="text-sm text-muted-foreground">
-                {{ historyLabel }}
-              </p>
-              <div
-                class="flex items-center gap-2 text-sm text-muted-foreground"
-              >
-                <Server class="size-4 shrink-0" />
-                <span class="truncate">{{ sourceName }}</span>
-                <time
-                  v-if="watchedAt"
-                  :datetime="watchedAt.toISOString()"
-                  :title="watchedAt.toLocaleString('zh-CN')"
-                  class="shrink-0"
-                  >{{ watchedTime }}</time
-                >
-              </div>
-            </template>
-            <template v-else>
-              <p v-if="metadata" class="text-sm text-muted-foreground">
-                {{ metadata }}
-              </p>
-              <p
-                class="line-clamp-3 text-sm leading-relaxed text-muted-foreground"
-              >
-                “{{ movie.content || '暂无简介，敬请期待' }}”
-              </p>
-            </template>
-          </div>
-        </RouterLink>
       </article>
     </ContextMenuTrigger>
+    <!-- 独立浮层避开滚动区域裁切，并保留观看历史的右键菜单。 -->
+    <Teleport to="body">
+      <ContextMenuTrigger v-if="previewOpen" as-child :disabled="!entry">
+        <div
+          ref="preview"
+          data-slot="movie-preview"
+          class="fixed z-40 flex w-80 -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground shadow-xl animate-in fade-in-0 zoom-in-95 duration-150 motion-reduce:animate-none"
+          :style="previewStyle"
+          @pointerleave="handleClosePreview"
+          @focusout="handleClosePreview"
+          @click="previewOpen = false"
+        >
+          <RouterLink
+            :to="playerPath(movie)"
+            :target="playbackTarget"
+            rel="noopener"
+            :aria-label="`播放 ${movie.name}`"
+            :tabindex="-1"
+            class="flex flex-1 flex-col outline-none"
+          >
+            <MoviePoster
+              :src="movie.pic"
+              :alt="`${movie.name}海报`"
+              class="h-64 w-full grow shrink-0"
+            />
+            <!-- 沿用桌面端正文同色的模糊阴影，让海报自然衔接正文。 -->
+            <div
+              class="relative flex flex-col gap-2 bg-popover px-4 py-3 shadow-[0_0_8px_8px_var(--popover)]"
+            >
+              <h3 class="line-clamp-2 text-lg font-semibold">
+                {{ movie.name }}
+              </h3>
+              <template v-if="entry">
+                <p class="text-sm text-muted-foreground">
+                  {{ historyLabel }}
+                </p>
+                <div
+                  class="flex items-center gap-2 text-sm text-muted-foreground"
+                >
+                  <Server class="size-4 shrink-0" />
+                  <span class="truncate">{{ sourceName }}</span>
+                  <time
+                    v-if="watchedAt"
+                    :datetime="watchedAt.toISOString()"
+                    :title="watchedAt.toLocaleString('zh-CN')"
+                    class="shrink-0"
+                    >{{ watchedTime }}</time
+                  >
+                </div>
+              </template>
+              <template v-else>
+                <p v-if="metadata" class="text-sm text-muted-foreground">
+                  {{ metadata }}
+                </p>
+                <p
+                  class="line-clamp-3 text-sm leading-relaxed text-muted-foreground"
+                >
+                  “{{ movie.content || '暂无简介，敬请期待' }}”
+                </p>
+              </template>
+            </div>
+          </RouterLink>
+        </div>
+      </ContextMenuTrigger>
+    </Teleport>
     <HistoryMenuContent v-if="entry" :entry="entry" />
   </ContextMenu>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onDeactivated, ref } from 'vue';
+import { useEventListener } from '@vueuse/core';
 import { RouterLink } from 'vue-router';
 import { Server } from 'lucide-vue-next';
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
@@ -123,8 +144,79 @@ import type { Movie, HistoryEntry } from '@/types';
 import { formatRemarks, playerPath } from '@/lib/movie';
 import { useLibraryStore } from '@/stores/library';
 
-// 影片卡片保留桌面端海报与进度，所有播放入口在新标签页打开。
+// 影片卡片保留桌面端海报与进度。
 const props = defineProps<{ movie: Movie; entry?: HistoryEntry }>();
+
+// 桌面使用 Vue 路由保留页面缓存，浏览器仍在新标签页播放。
+const playbackTarget = window.ipc ? undefined : '_blank';
+
+// 只在悬停或键盘聚焦时挂载预览，避免为全部卡片创建浮层。
+const previewOpen = ref(false);
+
+// 卡片与浮层的真实节点用于判断指针是否仍在同一张影片卡片内。
+const card = ref<HTMLElement | null>(null);
+const preview = ref<HTMLElement | null>(null);
+
+// 浮层沿用卡片中心及外扩尺寸，位置相对于窗口计算。
+const previewStyle = ref({
+  left: '0px',
+  top: '0px',
+  minWidth: '',
+  minHeight: '',
+});
+
+// 仅可见浮层跟随列表滚动及窗口大小变化。
+const updatePreviewPosition = () => {
+  if (!card.value) {
+    return;
+  }
+
+  // 原卡片在窗口内的位置与尺寸。
+  const rect = card.value.getBoundingClientRect();
+
+  previewStyle.value = {
+    left: `${rect.left + rect.width / 2}px`,
+    top: `${rect.top + rect.height / 2}px`,
+    minWidth: `${rect.width + 32}px`,
+    minHeight: `${rect.height + 32}px`,
+  };
+};
+
+// 悬停与键盘聚焦共用同一个影片预览。
+const handleOpenPreview = () => {
+  updatePreviewPosition();
+  previewOpen.value = true;
+};
+
+// 指针从卡片移到独立浮层时保持预览，离开两者后关闭。
+const handleClosePreview = (event: PointerEvent | FocusEvent) => {
+  if (
+    event.relatedTarget instanceof Node &&
+    (card.value?.contains(event.relatedTarget) ||
+      preview.value?.contains(event.relatedTarget))
+  ) {
+    return;
+  }
+
+  previewOpen.value = false;
+};
+
+// 仅展开的卡片注册全局监听，页面缓存时关闭其独立浮层。
+const previewWindow = computed(() => (previewOpen.value ? window : null));
+
+useEventListener(previewWindow, 'scroll', updatePreviewPosition, {
+  capture: true,
+});
+useEventListener(previewWindow, 'resize', updatePreviewPosition);
+useEventListener(previewWindow, 'keydown', (event) => {
+  if (event instanceof KeyboardEvent && event.key === 'Escape') {
+    previewOpen.value = false;
+  }
+});
+
+onDeactivated(() => {
+  previewOpen.value = false;
+});
 
 // 根据影片所属源显示名称，不随当前选择的播放源变化。
 const library = useLibraryStore();

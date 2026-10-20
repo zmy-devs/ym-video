@@ -1,7 +1,7 @@
 <template>
   <TooltipProvider>
     <div
-      v-if="isDesktop && !route.meta.sidebar"
+      v-if="isDesktop && !route.meta.sidebar && route.name !== 'player'"
       aria-hidden="true"
       class="desktop-title-bar desktop-title-bar-standalone fixed inset-x-0 top-0 z-40 pr-36"
     />
@@ -12,7 +12,11 @@
     >
       正在连接账号服务…
     </p>
-    <RouterView v-else />
+    <RouterView v-else v-slot="{ Component }">
+      <KeepAlive :key="history.ownerId ?? undefined" include="AppLayout">
+        <component :is="Component" />
+      </KeepAlive>
+    </RouterView>
     <AppDialogs />
     <Toaster :theme="theme.resolved" position="top-center" />
     <div
