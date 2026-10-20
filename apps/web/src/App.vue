@@ -41,9 +41,15 @@ import { useThemeStore } from '@/stores/theme';
 import { authClient } from '@/services/auth';
 import { errorToast } from '@/utils/toast';
 import { getLoginReturnPath } from '@/lib/auth';
+import { useUpdateStore } from '@/stores/update';
 
 // 桌面壳注入 IPC 时预留原生窗口标题栏区域。
 const isDesktop = Boolean(window.ipc);
+
+// 客户端启动后持续监听更新，设置弹窗关闭不影响下载与安装提示。
+if (isDesktop) {
+  onUnmounted(useUpdateStore().init());
+}
 
 // 应用启动时恢复主题，并让提示消息同步明暗模式。
 const theme = useThemeStore();
