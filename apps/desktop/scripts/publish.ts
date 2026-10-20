@@ -7,7 +7,7 @@ const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
 const { GITEE_TOKEN, GH_TOKEN } = process.env;
 const repo = 'ym-video';
-const owner = '2514765066';
+const owner = 'zmy-devs';
 
 if (!GITEE_TOKEN || !GH_TOKEN) {
   throw new Error(
@@ -18,7 +18,7 @@ if (!GITEE_TOKEN || !GH_TOKEN) {
 const giteeRelease = useGiteeReleases({
   token: GITEE_TOKEN,
   repo,
-  owner: 'yxingyus',
+  owner: 'zmy-devs',
 });
 
 const githubRelease = useGithubReleases({
@@ -34,7 +34,7 @@ const releaseNotes = readFileSync(
 const escapedVersion = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const releaseNotesMatch = releaseNotes.match(
   new RegExp(
-    `^##\\s+${escapedVersion}(?:\\s.*)?\\r?\\n([\\s\\S]*?)(?=^##\\s|$)`,
+    `^##[ \\t]+${escapedVersion}(?:[ \\t].*)?\\r?\\n([\\s\\S]*?)(?=^##[ \\t]+|(?![\\s\\S]))`,
     'm',
   ),
 );

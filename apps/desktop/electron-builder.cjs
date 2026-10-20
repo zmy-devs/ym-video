@@ -28,7 +28,7 @@ module.exports = {
   publish: [
     {
       provider: 'github',
-      owner: '2514765066',
+      owner: 'zmy-devs',
       repo: 'ym-video',
     },
   ],

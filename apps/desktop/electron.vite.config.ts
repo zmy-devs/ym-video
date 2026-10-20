@@ -38,6 +38,13 @@ export default defineConfig(async (environment) => {
     // 深度合并 Web 配置，沿用端口 3000，仅覆盖桌面构建路径。
     renderer: mergeConfig(web.config, {
       root: resolve('../web'),
+      plugins: [
+        {
+          name: 'desktop-web-origin',
+          // 在 electron-vite 的相对路径预设之后，保留站点根目录资源路径。
+          config: () => ({ base: '/' }),
+        },
+      ],
       build: {
         outDir: resolve('out/renderer'),
         emptyOutDir: true,

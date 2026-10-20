@@ -1,12 +1,21 @@
 const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
+const { createRequire } = require('node:module');
 const { join } = require('node:path');
 const { test } = require('node:test');
 const { runInNewContext } = require('node:vm');
 const ts = require('typescript');
+const { register } = require('tsx/cjs/api');
+
+register();
+
+// 按真实窗口模块的位置解析相邻 TypeScript 模块。
+const requireMain = createRequire(
+  join(__dirname, '../src/main/browser-windows/main.ts'),
+);
 
 // 运行真实窗口模块，替换 Electron 边界以检查链接流向。
-const createWindow = (currentUrl) => {
+const createWindow = (currentUrl, dev = true) => {
   // 分别记录窗口导航和系统浏览器调用。
   const internal = [];
   const external = [];
@@ -57,18 +66,27 @@ const createWindow = (currentUrl) => {
       }
 
       if (name === '@electron-toolkit/utils') {
-        return { is: { dev: true } };
+        return { is: { dev } };
       }
 
-      return require(name);
+      return requireMain(name);
     },
   });
 
   exports.createMainWindow();
+  const initial = [...internal];
   internal.length = 0;
 
-  return { internal, external, open: (url) => handleOpen({ url }) };
+  return { initial, internal, external, open: (url) => handleOpen({ url }) };
 };
+
+test('生产入口使用线上 HTTPS 来源加载内置页面', () => {
+  const window = createWindow('file:///C:/app/index.html', false);
+
+  assert.deepEqual(window.initial, [
+    'https://ym-video.zhangmingyang.dpdns.org/',
+  ]);
+});
 
 test('播放页及重新播放在桌面当前窗口打开', () => {
   for (const origin of ['http://localhost:5173', 'https://video.example']) {
