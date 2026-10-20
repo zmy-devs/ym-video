@@ -3,7 +3,7 @@
   "include": ["electron.vite.config.*", "scripts/**/*.ts", "src/**/*"],
   "compilerOptions": {
     "composite": true,
-    "types": ["electron-vite/node"],
+    "types": ["electron-vite/node", "vite/client"],
     "paths": {
       "@/*": ["./src/main/*"]
     }

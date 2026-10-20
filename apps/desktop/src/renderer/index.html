@@ -5,12 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://localhost:5174; object-src 'none'; base-uri 'none'; form-action 'none'"
     />
     <link rel="stylesheet" href="./style.css" />
     <title>Ym Video</title>
   </head>
   <body>
+    <header>
+      <img data-app-icon alt="" width="20" height="20" />
+      <span>Ym Video</span>
+    </header>
     <main>
       <h1>无法连接到 Ym Video</h1>
       <p>请检查网络连接后重试。</p>

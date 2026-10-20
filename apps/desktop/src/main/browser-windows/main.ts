@@ -2,6 +2,7 @@ import { BrowserWindow, shell } from 'electron';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isTrustedUrl, webUrl } from '@/utils/web';
+import { is } from '@electron-toolkit/utils';
 
 // 断网重试页的打包路径。
 const offlinePagePath = join(__dirname, '../renderer/index.html');
@@ -15,7 +16,7 @@ const openExternalUrl = (value: string) => {
       return;
     }
 
-    void shell.openExternal(value).catch(() => undefined);
+    shell.openExternal(value).catch(console.error);
   } catch {
     // Ignore malformed navigation targets.
   }
@@ -64,22 +65,35 @@ const loadOfflinePage = (window: BrowserWindow) => {
   });
 };
 
+// 创建带有原生窗口按钮和可拖动标题栏的桌面窗口。
 export const createMainWindow = () => {
   const window = new BrowserWindow({
     width: 1280,
     height: 800,
+
     minWidth: 800,
     minHeight: 600,
-    show: false,
+
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: 'rgba(0,0,0,0)',
+      height: 40,
+    },
+
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
-      nodeIntegration: false,
+      // Electron 的 ESM preload 需要关闭沙箱，页面仍使用上下文隔离。
+      sandbox: false,
       contextIsolation: true,
-      sandbox: true,
+      nodeIntegration: false,
     },
   });
 
-  window.once('ready-to-show', () => window.show());
+  // 开发模式默认打开独立的开发者工具。
+  if (process.env.ELECTRON_RENDERER_URL) {
+    window.webContents.openDevTools({ mode: 'detach' });
+  }
+
   window.webContents.on('will-navigate', (event, destination) => {
     if (isApplicationUrl(destination)) {
       return;
@@ -97,7 +111,7 @@ export const createMainWindow = () => {
 
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (isApplicationUrl(url)) {
-      void window.loadURL(url).catch(() => undefined);
+      window.loadURL(url).catch(console.error);
     } else {
       openExternalUrl(url);
     }
@@ -117,10 +131,17 @@ export const createMainWindow = () => {
         return;
       }
 
-      void loadOfflinePage(window).catch(() => undefined);
+      loadOfflinePage(window).catch(console.error);
     },
   );
 
-  void window.loadURL(webUrl.href).catch(() => undefined);
+  if (is.dev) {
+    window.loadURL(`${process.env['ELECTRON_RENDERER_URL']}`);
+    window.webContents.openDevTools({ mode: 'detach' });
+  } else {
+    window.loadFile(join(__dirname, '../renderer/index.html'));
+  }
+
+  window.loadURL(webUrl.href).catch(console.error);
   return window;
 };

@@ -11,7 +11,7 @@ const owner = '2514765066';
 
 if (!GITEE_TOKEN || !GH_TOKEN) {
   throw new Error(
-    '发布桌面端需要在 apps/desktop/.env 配置 GITEE_TOKEN 和 GH_TOKEN',
+    '发布桌面端需要在 apps/desktop/.env.development 配置 GITEE_TOKEN 和 GH_TOKEN',
   );
 }
 

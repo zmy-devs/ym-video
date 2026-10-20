@@ -1,3 +1,13 @@
+import appIcon from '../../build/icon.png';
+
+// 通过 Vite 解析图标路径，兼容开发服务和本地构建产物。
+const titleBarIcon =
+  document.querySelector<HTMLImageElement>('[data-app-icon]');
+
+if (titleBarIcon) {
+  titleBarIcon.src = appIcon;
+}
+
 // 断网页面的重试操作按钮。
 const retryButton = document.querySelector<HTMLButtonElement>(
   '[data-action="retry"]',

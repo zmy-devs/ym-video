@@ -10,9 +10,14 @@ Electron 43、electron-vite 5、electron-builder 26、electron-updater 6、TypeS
 
 从 [GitHub Releases](https://github.com/2514765066/ym-video/releases) 或 [Gitee Releases](https://gitee.com/yxingyus/ym-video/releases) 下载 Windows 安装包，安装后即可使用。
 
-桌面端通过 `YM_VIDEO_WEB_URL` 指向已部署的 HTTPS 站点。开发时可将其指向本地 Web 服务；开发模式允许 `http://localhost:5173`。发布配置放在 `apps/desktop/.env`，可参考 `.env.example`。
+桌面端通过 `YM_VIDEO_WEB_URL` 指定 Web 地址，按运行模式读取独立的环境文件：
 
-从源码启动时，需要 Node.js 22.21.1、pnpm 11.20.0，在 `apps/desktop/.env` 配置站点地址后，在仓库根目录运行：
+- 开发：将 `.env.development.example` 复制为 `.env.development`，默认连接 `http://localhost:5173`，发布令牌也只放在此文件。
+- 生产：将 `.env.production.example` 复制为 `.env.production`，只填写正式 HTTPS 站点。
+
+环境文件保存在 `apps/desktop/`，不会提交到 Git。
+
+从源码启动时，需要 Node.js 22.21.1、pnpm 11.20.0。先在其他终端启动 `pnpm dev:api` 和 `pnpm dev:web`，再在仓库根目录运行：
 
 ```sh
 pnpm install --frozen-lockfile
@@ -33,6 +38,6 @@ pnpm dev:desktop
 | `pnpm build:win`     | 生成 Windows 安装包、`latest.yml` 和 blockmap，输出到 `apps/desktop/dist/` |
 | `pnpm build:unpack`  | 生成未打包的应用目录                                                       |
 
-发布时运行 `pnpm release:desktop`，需要在 `apps/desktop/.env` 配置 `GITEE_TOKEN` 和 `GH_TOKEN`；该命令会上传 Windows 安装包及 Electron 更新元数据。
+构建自动读取 `.env.production`。发布时运行 `pnpm release:desktop`，从 `.env.development` 读取 `GITEE_TOKEN` 和 `GH_TOKEN`；该命令会上传 Windows 安装包及 Electron 更新元数据。
 
 项目介绍和使用声明见[根 README](../../README.md)。

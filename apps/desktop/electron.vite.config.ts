@@ -15,12 +15,10 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const isDevelopment = mode === 'development';
   const webUrl =
-    env.YM_VIDEO_WEB_URL ||
-    process.env.YM_VIDEO_WEB_URL ||
-    (isDevelopment ? 'http://localhost:5173' : '');
+    env.YM_VIDEO_WEB_URL || (isDevelopment ? 'http://localhost:5173' : '');
 
   if (!webUrl) {
-    throw new Error('生产构建必须配置 YM_VIDEO_WEB_URL');
+    throw new Error('请在 .env.production 配置 YM_VIDEO_WEB_URL');
   }
 
   const parsedWebUrl = new URL(webUrl);
@@ -50,6 +48,11 @@ export default defineConfig(({ mode }) => {
     },
     renderer: {
       root: resolve('src/renderer'),
+      server: {
+        host: 'localhost',
+        port: 5174,
+        strictPort: true,
+      },
     },
   };
 });

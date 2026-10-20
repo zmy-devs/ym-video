@@ -67,12 +67,12 @@ packages/                       跨应用共享包
 - API 不声明 Fastify JSON Schema；新增 schema 或相关插件前先在 workerd 中验证。
 - Web 使用会话 Cookie，观看历史使用 IndexedDB 并按现有账号同步逻辑写入 API。移动端按平台使用 expo-sqlite、MMKV 等本地存储。
 - 旧桌面版本遗留的 SQLite 数据不迁移，也不由新版本自动删除。
-- 密钥通过本地忽略的环境文件或部署平台 Secret 提供，不写入源码和文档；桌面配置参考 `apps/desktop/.env.example`。
+- 密钥通过本地忽略的环境文件或部署平台 Secret 提供，不写入源码和文档；桌面配置参考 `apps/desktop/.env.development.example` 和 `.env.production.example`。
 
 ## 安装与常用命令
 
 - 在仓库根目录使用 `pnpm install --frozen-lockfile`。所有应用共用根 `pnpm-workspace.yaml` 和 `pnpm-lock.yaml`，不要创建子锁文件或混用 npm／yarn。
-- 根 `nodeLinker: hoisted` 是现有安装策略；不要为局部改动切换安装模型或引入 Turbo／Nx。
+- 根 `nodeLinker: isolated` 是安装策略；各应用通过自己的 `node_modules` 链接所声明的依赖，复用根目录 `node_modules/.pnpm` 存储，不为局部改动切换安装模型或引入 Turbo／Nx。
 - 新依赖应声明在实际调用它的 workspace 应用中，不因依赖提升而省略直接依赖。
 - 工作区包名与面向用户的应用名、安装包名、仓库 slug 分开维护；改包名时核对各平台 ID、scheme、更新源和安装包命名。
 
@@ -88,7 +88,7 @@ packages/                       跨应用共享包
 | `pnpm build:mobile`                                                  | EAS 云构建，会访问外部服务        |
 | `pnpm release:desktop`、`pnpm release:mobile`                        | 上传 Release 产物                 |
 
-桌面开发使用 `apps/desktop/.env` 配置 `YM_VIDEO_WEB_URL`；正式站点必须使用 HTTPS。桌面发布还需要 `GITEE_TOKEN` 和 `GH_TOKEN`。真实发布、部署和 Git 提交按用户当次授权执行。
+桌面开发使用 `apps/desktop/.env.development`，默认连接本地 Web；构建使用 `.env.production`，只配置正式 HTTPS 站点。发布脚本从 `.env.development` 读取 `GITEE_TOKEN` 和 `GH_TOKEN`，令牌只存于开发配置。真实发布、部署和 Git 提交按用户当次授权执行。
 
 ## 修改与验证
 

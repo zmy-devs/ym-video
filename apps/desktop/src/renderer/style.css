@@ -1,21 +1,57 @@
+/* 本地重试页沿用桌面端的中性色和紧凑标题栏。 */
+:root {
+  color-scheme: light dark;
+  --background: #fcfcfc;
+  --foreground: #191919;
+  --muted-foreground: #737373;
+  --border: #e5e5e5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #191919;
+    --foreground: #fafafa;
+    --muted-foreground: #a3a3a3;
+    --border: #333;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   display: grid;
-  min-width: 320px;
+  grid-template-rows: env(titlebar-area-height, 44px) 1fr;
+  min-width: 800px;
   min-height: 100vh;
   margin: 0;
-  place-items: center;
-  background: #f6f7f8;
-  color: #202124;
+  background: var(--background);
+  color: var(--foreground);
   font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
   font-size: 14px;
 }
 
+header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 144px 0 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+header img {
+  border-radius: 4px;
+}
+
 main {
   width: min(380px, calc(100% - 48px));
+  padding-bottom: 40px;
+  place-self: center;
 }
 
 h1 {
@@ -26,7 +62,7 @@ h1 {
 
 p {
   margin: 0 0 20px;
-  color: #62666b;
+  color: var(--muted-foreground);
   line-height: 1.6;
 }
 
@@ -34,14 +70,14 @@ button {
   min-height: 36px;
   padding: 0 14px;
   border: 0;
-  border-radius: 4px;
-  background: #202124;
-  color: #fff;
+  border-radius: 8px;
+  background: var(--foreground);
+  color: var(--background);
   cursor: pointer;
   font: inherit;
 }
 
 button:focus-visible {
-  outline: 2px solid #1769aa;
+  outline: 2px solid var(--muted-foreground);
   outline-offset: 2px;
 }
