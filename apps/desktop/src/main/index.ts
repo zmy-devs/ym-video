@@ -1,21 +1,38 @@
-import {
-  isSecondeInstanceStart,
-  onMounted,
-  onSecondeInstanceMounted,
-} from "ym-electron.js";
-import { app } from "electron";
-import { createManage } from "@/bw/manager";
-import "@/ipc/index";
+import { app, BrowserWindow } from 'electron';
+import { createMainWindow } from '@/browser-windows/main';
+import '@/utils/update';
 
-//禁止多开
-if (isSecondeInstanceStart()) {
-  app.exit();
-}
+let mainWindow: BrowserWindow | undefined;
 
-onMounted(async () => {
-  const win = await createManage();
-
-  onSecondeInstanceMounted(() => {
-    win.show();
+const openMainWindow = () => {
+  const window = createMainWindow();
+  mainWindow = window;
+  window.on('closed', () => {
+    if (mainWindow === window) {
+      mainWindow = undefined;
+    }
   });
-});
+};
+
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.whenReady().then(openMainWindow);
+
+  app.on('second-instance', () => {
+    mainWindow?.show();
+    mainWindow?.focus();
+  });
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      openMainWindow();
+    }
+  });
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
+  });
+}

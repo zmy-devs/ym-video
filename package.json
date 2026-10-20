@@ -24,7 +24,6 @@
     "typecheck:api": "pnpm --filter @ym-video/api run typecheck",
     "build:api": "pnpm --filter @ym-video/api run build",
     "test:api": "pnpm --filter @ym-video/api run test",
-    "setup:desktop": "pnpm --filter @ym-video/desktop run setup:native",
     "start": "pnpm --filter @ym-video/desktop run start",
     "typecheck": "pnpm -r run typecheck",
     "typecheck:desktop": "pnpm --filter @ym-video/desktop run typecheck",

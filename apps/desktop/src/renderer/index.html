@@ -1,17 +1,21 @@
-<!DOCTYPE html>
-<html class="dark">
+<!doctype html>
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <title>ym-video</title>
-    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self' https:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'  https: data:; media-src 'self' blob:; connect-src 'self' https: blob:;"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'"
     />
+    <link rel="stylesheet" href="./style.css" />
+    <title>Ym Video</title>
   </head>
-
   <body>
-    <div id="app" class="w-screen h-screen"></div>
-    <script type="module" src="/src/main.ts"></script>
+    <main>
+      <h1>无法连接到 Ym Video</h1>
+      <p>请检查网络连接后重试。</p>
+      <button type="button" data-action="retry">重试</button>
+    </main>
+    <script type="module" src="./index.ts"></script>
   </body>
 </html>

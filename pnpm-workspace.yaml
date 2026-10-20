@@ -10,11 +10,13 @@ sharedWorkspaceLockfile: true
 
 # 从原桌面端迁入，暂不调整已有的依赖覆盖规则。
 overrides:
+  'app-builder-lib>@electron/get': 3.1.0
   node-abi: latest
 
-# 集中管理构建脚本；SQLite 的 Electron ABI 由 setup:desktop 单独处理。
+# 集中管理工作区构建脚本许可。
 allowBuilds:
   electron: true
+  electron-winstaller: false
   esbuild: true
   workerd: true
   vue-demi: true

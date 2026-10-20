@@ -1,0 +1,47 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  display: grid;
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  place-items: center;
+  background: #f6f7f8;
+  color: #202124;
+  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  font-size: 14px;
+}
+
+main {
+  width: min(380px, calc(100% - 48px));
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+p {
+  margin: 0 0 20px;
+  color: #62666b;
+  line-height: 1.6;
+}
+
+button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 4px;
+  background: #202124;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+button:focus-visible {
+  outline: 2px solid #1769aa;
+  outline-offset: 2px;
+}

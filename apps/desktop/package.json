@@ -1,6 +1,6 @@
 {
   "name": "@ym-video/desktop",
-  "productName": "ym-video",
+  "productName": "Ym Video",
   "private": true,
   "volta": {
     "extends": "../../package.json"
@@ -10,49 +10,27 @@
   "main": "./out/main/index.js",
   "scripts": {
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
-    "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json --composite false",
-    "typecheck": "npm run typecheck:node && npm run typecheck:web ",
+    "typecheck": "pnpm run typecheck:node",
     "start": "electron-vite preview",
-    "dev": "chcp 65001 && electron-vite dev",
-    "build": "npm run typecheck && electron-vite build",
-    "setup:native": "electron-builder install-app-deps",
-    "build:unpack": "npm run build && electron-builder --dir",
-    "build:win": "npm run build && electron-builder --win",
-    "release": "node ./scripts/publish.mjs"
+    "dev": "electron-vite dev",
+    "build": "pnpm run typecheck && electron-vite build",
+    "build:unpack": "pnpm run build && electron-builder --dir",
+    "build:win": "pnpm run build && electron-builder --win nsis",
+    "release": "node --env-file-if-exists=.env --import tsx ./scripts/publish.ts"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^2.0.0",
-    "@electron/rebuild": "^4.0.1",
-    "@iconify/icons-fluent": "^1.2.38",
-    "@iconify/vue": "^5.0.0",
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^22.18.6",
-    "@vitejs/plugin-vue": "^6.0.1",
-    "@vueuse/core": "^14.1.0",
-    "autoprefixer": "^10.4.21",
-    "dayjs": "^1.11.19",
-    "electron": "^38.6.0",
-    "electron-builder": "^25.1.8",
-    "electron-store": "^11.0.2",
-    "electron-vite": "^4.0.1",
-    "element-plus": "^2.11.7",
-    "hls.js": "^1.6.12",
-    "pinia": "^2.1.7",
-    "postcss": "^8.5.3",
-    "sass": "^1.75.0",
-    "sass-loader": "^14.2.1",
-    "tailwindcss": "3",
+    "@types/node": "22.18.6",
+    "electron": "43.3.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "plugin-electron-ipc": "^0.1.2",
+    "tsx": "^4.23.1",
     "typescript": "^5.9.2",
-    "unplugin-auto-import": "^20.2.0",
-    "unplugin-element-plus": "^0.8.0",
-    "vite": "^7.2.2",
-    "vue": "^3.5.21",
-    "vue-router": "^4.4.5",
-    "vue-tsc": "^3.0.7",
-    "ym-electron.js": "^4.1.0",
-    "ym-publish": "^1.4.3"
-  },
-  "dependencies": {
-    "better-sqlite3": "^12.2.0"
+    "vite": "7.2.2",
+    "ym-release": "^2.0.0"
   }
 }
