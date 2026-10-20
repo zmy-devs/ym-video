@@ -1,5 +1,5 @@
 {
-  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "ym-video-api-local",
   "main": "src/worker.ts",
   "compatibility_date": "2026-10-12",
@@ -39,16 +39,23 @@
   "env": {
     "production": {
       "name": "ym-video-api",
+      "workers_dev": false,
+      "routes": [
+        {
+          "pattern": "ym-video.zhangmingyang.dpdns.org",
+          "custom_domain": true,
+        },
+      ],
       "secrets": { "required": ["BETTER_AUTH_SECRET"] },
       "vars": {
-        "BETTER_AUTH_URL": "https://replace-with-your-web-domain.example",
-        "WEB_ORIGINS": "https://replace-with-your-web-domain.example",
+        "BETTER_AUTH_URL": "https://ym-video.zhangmingyang.dpdns.org",
+        "WEB_ORIGINS": "https://ym-video.zhangmingyang.dpdns.org",
       },
       "d1_databases": [
         {
           "binding": "DB",
           "database_name": "ym-video-auth",
-          "database_id": "00000000-0000-0000-0000-000000000000",
+          "database_id": "e0cf4d87-2e17-4a11-aa27-f7dae76b5629",
           "migrations_dir": "migrations",
         },
       ],

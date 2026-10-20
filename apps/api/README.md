@@ -76,7 +76,7 @@ Remove-Item Env:YM_INITIAL_USER_PASSWORD
 | `WEB_ORIGINS`        | 允许访问 API 的 Web 来源，多个地址以逗号分隔 |
 | `DB`                 | D1 数据库 binding                            |
 
-在 `apps/api/wrangler.jsonc` 中填写生产环境的 D1 数据库 ID、域名和限流 namespace ID；生产 Web 与 API 使用同一个 HTTPS 域名。当前生产配置包含占位值，需先替换。
+生产配置位于 `apps/api/wrangler.jsonc`，Web 与 API 共用 <https://ym-video.zhangmingyang.dpdns.org>，数据库为 `ym-video-auth`。
 
 从仓库根目录运行：
 
