@@ -1,6 +1,6 @@
 <template>
   <div
-    class="player-page dark h-dvh flex flex-col overflow-hidden bg-background text-foreground"
+    class="player-page dark h-full flex flex-col overflow-hidden bg-background text-foreground"
     :data-theme-color="theme.color"
   >
     <div class="min-h-0 flex flex-1">

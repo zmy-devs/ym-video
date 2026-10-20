@@ -62,12 +62,15 @@ export const useThemeStore = defineStore('theme', () => {
     { immediate: true },
   );
 
+  // 恢复偏好、切换主题及系统明暗变化时同步浏览器和桌面壳。
   watch(
-    resolved,
-    (value) => {
+    [mode, resolved],
+    ([nextMode, nextTheme]) => {
       document
         .querySelector('meta[name="theme-color"]')
-        ?.setAttribute('content', value === 'dark' ? '#0a0a0a' : '#fcfcfc');
+        ?.setAttribute('content', nextTheme === 'dark' ? '#0a0a0a' : '#fcfcfc');
+
+      window.ipc?.toggleTheme?.(nextMode, nextTheme).catch(console.error);
     },
     { immediate: true },
   );

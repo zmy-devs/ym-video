@@ -2,6 +2,21 @@
 @import 'vue-sonner/style.css';
 @import './catalogue.css';
 
+/* 独立页面在顶部留出桌面标题栏，侧栏布局自行安排标题栏。 */
+:root {
+  --desktop-window-controls-height: env(titlebar-area-height, 44px);
+  --desktop-title-bar-height: 0px;
+}
+
+:root:has(.desktop-title-bar-standalone) {
+  --desktop-title-bar-height: var(--desktop-window-controls-height);
+}
+
+.desktop-title-bar {
+  height: var(--desktop-window-controls-height);
+  -webkit-app-region: drag;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50 font-normal select-none;
@@ -11,6 +26,7 @@
   }
   #app {
     height: 100dvh;
+    padding-top: var(--desktop-title-bar-height);
   }
 }
 

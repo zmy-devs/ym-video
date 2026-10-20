@@ -1,6 +1,18 @@
 <template>
   <TooltipProvider>
-    <RouterView />
+    <div
+      v-if="isDesktop && !route.meta.sidebar"
+      aria-hidden="true"
+      class="desktop-title-bar desktop-title-bar-standalone fixed inset-x-0 top-0 z-40 pr-36"
+    />
+    <p
+      v-if="!route.matched.length"
+      role="status"
+      class="h-full flex items-center justify-center text-sm text-muted-foreground"
+    >
+      正在连接账号服务…
+    </p>
+    <RouterView v-else />
     <AppDialogs />
     <Toaster :theme="theme.resolved" position="top-center" />
     <div
@@ -29,6 +41,9 @@ import { useThemeStore } from '@/stores/theme';
 import { authClient } from '@/services/auth';
 import { errorToast } from '@/utils/toast';
 import { getLoginReturnPath } from '@/lib/auth';
+
+// 桌面壳注入 IPC 时预留原生窗口标题栏区域。
+const isDesktop = Boolean(window.ipc);
 
 // 应用启动时恢复主题，并让提示消息同步明暗模式。
 const theme = useThemeStore();

@@ -16,7 +16,7 @@ export const router = createRouter({
     {
       path: '/admin',
       component: () => import('@/layout/admin-layout.vue'),
-      meta: { admin: true },
+      meta: { admin: true, sidebar: true },
       children: [
         { path: '', redirect: '/admin/users' },
         {
@@ -40,6 +40,7 @@ export const router = createRouter({
     {
       path: '/',
       component: AppLayout,
+      meta: { sidebar: true },
       children: [
         { path: '', redirect: '/overview' },
         {
@@ -76,7 +77,8 @@ export const router = createRouter({
 
 // 进入业务页面前确认服务端会话，登录后返回原来的站内页面。
 router.beforeEach(async (to, from) => {
-  if (to.meta.public) {
+  // 登录回退已经检查过会话，不再次等待不可用的服务。
+  if (to.meta.public || (to.name === 'login' && to.redirectedFrom)) {
     return true;
   }
   // 后台页间切换由管理接口逐次校验权限，不重复等待会话请求。
@@ -84,8 +86,10 @@ router.beforeEach(async (to, from) => {
     return true;
   }
   try {
-    // 以 HttpOnly Cookie 对应的服务端会话为准。
-    const result = await authClient.getSession();
+    // 以服务端会话为准，3 秒无响应就取消请求并显示登录入口。
+    const result = await authClient.getSession({
+      fetchOptions: { signal: AbortSignal.timeout(3000) },
+    });
 
     if (result.data?.user) {
       if (result.data.user.role === 'admin' && !to.meta.admin) {

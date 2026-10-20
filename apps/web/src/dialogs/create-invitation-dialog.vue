@@ -62,7 +62,11 @@
           />
         </FormField>
         <DialogFooter>
-          <Button @click="handleCopy"><Copy />复制</Button>
+          <Button type="button" aria-live="polite" @click="handleCopy">
+            <Check v-if="copied" aria-hidden="true" />
+            <Copy v-else aria-hidden="true" />
+            {{ copied ? '已复制' : '复制' }}
+          </Button>
         </DialogFooter>
       </template>
     </DialogContent>
@@ -71,7 +75,7 @@
 
 <script setup lang="ts">
 import { nextTick, onScopeDispose, ref, watch } from 'vue';
-import { Copy, LoaderCircle } from 'lucide-vue-next';
+import { Check, Copy, LoaderCircle } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -84,7 +88,7 @@ import {
 } from '@/components/ui/dialog';
 import FormField from '@/components/common/form-field.vue';
 import { createInvitation, invitationUrl } from '@/services/admin';
-import { errorToast, successToast } from '@/utils/toast';
+import { errorToast } from '@/utils/toast';
 import { eventBus } from '@/utils/event-bus';
 
 // 弹窗先填写备注，再生成并展示邀请链接。
@@ -95,6 +99,9 @@ const name = ref('');
 
 // 完整链接同时决定是否进入复制步骤。
 const createdUrl = ref('');
+
+// 复制成功后在按钮内反馈，重新打开弹窗时重置。
+const copied = ref(false);
 
 // 提交期间阻止重复生成和中途关闭。
 const pending = ref(false);
@@ -116,6 +123,7 @@ watch(
     }
     name.value = '';
     createdUrl.value = '';
+    copied.value = false;
     error.value = '';
   },
   { flush: 'sync' },
@@ -190,13 +198,21 @@ const handleCreate = async () => {
   }
 };
 
-// 剪贴板不可用时保留只读输入框供手动复制。
+// 复制结果仅更新当前链接，剪贴板不可用时仍可手动复制。
 const handleCopy = async () => {
+  // 关闭或重新生成链接后，忽略旧复制请求的结果。
+  const url = createdUrl.value;
+
   try {
-    await navigator.clipboard.writeText(createdUrl.value);
-    successToast('邀请链接已复制');
+    await navigator.clipboard.writeText(url);
+    if (open.value && createdUrl.value === url) {
+      copied.value = true;
+    }
   } catch {
-    errorToast('复制失败，请选中链接手动复制');
+    if (open.value && createdUrl.value === url) {
+      copied.value = false;
+      errorToast('复制失败，请选中链接手动复制');
+    }
   }
 };
 

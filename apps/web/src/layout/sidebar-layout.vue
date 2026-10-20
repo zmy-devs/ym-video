@@ -1,7 +1,13 @@
 <template>
   <SidebarProvider v-model:open="open" class="min-h-0">
     <Sidebar collapsible="icon">
-      <SidebarHeader>
+      <SidebarHeader
+        :class="
+          isDesktop
+            ? 'h-(--desktop-window-controls-height) shrink-0 justify-center py-0'
+            : undefined
+        "
+      >
         <div
           class="h-8 flex items-center justify-between group-data-[collapsible=icon]:justify-center"
         >
@@ -27,6 +33,11 @@
       </SidebarFooter>
     </Sidebar>
     <SidebarInset class="min-h-0 min-w-0">
+      <div
+        v-if="isDesktop"
+        aria-hidden="true"
+        class="desktop-title-bar shrink-0 pr-36"
+      />
       <div class="min-h-0 flex-1">
         <slot />
       </div>
@@ -47,6 +58,9 @@ import {
 } from '@/components/ui/sidebar';
 import CommonTooltip from '@/components/common/tooltip.vue';
 import icon from '@/assets/icon.png';
+
+// 桌面标题栏与侧栏品牌同行，并随侧栏宽度自动调整。
+const isDesktop = Boolean(window.ipc);
 
 // 展开状态同步组件自带的收缩按钮与快捷键。
 const open = ref(true);

@@ -1,5 +1,5 @@
 <template>
-  <SidebarLayout class="h-dvh">
+  <SidebarLayout class="h-full">
     <template #sidebar>
       <SidebarGroup>
         <SidebarMenu>

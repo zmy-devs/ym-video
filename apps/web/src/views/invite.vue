@@ -1,6 +1,6 @@
 <template>
   <main
-    class="flex min-h-svh items-center justify-center bg-muted p-4 dark:bg-background sm:p-8"
+    class="min-h-full flex items-center justify-center bg-muted p-4 dark:bg-background sm:p-8"
   >
     <Card
       aria-labelledby="invite-heading"
@@ -9,16 +9,8 @@
       <header class="mb-7 grid justify-items-center gap-3 text-center">
         <img :src="icon" alt="" class="size-16 rounded-xl" />
         <div class="grid gap-1.5">
-          <h1 id="invite-heading" class="text-2xl font-bold">
-            {{ registered ? '账号已创建' : '创建你的账号' }}
-          </h1>
-          <p class="text-sm text-muted-foreground">
-            {{
-              registered
-                ? '注册成功，使用新账号登录即可开始观看。'
-                : '你已受邀加入 Ym Video'
-            }}
-          </p>
+          <h1 id="invite-heading" class="text-2xl font-bold">创建你的账号</h1>
+          <p class="text-sm text-muted-foreground">你已受邀加入 Ym Video</p>
         </div>
       </header>
 
@@ -30,12 +22,22 @@
         正在检查邀请链接…
       </p>
       <div v-else-if="registered" class="grid gap-5">
-        <p v-if="error" role="alert" class="text-sm text-destructive">
-          {{ error }}
+        <p
+          v-if="pending"
+          role="status"
+          class="flex items-center justify-center gap-2 text-sm text-muted-foreground"
+        >
+          <LoaderCircle class="size-4 animate-spin" aria-hidden="true" />
+          正在登录并进入页面…
         </p>
-        <Button as-child class="h-10 w-full">
-          <RouterLink to="/login">前往登录</RouterLink>
-        </Button>
+        <template v-else>
+          <p v-if="error" role="alert" class="text-sm text-destructive">
+            {{ error }}
+          </p>
+          <Button as-child class="h-10 w-full">
+            <RouterLink to="/login">前往登录</RouterLink>
+          </Button>
+        </template>
       </div>
       <div v-else-if="invitationError" class="grid gap-5">
         <p role="alert" class="text-center text-sm text-destructive">
