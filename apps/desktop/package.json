@@ -13,7 +13,8 @@
     "typecheck": "pnpm run typecheck:node",
     "start": "electron-vite preview",
     "dev": "electron-vite dev --watch",
-    "build": "pnpm run typecheck && electron-vite build",
+    "build": "pnpm run typecheck && pnpm --filter @ym-video/web run typecheck && electron-vite build",
+    "test": "pnpm run build && electron tests/web.cjs",
     "build:unpack": "pnpm run build && electron-builder --dir",
     "build:win": "pnpm run build && electron-builder --win nsis",
     "release": "node --env-file-if-exists=.env.development --import tsx ./scripts/publish.ts"

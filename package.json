@@ -17,6 +17,7 @@
     "build:web": "pnpm --filter @ym-video/web run build",
     "preview:web": "pnpm --filter @ym-video/web run preview",
     "test:web": "pnpm --filter @ym-video/web run test",
+    "test:desktop": "pnpm --filter @ym-video/desktop run test",
     "dev:desktop": "pnpm --filter @ym-video/desktop run dev",
     "dev:mobile": "pnpm --filter @ym-video/mobile run dev",
     "dev:api": "pnpm --filter @ym-video/api run dev",

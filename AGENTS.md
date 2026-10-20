@@ -21,7 +21,7 @@ README 用于项目介绍、技术栈、安装启动和使用说明；实现约�
 - 项目采用 pnpm workspace，应用位于 `apps/`，有真实跨端调用方的契约和纯业务逻辑才提取到 `packages/`。
 - 产品方向为 Vue 3 Web、Fastify API、Expo／React Native 安卓端；各端使用 TypeScript。
 - `apps/web` 是独立 PC 浏览器应用，使用 Vue 3、shadcn-vue 和 Tailwind CSS 4，不使用 Element Plus，也不做手机浏览器适配。
-- `apps/desktop` 是 Electron 壳，Web 地址固定在 `src/main/utils/web.ts`，生产模式加载远程 HTTPS Web。桌面 Renderer 只放壳自身需要的本地页面；IPC 当前用于 Web 的桌面更新功能。
+- `apps/desktop` 是 Electron 壳，开发连接本地 Web，生产从 `out/renderer/` 加载随安装包内置的 Web 产物。站点来源固定在 `src/main/utils/web.ts`，通过协议处理器保留原 HTTPS 来源，仅页面和静态资源从本地读取，`/api` 和其他站点请求仍走网络；IPC 用于桌面主题和更新功能。
 - `apps/mobile` 是 Expo／React Native 应用，原生页面、播放器和设备能力留在移动端。
 - `apps/api` 是 Fastify Workers API；Web 静态资源和 API 使用 Cloudflare Workers 部署。
 - 应用之间不使用相对路径直接引用对方源码。共享包使用 `@ym-video/*` 命名，并通过 `workspace:*` 声明依赖。
@@ -31,10 +31,9 @@ README 用于项目介绍、技术栈、安装启动和使用说明；实现约�
 
 ```text
 apps/
-  desktop/                     Electron 壳、更新 IPC、本地断网重试页
+  desktop/                     Electron 壳、内置 Web 产物、主题与更新 IPC
     src/main/                  主进程、窗口、导航与更新
     src/preload/               受限的 Electron IPC 桥接
-    src/renderer/               桌面壳本地 Renderer 页面
     build/                      安装图标等打包资源
     docs/release-note.md        桌面端版本说明
     scripts/publish.ts          桌面 Release 发布脚本
@@ -83,12 +82,12 @@ packages/                       跨应用共享包
 | `pnpm dev:mobile`、`pnpm android`、`pnpm ios`                        | 移动端开发与设备运行              |
 | `pnpm typecheck:web`、`pnpm typecheck:desktop`、`pnpm typecheck:api` | 单应用类型检查                    |
 | `pnpm typecheck`、`pnpm check`                                       | 工作区类型检查                    |
-| `pnpm test:web`、`pnpm test:api`                                     | Web 与 API 测试                   |
+| `pnpm test:web`、`pnpm test:api`、`pnpm test:desktop`                | Web、API 与桌面端测试             |
 | `pnpm build:web`、`pnpm build:api`、`pnpm build:win`                 | 构建 Web、API、Windows 桌面安装包 |
 | `pnpm build:mobile`                                                  | EAS 云构建，会访问外部服务        |
 | `pnpm release:desktop`、`pnpm release:mobile`                        | 上传 Release 产物                 |
 
-桌面开发连接本地 Web，生产模式连接代码中固定的 HTTPS 站点。发布脚本从 `apps/desktop/.env.development` 读取 `GITEE_TOKEN` 和 `GH_TOKEN`。真实发布、部署和 Git 提交按用户当次授权执行。
+electron-vite 的 renderer 指向 apps/web 并复用其 Vite 配置，将产物输出到 `apps/desktop/out/renderer/`。生产模式的页面从安装包加载，API 和媒体仍依赖网络；修改内置页面后需要发布桌面更新。发布脚本从 `apps/desktop/.env.development` 读取 `GITEE_TOKEN` 和 `GH_TOKEN`。真实发布、部署和 Git 提交按用户当次授权执行。
 
 ## 修改与验证
 

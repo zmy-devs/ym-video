@@ -6,7 +6,7 @@ const { productName } = require('./package.json');
 module.exports = {
   appId: 'com.2514765066.ym-video',
   productName,
-  files: ['out'],
+  files: ['out/main', 'out/preload', 'out/renderer'],
   asar: false,
   electronLanguages: ['zh-CN'],
   directories: {
