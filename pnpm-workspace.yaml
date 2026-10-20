@@ -2,10 +2,10 @@ packages:
   - apps/*
   - packages/*
 
-# 延续移动端的依赖提升策略，兼容现有 Expo 和原生模块。
-nodeLinker: hoisted
+# 各应用仅链接自身声明的依赖，实际文件复用根目录的 node_modules/.pnpm 存储。
+nodeLinker: isolated
 
-# 两个应用共用根锁文件；本轮保留原有直接依赖版本。
+# 所有应用和共享包共用根锁文件。
 sharedWorkspaceLockfile: true
 
 # 从原桌面端迁入，暂不调整已有的依赖覆盖规则。
