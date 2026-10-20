@@ -1,4 +1,5 @@
 import { configState } from "@/stores/useConfigStore";
+import { parseMovie } from "@ym-video/catalog";
 import {
   Detail_Res_List,
   Detail_Res,
@@ -9,44 +10,46 @@ import {
 import { formatContent, formatRemarks, formatSub } from "@/utils/format";
 import { request } from "@/utils/request";
 
-//处理播放url
-const formatEpisode = (urlStr: string, note?: string) => {
-  if (note) {
-    urlStr = urlStr.split(note).filter(item => item.includes("m3u8"))[0];
-  }
-
-  return urlStr.split("#").map((item, index) => {
-    const [label, url] = item.split("$");
-
-    return {
-      label: formatRemarks(label),
-      value: index,
-      url,
-      duration: 0,
-      currentTime: 0,
-    };
-  });
-};
-
 //处理详情信息
 const formatDetail = (data: Detail_Res_List[]): MovieInfo[] => {
-  return data.map(item => ({
-    name: item.vod_name,
-    id: `${configState.selectedSource.label},${item.vod_id}`,
-    pic: item.vod_pic,
-    area: formatSub(item.vod_area),
-    lang: formatSub(item.vod_lang),
-    type: item.type_name,
-    content: formatContent(item.vod_content),
-    year: formatSub(item.vod_year),
-    episodes: formatEpisode(item.vod_play_url, item.vod_play_note),
-    remarks: formatRemarks(item.vod_remarks),
-    source: {
-      id: String(item.vod_id),
-      label: configState.selectedSource.label,
-      url: configState.selectedSource.url,
-    },
-  }));
+  const { label, url } = configState.selectedSource;
+
+  return data.flatMap(item => {
+    const playUrl = item.vod_play_note
+      ? item.vod_play_url
+          .split(item.vod_play_note)
+          .find(value => value.includes("m3u8")) || ""
+      : item.vod_play_url;
+    const movie = parseMovie(item, url, { playUrl });
+
+    if (!movie) {
+      return [];
+    }
+
+    return [{
+      name: movie.name,
+      id: `${label},${movie.vodId}`,
+      pic: movie.pic,
+      area: formatSub(movie.area),
+      lang: formatSub(movie.lang),
+      type: movie.category,
+      content: formatContent(movie.content),
+      year: formatSub(movie.year),
+      episodes: movie.episodes.map((episode, index) => ({
+        label: formatRemarks(episode.label),
+        value: index,
+        url: episode.url,
+        duration: 0,
+        currentTime: 0,
+      })),
+      remarks: formatRemarks(movie.remarks),
+      source: {
+        id: movie.vodId,
+        label,
+        url,
+      },
+    }];
+  });
 };
 
 interface GetMovieOption {

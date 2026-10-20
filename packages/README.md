@@ -2,10 +2,11 @@
 
 供各应用使用的 TypeScript 共享模块。
 
-| 包                  | 用途                                   | 使用方   |
-| ------------------- | -------------------------------------- | -------- |
-| `@ym-video/history` | 影片与观看历史类型、数据校验、进度合并 | Web、API |
+| 包                  | 用途                                   | 使用方        |
+| ------------------- | -------------------------------------- | ------------- |
+| `@ym-video/catalog` | 影片模型、采集站数据转换与播放线路解析 | Web、移动端、history 包 |
+| `@ym-video/history` | 影片与观看历史类型、数据校验、进度合并 | Web、API      |
 
 ## 使用
 
-在仓库根目录运行 `pnpm install --frozen-lockfile` 后，应用通过 `@ym-video/history` 导入。该包直接导出 TypeScript 源码，无需单独启动或构建。
+在仓库根目录运行 `pnpm install --frozen-lockfile` 后，应用通过 `@ym-video/catalog` 和 `@ym-video/history` 导入。共享包直接导出 TypeScript 源码，无需单独启动或构建。

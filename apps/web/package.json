@@ -15,6 +15,7 @@
     "test:browser": "vite --host localhost --port 5180 --strictPort"
   },
   "dependencies": {
+    "@ym-video/catalog": "workspace:*",
     "@ym-video/history": "workspace:*",
     "@vueuse/core": "14.1.0",
     "better-auth": "1.7.10",

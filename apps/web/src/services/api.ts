@@ -1,5 +1,5 @@
-import type { Category, Movie, Source } from '@/types';
-import { httpUrl, movieKey, parseEpisodes, plainText } from '@/lib/movie';
+import type { Category, Source } from '@/types';
+import { parseMovie } from '@ym-video/catalog';
 import { normalizeSourceUrl, parseCategories } from '@/lib/source';
 
 // 收窄来自上游和本地存储的未知对象。
@@ -107,29 +107,6 @@ export const getSources = async (): Promise<Source[]> => {
       ? [{ id: item.id, name: item.name }]
       : [],
   );
-};
-
-// 转换影片时捕获请求所属源，避免切源后的结果被错误标记。
-const parseMovie = (value: unknown, sourceId: string): Movie | null => {
-  if (!isRecord(value) || !['string', 'number'].includes(typeof value.vod_id)) {
-    return null;
-  }
-  // 上游影片 ID，与源 ID 共同标识影片。
-  const vodId = String(value.vod_id);
-  return {
-    id: movieKey(sourceId, vodId),
-    vodId,
-    sourceId,
-    name: text(value.vod_name) || '未命名影片',
-    pic: httpUrl(text(value.vod_pic)),
-    content: plainText(text(value.vod_content)),
-    year: text(value.vod_year),
-    area: text(value.vod_area),
-    lang: text(value.vod_lang),
-    category: text(value.type_name),
-    remarks: text(value.vod_remarks),
-    episodes: parseEpisodes(text(value.vod_play_url)),
-  };
 };
 
 // 查询最新、分类、关键词或指定影片，空参数不进入 URL。

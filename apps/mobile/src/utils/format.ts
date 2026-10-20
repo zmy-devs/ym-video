@@ -2,23 +2,11 @@ import dayjs from "dayjs";
 import isToday from "dayjs/plugin/isToday";
 import isYesterday from "dayjs/plugin/isYesterday";
 import isoWeek from "dayjs/plugin/isoWeek";
+export { formatRemarks } from "@ym-video/catalog";
 
 dayjs.extend(isToday);
 dayjs.extend(isYesterday);
 dayjs.extend(isoWeek);
-
-//处理综艺的日期
-export const formatRemarks = (remarks: string) => {
-  return remarks.replace(/(\d{4})(\d{2})(\d{2})/g, (_, year, month, day) => {
-    const date = new Date();
-
-    if (date.getFullYear() == year) {
-      return `${month}-${day}`;
-    }
-
-    return `${year}-${month}-${day}`;
-  });
-};
 
 //处理地区语言等副标题
 export const formatSub = (content: string) => {

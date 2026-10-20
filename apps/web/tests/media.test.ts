@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { movieKey, parseEpisodes, parseMovie } from '@ym-video/catalog';
 import { filterManifest, resolveMediaUrl } from '../src/lib/m3u8.ts';
-import { movieKey, parseEpisodes } from '../src/lib/movie.ts';
 
 test('同号影片在不同源之间隔离，包含分隔符的 ID 不碰撞', () => {
   assert.notEqual(movieKey('baofeng', '12'), movieKey('liangzi', '12'));
@@ -16,6 +16,54 @@ test('多线路优先选择 HLS 并保留 URL 查询参数，丢弃危险协议'
     [{ label: '第一集', url: 'https://media.example.com/1.m3u8?token=a$b' }],
   );
   assert.deepEqual(parseEpisodes(''), []);
+});
+
+test('统一校验并转换采集站影片记录', () => {
+  assert.deepEqual(
+    parseMovie(
+      {
+        vod_id: 12,
+        vod_name: '示例影片',
+        vod_pic: 'javascript:alert(1)',
+        vod_content: '<p>简介&nbsp;&amp;详情</p>',
+        vod_year: '2026',
+        vod_area: '中国',
+        vod_lang: '中文',
+        type_name: '电影',
+        vod_remarks: '更新中',
+        vod_play_url: '第一集$https://media.example.com/1.m3u8',
+      },
+      'source',
+    ),
+    {
+      id: 'source:12',
+      vodId: '12',
+      sourceId: 'source',
+      name: '示例影片',
+      pic: '',
+      content: '简介 &详情',
+      year: '2026',
+      area: '中国',
+      lang: '中文',
+      category: '电影',
+      remarks: '更新中',
+      episodes: [
+        { label: '第一集', url: 'https://media.example.com/1.m3u8' },
+      ],
+    },
+  );
+  assert.deepEqual(
+    parseMovie(
+      {
+        vod_id: 12,
+        vod_play_url: '原始线路$https://media.example.com/original.m3u8',
+      },
+      'source',
+      { playUrl: '指定线路$https://media.example.com/selected.m3u8' },
+    )?.episodes,
+    [{ label: '指定线路', url: 'https://media.example.com/selected.m3u8' }],
+  );
+  assert.equal(parseMovie({ vod_name: '缺少 ID' }, 'source'), null);
 });
 
 test('主清单、根目录子清单、相对分片、密钥都以真实响应地址解析', () => {

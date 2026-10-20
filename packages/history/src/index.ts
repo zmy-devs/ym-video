@@ -1,23 +1,6 @@
-// Web 与 API 共用的影片及历史契约。
-export interface Episode {
-  label: string;
-  url: string;
-}
+import type { Movie } from '@ym-video/catalog';
 
-export interface Movie {
-  id: string;
-  vodId: string;
-  sourceId: string;
-  name: string;
-  pic: string;
-  content: string;
-  year: string;
-  area: string;
-  lang: string;
-  category: string;
-  remarks: string;
-  episodes: Episode[];
-}
+export type { Episode, Movie } from '@ym-video/catalog';
 
 // 每集独立进度，允许主动回看和从头播放。
 export interface Progress {

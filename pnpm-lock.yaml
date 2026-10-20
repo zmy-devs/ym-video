@@ -140,6 +140,9 @@ importers:
         version: 1.4.3
   apps/mobile:
     dependencies:
+      '@ym-video/catalog':
+        specifier: workspace:*
+        version: link:../../packages/catalog
       '@expo/metro-runtime':
         specifier: ~6.1.2
         version: 6.1.2(expo@54.0.26)(react-dom@19.1.0(react@19.1.0))(react-native@0.81.5(@babel/core@7.28.5)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
@@ -293,6 +296,9 @@ importers:
         version: 1.4.1
   apps/web:
     dependencies:
+      '@ym-video/catalog':
+        specifier: workspace:*
+        version: link:../../packages/catalog
       '@ym-video/history':
         specifier: workspace:*
         version: link:../../packages/history
@@ -357,7 +363,12 @@ importers:
       vue-tsc:
         specifier: 3.1.4
         version: 3.1.4(typescript@5.9.2)
-  packages/history: {}
+  packages/catalog: {}
+  packages/history:
+    dependencies:
+      '@ym-video/catalog':
+        specifier: workspace:*
+        version: link:../catalog
 
 packages:
   7zip-bin@5.2.0:

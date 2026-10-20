@@ -17,6 +17,7 @@
     "check": "pnpm run typecheck && npx expo-doctor"
   },
   "dependencies": {
+    "@ym-video/catalog": "workspace:*",
     "@expo/metro-runtime": "~6.1.2",
     "@gorhom/bottom-sheet": "^5.2.6",
     "@react-navigation/bottom-tabs": "^7.4.0",
