@@ -13,7 +13,15 @@ const run = async () => {
   let listRequests = 0;
   let ownerId = 'playback-cache-test';
 
-  Object.defineProperty(window, 'ipc', { configurable: true, value: {} });
+  Object.defineProperty(window, 'ipc', {
+    configurable: true,
+    value: {
+      getVersion: async () => '6.1.0',
+      checkForUpdates: async () => false,
+      installUpdate: async () => undefined,
+      on: () => () => undefined,
+    } satisfies NonNullable<Window['ipc']>,
+  });
 
   window.fetch = async (input, options) => {
     // 模拟会话、历史和影片请求，不访问开发数据库。

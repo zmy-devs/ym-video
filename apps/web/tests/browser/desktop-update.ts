@@ -66,7 +66,7 @@ const run = async () => {
   await nextTick();
   assert(fixture.textContent?.includes('42%'), '界面展示下载进度');
   assert(!fixture.querySelector('[role="status"]'), '不再显示下方独立提示');
-  update.status = 'up-to-date';
+  update.$patch({ status: 'up-to-date' });
   await nextTick();
   assert(fixture.textContent?.includes('已是最新版'), '右侧显示已是最新版');
   assert(
