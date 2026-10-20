@@ -44,7 +44,7 @@ pnpm dev:web
 
 ### 桌面端
 
-将 `apps/desktop/.env.development.example` 复制为 `.env.development`，默认连接本地 Web `http://localhost:5173`。先启动 Web 与 API，再启动桌面端：
+桌面端开发模式连接本地 Web `http://localhost:5173`。先启动 Web 与 API，再启动桌面端：
 
 ```sh
 pnpm dev:desktop

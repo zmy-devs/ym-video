@@ -21,7 +21,7 @@ README 用于项目介绍、技术栈、安装启动和使用说明；实现约�
 - 项目采用 pnpm workspace，应用位于 `apps/`，有真实跨端调用方的契约和纯业务逻辑才提取到 `packages/`。
 - 产品方向为 Vue 3 Web、Fastify API、Expo／React Native 安卓端；各端使用 TypeScript。
 - `apps/web` 是独立 PC 浏览器应用，使用 Vue 3、shadcn-vue 和 Tailwind CSS 4，不使用 Element Plus，也不做手机浏览器适配。
-- `apps/desktop` 是 Electron 壳，通过 `YM_VIDEO_WEB_URL` 加载远程 HTTPS Web。桌面 Renderer 只放壳自身需要的本地页面；IPC 当前用于 Web 的桌面更新功能。
+- `apps/desktop` 是 Electron 壳，Web 地址固定在 `src/main/utils/web.ts`，生产模式加载远程 HTTPS Web。桌面 Renderer 只放壳自身需要的本地页面；IPC 当前用于 Web 的桌面更新功能。
 - `apps/mobile` 是 Expo／React Native 应用，原生页面、播放器和设备能力留在移动端。
 - `apps/api` 是 Fastify Workers API；Web 静态资源和 API 使用 Cloudflare Workers 部署。
 - 应用之间不使用相对路径直接引用对方源码。共享包使用 `@ym-video/*` 命名，并通过 `workspace:*` 声明依赖。
@@ -67,7 +67,7 @@ packages/                       跨应用共享包
 - API 不声明 Fastify JSON Schema；新增 schema 或相关插件前先在 workerd 中验证。
 - Web 使用会话 Cookie，观看历史使用 IndexedDB 并按现有账号同步逻辑写入 API。移动端按平台使用 expo-sqlite、MMKV 等本地存储。
 - 旧桌面版本遗留的 SQLite 数据不迁移，也不由新版本自动删除。
-- 密钥通过本地忽略的环境文件或部署平台 Secret 提供，不写入源码和文档；桌面配置参考 `apps/desktop/.env.development.example` 和 `.env.production.example`。
+- 密钥通过本地忽略的环境文件或部署平台 Secret 提供，不写入源码和文档；桌面发布令牌参考 `apps/desktop/.env.development.example`。
 
 ## 安装与常用命令
 
@@ -88,7 +88,7 @@ packages/                       跨应用共享包
 | `pnpm build:mobile`                                                  | EAS 云构建，会访问外部服务        |
 | `pnpm release:desktop`、`pnpm release:mobile`                        | 上传 Release 产物                 |
 
-桌面开发使用 `apps/desktop/.env.development`，默认连接本地 Web；构建使用 `.env.production`，只配置正式 HTTPS 站点。发布脚本从 `.env.development` 读取 `GITEE_TOKEN` 和 `GH_TOKEN`，令牌只存于开发配置。真实发布、部署和 Git 提交按用户当次授权执行。
+桌面开发连接本地 Web，生产模式连接代码中固定的 HTTPS 站点。发布脚本从 `apps/desktop/.env.development` 读取 `GITEE_TOKEN` 和 `GH_TOKEN`。真实发布、部署和 Git 提交按用户当次授权执行。
 
 ## 修改与验证
 
