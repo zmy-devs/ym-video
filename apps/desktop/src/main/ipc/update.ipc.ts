@@ -1,10 +1,13 @@
-import { updateService, type UpdateCheckResult } from '@/utils/update';
+import { autoUpdater } from 'electron-updater';
 
-export const checkForUpdates = async (): Promise<UpdateCheckResult> => {
-  return updateService.checkForUpdates();
+// 检查更新，返回可用版本或 false。
+export const checkForUpdates = async () => {
+  const result = await autoUpdater.checkForUpdates();
+
+  return result?.isUpdateAvailable ? result.updateInfo.version : false;
 };
 
+// 安装已下载的更新并重启应用。
 export const installUpdate = () => {
-  updateService.install();
+  autoUpdater.quitAndInstall(true, true);
 };
-

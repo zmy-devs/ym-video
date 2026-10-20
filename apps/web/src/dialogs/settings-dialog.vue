@@ -66,6 +66,11 @@
             />
           </ScrollArea>
         </TabsContent>
+        <TabsContent v-if="isDesktop" value="update" class="min-h-0 min-w-0">
+          <ScrollArea class="h-full">
+            <UpdateSettings class="mx-auto w-[85%] py-8" />
+          </ScrollArea>
+        </TabsContent>
         <TabsContent value="about" class="min-h-0 min-w-0">
           <ScrollArea class="h-full">
             <AboutSettings class="mx-auto w-[85%] py-8" />
@@ -78,7 +83,14 @@
 
 <script setup lang="ts">
 import { onScopeDispose, ref, watch } from 'vue';
-import { CircleAlert, Palette, Settings2, UserRound, X } from 'lucide-vue-next';
+import {
+  CircleAlert,
+  Palette,
+  Settings2,
+  UserRound,
+  CircleArrowUp,
+  X,
+} from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -92,6 +104,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import AppearanceSettings from './settings/appearance-settings.vue';
 import AccountSettings from './settings/account-settings.vue';
 import AboutSettings from './settings/about-settings.vue';
+import UpdateSettings from './settings/update-settings.vue';
 import { authClient } from '@/services/auth';
 import { eventBus } from '@/utils/event-bus';
 
@@ -104,10 +117,14 @@ const selected = ref('appearance');
 // 账号提交期间禁止切换分类和手动关闭，切页仍可强制清理。
 const pending = ref<'username' | 'password' | null>(null);
 
-// 侧栏顺序沿用参考项目的设置分类结构。
+// 通过预加载桥接识别桌面客户端。
+const isDesktop = Boolean(window.ipc);
+
+// 更新入口只向桌面客户端提供。
 const navigation = [
   { value: 'appearance', label: '外观', icon: Palette },
   { value: 'account', label: '账号', icon: UserRound },
+  ...(isDesktop ? [{ value: 'update', label: '更新', icon: CircleArrowUp }] : []),
   { value: 'about', label: '关于', icon: CircleAlert },
 ];
 

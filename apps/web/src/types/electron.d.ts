@@ -1,8 +1,3 @@
-interface DesktopUpdateCheckResult {
-  status: 'up-to-date' | 'downloading' | 'downloaded';
-  version: string;
-}
-
 interface DesktopIpcBridge {
   getVersion(): Promise<string>;
   // 旧版桌面壳可能尚未提供主题同步接口。
@@ -10,15 +5,15 @@ interface DesktopIpcBridge {
     mode: 'auto' | 'light' | 'dark',
     resolvedTheme: 'light' | 'dark',
   ): Promise<void>;
-  checkForUpdates(): Promise<DesktopUpdateCheckResult>;
+  checkForUpdates(): Promise<string | false>;
   installUpdate(): Promise<void>;
   on(
     channel: 'update-progress',
-    listener: (percent: number) => void,
+    listener: (event: unknown, percent: number) => void,
   ): () => void;
   on(
     channel: 'update-downloaded',
-    listener: (version: string) => void,
+    listener: (event: unknown) => void,
   ): () => void;
   on(channel: 'update-error', listener: () => void): () => void;
 }
