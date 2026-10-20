@@ -65,8 +65,12 @@ pnpm dev:mobile
 - Windows：[GitHub](https://github.com/2514765066/ym-video/releases)、[Gitee](https://gitee.com/yxingyus/ym-video/releases)。
 - 安卓：[GitHub](https://github.com/2514765066/ym-video-app/releases)、[Gitee](https://gitee.com/yxingyus/ym-video-app/releases)。
 
-## 免责声明
+## 许可与免责声明
 
-本软件仅供学习与技术交流使用，不得用于任何商业或非法用途。
+本项目采用 [PolyForm Noncommercial License 1.0.0](LICENSE)。允许协议规定的非商业使用、修改和分发；销售、收费服务等商业用途需另行获得著作权人授权。具体许可范围以协议原文为准，第三方材料遵循各自许可。
+
+Required Notice: Copyright (c) 2025-2026 张铭洋
+
+新协议不追溯撤销此前版本已按 MIT 许可授予的权利。使用本软件时不得从事非法活动。
 
 本项目不提供任何视频内容或接口资源，所有数据均来自第三方来源。开发者对使用本软件所引发的任何后果、风险或法律责任不承担任何责任。请遵守当地法律法规及相关服务条款。
