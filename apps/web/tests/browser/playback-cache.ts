@@ -2,6 +2,7 @@ import { createApp, nextTick } from 'vue';
 import { createPinia } from 'pinia';
 import { emptyHistory } from '@ym-video/history';
 import { useLibraryStore } from '../../src/stores/library';
+import { movieKey } from '../../src/lib/movie';
 import '../../src/styles/global.css';
 
 // 使用真实根组件、布局及播放器，所有接口留在内存中。
@@ -12,6 +13,12 @@ const run = async () => {
   const originalIpc = Object.getOwnPropertyDescriptor(window, 'ipc');
   let listRequests = 0;
   let ownerId = 'playback-cache-test';
+  // 历史读取保持挂起，验证已有本机进度的影片不等待云端快照。
+  const pendingHistory: Array<(response: Response) => void> = [];
+  // 账号服务切为不可用后，进入播放器不能新增阻塞请求。
+  let accountUnavailable = false;
+  // 记录账号接口访问次数，区分后台刷新与页面导航请求。
+  let sessionRequests = 0;
 
   Object.defineProperty(window, 'ipc', {
     configurable: true,
@@ -31,6 +38,10 @@ const run = async () => {
     );
 
     if (url.pathname.startsWith('/api/auth/')) {
+      sessionRequests += 1;
+      if (accountUnavailable) {
+        throw new TypeError('测试账号服务不可用');
+      }
       return Response.json({
         user: { id: ownerId, role: 'user', name: '缓存测试' },
         session: { id: 'cache-session' },
@@ -38,7 +49,7 @@ const run = async () => {
     }
 
     if (url.pathname.startsWith('/api/v1/history')) {
-      return Response.json(emptyHistory(ownerId));
+      return new Promise<Response>((resolve) => pendingHistory.push(resolve));
     }
 
     if (url.pathname.startsWith('/api/v1/proxy/')) {
@@ -86,6 +97,31 @@ const run = async () => {
   try {
     await until(() => Boolean(fixture.textContent?.includes('缓存影片60')));
     await until(() => useHistoryStore(pinia).loaded);
+
+    // 先建立本机观看记录，后台云端读取继续保持挂起。
+    const history = useHistoryStore(pinia);
+    // 与生产播放器使用相同的影片复合标识。
+    const id = movieKey('cache-test', '1');
+    await history.save(
+      {
+        id,
+        sourceId: 'cache-test',
+        vodId: '1',
+        name: '缓存影片1',
+        pic: '',
+        content: '',
+        year: '',
+        area: '',
+        lang: '',
+        category: '',
+        remarks: '',
+        episodes: [{ label: '第 1 集', url: 'https://media.example/1.mp4' }],
+        episode: 0,
+        progress: { '0': { currentTime: 12, duration: 100 } },
+        watchedAt: Date.now(),
+      },
+      history.token(id),
+    );
 
     // 等账号初始化及组件更新结束后记录实际节点与请求次数。
     await nextTick();
@@ -172,6 +208,8 @@ const run = async () => {
     );
 
     const initialRequests = listRequests;
+    const initialSessionRequests = sessionRequests;
+    accountUnavailable = true;
 
     for (let turn = 0; turn < 2; turn += 1) {
       // 普通卡片点击必须走 Vue 路由，不能触发 Electron 整页 loadURL。
@@ -183,6 +221,12 @@ const run = async () => {
       link?.click();
 
       await until(() => Boolean(fixture.querySelector('.player-surface')));
+      await until(() => Boolean(fixture.textContent?.includes('影片不存在')));
+      assert(
+        sessionRequests === initialSessionRequests,
+        '账号服务不可用时，打开影片不能再请求会话',
+      );
+      assert(pendingHistory.length > 0, '必须在历史接口仍挂起时完成影片加载');
       assert(!page.isConnected, '进入播放器应暂存首页节点');
       assert(
         !document.querySelector('[data-slot="movie-preview"]'),
@@ -218,6 +262,9 @@ const run = async () => {
     app.unmount();
     useHistoryStore(pinia).$dispose();
     library.$dispose();
+    pendingHistory.forEach((resolve) =>
+      resolve(Response.json(emptyHistory(ownerId))),
+    );
     window.fetch = originalFetch;
     window.history.replaceState(null, '', originalUrl);
 

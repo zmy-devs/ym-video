@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import AppLayout from '@/layout/index.vue';
-import { authClient } from '@/services/auth';
+import { authClient, getCachedUser } from '@/services/auth';
 import { getLoginReturnPath } from '@/lib/auth';
 
 // Web 路由可直接刷新，静态托管负责 SPA 回退。
@@ -75,7 +75,7 @@ export const router = createRouter({
   ],
 });
 
-// 进入业务页面前确认服务端会话，登录后返回原来的站内页面。
+// 首次进入时确认会话，后续导航复用账号状态，避免播放等待重复验证。
 router.beforeEach(async (to, from) => {
   // 登录回退已经检查过会话，不再次等待不可用的服务。
   if (to.meta.public || (to.name === 'login' && to.redirectedFrom)) {
@@ -86,20 +86,30 @@ router.beforeEach(async (to, from) => {
     return true;
   }
   try {
-    // 以服务端会话为准，3 秒无响应就取消请求并显示登录入口。
-    const result = await authClient.getSession({
-      fetchOptions: { signal: AbortSignal.timeout(3000) },
-    });
+    // 已确认的会话由 Better Auth 在后台刷新，不阻塞前台页面切换。
+    let user = getCachedUser();
 
-    if (result.data?.user) {
-      if (result.data.user.role === 'admin' && !to.meta.admin) {
+    if (!user) {
+      // 首次请求最多等待 3 秒，取消后保留可操作的登录入口。
+      const result = await authClient.getSession({
+        fetchOptions: { signal: AbortSignal.timeout(3000) },
+      });
+
+      if (result.data) {
+        authClient.hydrateSession(result.data);
+        user = result.data.user;
+      }
+    }
+
+    if (user) {
+      if (user.role === 'admin' && !to.meta.admin) {
         return getLoginReturnPath(to.query.redirect, 'admin');
       }
-      if (to.meta.admin && result.data.user.role !== 'admin') {
+      if (to.meta.admin && user.role !== 'admin') {
         return '/overview';
       }
       return to.name === 'login'
-        ? getLoginReturnPath(to.query.redirect, result.data.user.role)
+        ? getLoginReturnPath(to.query.redirect, user.role)
         : true;
     }
   } catch {

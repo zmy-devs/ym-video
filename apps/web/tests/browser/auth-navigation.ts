@@ -9,8 +9,11 @@ const run = async () => {
   const originalFetch = window.fetch;
 
   // 首轮模拟无响应，后续分别验证匿名用户与两种账号权限。
-  let mode: 'pending' | 'anonymous' | 'user' | 'admin' = 'pending';
+  let mode: 'pending' | 'anonymous' | 'user' | 'admin' | 'forbidden' =
+    'pending';
   let abortedRequests = 0;
+  // 统计守卫和后台监听的会话请求，检查业务导航是否新增验证。
+  let sessionRequests = 0;
   const pendingRequests: Array<(response: Response) => void> = [];
 
   window.fetch = async (input, options) => {
@@ -21,6 +24,10 @@ const run = async () => {
 
     if (!url.pathname.startsWith('/api/')) {
       return originalFetch(input, options);
+    }
+
+    if (url.pathname === '/api/auth/get-session') {
+      sessionRequests += 1;
     }
 
     if (mode === 'pending') {
@@ -41,6 +48,10 @@ const run = async () => {
       return Response.json(null);
     }
 
+    if (mode === 'forbidden') {
+      return Response.json({ message: '测试账号已停用' }, { status: 403 });
+    }
+
     return Response.json({
       user: { id: 'navigation-test', role: mode },
       session: { id: 'session-test' },
@@ -52,6 +63,7 @@ const run = async () => {
 
   // 动态加载让 Better Auth 捕获模拟 fetch，所有请求均留在内存。
   const { router } = await import('../../src/router');
+  const { authClient } = await import('../../src/services/auth');
   const { default: App } = await import('../../src/App.vue');
   const fixture = document.querySelector('#fixture');
 
@@ -66,11 +78,12 @@ const run = async () => {
   try {
     try {
       assert(
-        fixture.textContent?.includes('正在连接账号服务'),
-        '等待首次会话时必须显示连接状态',
+        fixture.querySelector('[data-slot="spinner"][aria-label="加载中"]') &&
+          !fixture.textContent?.trim(),
+        '等待首次会话时只显示 Spinner，不显示文字',
       );
       await until(() => router.currentRoute.value.name === 'login');
-      assert(abortedRequests === 1, '超时必须取消真实会话请求');
+      assert(abortedRequests >= 1, '超时必须取消真实会话请求');
       assert(
         router.currentRoute.value.query.redirect ===
           '/history?test=session-timeout',
@@ -80,7 +93,7 @@ const run = async () => {
         fixture.textContent?.includes('欢迎回来'),
         '服务无响应时应显示登录表单',
       );
-      report('首屏有连接提示，3 秒后取消请求并显示登录表单，保留回跳地址');
+      report('首屏只显示 Spinner，超时后取消请求并显示登录表单，保留回跳地址');
     } finally {
       app.unmount();
       pendingRequests.forEach((resolve) => resolve(Response.json(null)));
@@ -92,6 +105,7 @@ const run = async () => {
     report('匿名用户不能进入业务页面');
 
     mode = 'user';
+    await authClient.$store.atoms.session.get().refetch();
     await router.replace('/login?redirect=%2Fhistory%3Ftest%3Dreturn');
     assert(
       router.currentRoute.value.fullPath === '/history?test=return',
@@ -104,7 +118,28 @@ const run = async () => {
     );
     report('普通用户正常回跳，后台权限仍受限制');
 
+    // 会话服务无响应期间，已登录用户的播放和普通页面导航不依赖网络。
+    const previousRequests = sessionRequests;
+    mode = 'pending';
+    await router.replace('/player/source/movie?test=nonblocking');
+    await router.replace('/history');
+    assert(
+      sessionRequests === previousRequests,
+      '已确认会话后进入和返回播放器不得再次请求账号接口',
+    );
+    report('账号接口无响应时，已登录用户仍可进入和返回播放器');
+
+    mode = 'forbidden';
+    await authClient.$store.atoms.session.get().refetch();
+    await router.replace('/overview');
+    assert(
+      router.currentRoute.value.name === 'login',
+      '服务端明确拒绝会话后，不得沿用旧账号进入业务页面',
+    );
+    report('会话返回 403 后仍回到登录页，不沿用旧账号');
+
     mode = 'admin';
+    await authClient.$store.atoms.session.get().refetch();
     await router.replace('/login');
     assert(
       router.currentRoute.value.path === '/admin/users',
@@ -155,7 +190,7 @@ document.querySelector('#run')?.addEventListener('click', (event) => {
       const status = document.querySelector('#status');
 
       if (status) {
-        status.textContent = '全部通过（4 个场景）';
+        status.textContent = '全部通过（6 个场景）';
       }
     },
     (cause: unknown) => {

@@ -449,6 +449,12 @@ const run = async () => {
       active.handleMetadata();
       assert(active.video.value.currentTime === 12, '应从原进度续播');
 
+      // 选集只使用已加载的媒体地址，不再次查询账号或刷新集数。
+      await active.selectEpisode(2);
+      assert(detailRequests === 1, '切集不得重复刷新影片详情');
+      assert(active.entry.value.episode === 2, '应直接切到已有的第 3 集');
+      await active.selectEpisode(1);
+
       await active.loadMovie();
       assert(detailRequests === 2, '重新加载必须再次查询详情');
       assert(
