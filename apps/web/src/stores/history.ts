@@ -12,7 +12,7 @@ import type {
   HistorySnapshot,
   HistoryToken,
 } from '@ym-video/history';
-import { authClient } from '@/services/auth';
+import { getCachedUser } from '@/services/auth';
 import {
   commitHistorySync,
   enqueueHistoryOperation,
@@ -391,25 +391,26 @@ export const useHistoryStore = defineStore('history', () => {
     return task;
   };
 
-  // 组件初始化时校验当前 Cookie 会话，并载入对应账号的云端记录。
-  const init = async (movieId?: string) => {
-    const generation = accountGeneration;
-    let currentOwner = ownerId.value;
-    if (!currentOwner) {
-      const session = await authClient.getSession();
-      currentOwner = session.data?.user?.id ?? null;
-      if (generation !== accountGeneration && currentOwner !== ownerId.value) {
-        throw new Error('账号已切换，请重新打开影片');
-      }
-    }
+  // 播放复用已确认的账号，优先使用本机续播记录，不再验证会话。
+  const init = async (movieId: string) => {
+    // 直达播放器时复用首次路由确认的账号，避免依赖全局监听的执行顺序。
+    const currentOwner = ownerId.value ?? getCachedUser()?.id;
+
     if (!currentOwner) {
       throw new Error('请先登录后查看观看历史');
     }
     await setAccount(currentOwner);
-    // 已有账号缓存可立即播放；新设备首次打开时等待有超时的云端读取。
+    if (ownerId.value !== currentOwner) {
+      throw new Error('账号已切换，请重新打开影片');
+    }
+
+    // 新设备尚无该影片时读取一次云端进度，避免用零进度覆盖已有记录。
     const cachedMovie = entries.value.some((entry) => entry.id === movieId);
     if (!cachedMovie && refreshPromise) {
       await refreshPromise;
+    }
+    if (ownerId.value !== currentOwner) {
+      throw new Error('账号已切换，请重新打开影片');
     }
   };
 

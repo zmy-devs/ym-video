@@ -5,13 +5,12 @@
       aria-hidden="true"
       class="desktop-title-bar desktop-title-bar-standalone fixed inset-x-0 top-0 z-40 pr-36"
     />
-    <p
+    <div
       v-if="!route.matched.length"
-      role="status"
-      class="h-full flex items-center justify-center text-sm text-muted-foreground"
+      class="h-full flex items-center justify-center text-muted-foreground"
     >
-      正在连接账号服务…
-    </p>
+      <Spinner class="size-6" />
+    </div>
     <RouterView v-else v-slot="{ Component }">
       <KeepAlive :key="history.ownerId ?? undefined" include="AppLayout">
         <component :is="Component" />
@@ -38,6 +37,7 @@ import { onUnmounted, ref, watch } from 'vue';
 import { useEventListener } from '@vueuse/core';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import { Toaster } from '@/components/ui/sonner';
+import { Spinner } from '@/components/ui/spinner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import AppDialogs from '@/dialogs/index.vue';
 import { useHistoryStore } from '@/stores/history';
