@@ -33,8 +33,10 @@ const requestNetwork = async (request: Request) => {
     : undefined;
 
   return new Promise<Response>((resolve, reject) => {
-    // 同源 GET 通常没有 Origin 头，仍需沿用原站点的 Cookie。
-    const origin = request.headers.get('origin') ?? undefined;
+    // 协议处理器收到的同源 POST 可能缺少 Origin，从实际引用页面恢复来源。
+    const origin =
+      request.headers.get('origin') ??
+      (request.referrer ? new URL(request.referrer).origin : undefined);
     const client = net.request({
       url: request.url,
       method: request.method,
