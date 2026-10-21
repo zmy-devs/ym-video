@@ -30,6 +30,7 @@ const server = createServer(async (request, response) => {
   const record = {
     path: request.url,
     method: request.method,
+    origin: request.headers.origin ?? '',
     cookie: request.headers.cookie ?? '',
     body: Buffer.concat(chunks).toString(),
   };
@@ -71,6 +72,13 @@ const server = createServer(async (request, response) => {
 
   if (request.url === '/api/auth/get-session') {
     response.end('null');
+    return;
+  }
+
+  if (request.url === '/api/auth/sign-in/email' && !record.origin) {
+    response
+      .writeHead(403)
+      .end(JSON.stringify({ message: 'Missing or null Origin' }));
     return;
   }
 
@@ -154,6 +162,19 @@ const run = async () => {
 
   assert.equal(post.method, 'POST');
   assert.equal(post.body, payload);
+  assert.equal(post.origin, origin.origin, '同源 POST 必须保留真实 Origin');
+
+  // 登录来源检查与表单请求保持一致，不通过关闭服务端校验绕过报错。
+  const login = await window.webContents.executeJavaScript(`
+    fetch('/api/auth/sign-in/email', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'test@example.invalid', password: 'test-only' }),
+    }).then(async (response) => ({ status: response.status, body: await response.json() }))
+  `);
+
+  assert.equal(login.status, 200);
+  assert.equal(login.body.origin, origin.origin);
 
   // 下一次业务请求复用同源会话，渲染进程不能直接读取 HttpOnly Cookie。
   const echo = await window.webContents.executeJavaScript(
