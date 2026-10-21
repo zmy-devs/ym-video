@@ -101,7 +101,7 @@ import FormField from '@/components/common/form-field.vue';
 import { signIn } from '@/services/auth';
 import { getLoginReturnPath } from '@/lib/auth';
 import { infoToast } from '@/utils/toast';
-import icon from '@/assets/icon.png';
+import icon from '@/assets/icon.svg';
 
 // 登录前的目标页面通过站内回跳参数恢复。
 const route = useRoute();

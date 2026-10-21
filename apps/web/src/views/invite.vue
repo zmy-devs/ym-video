@@ -201,7 +201,7 @@ import { getAccountFieldErrors, validateAccountForm } from '@/lib/account-form';
 import type { AccountFieldErrors } from '@/lib/account-form';
 import { isRecord } from '@/services/api';
 import { authClient, signIn } from '@/services/auth';
-import icon from '@/assets/icon.png';
+import icon from '@/assets/icon.svg';
 
 // 公开页面不依赖登录，但已登录时要求主动退出后再创建身份。
 const route = useRoute();
