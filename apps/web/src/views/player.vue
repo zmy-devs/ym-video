@@ -27,7 +27,7 @@
         :src="entry.pic"
         alt=""
         aria-hidden="true"
-        class="size-5 shrink-0 rounded-full [&_svg]:size-3"
+        class="size-5 shrink-0 rounded-full"
       />
       <span class="min-w-0 truncate text-sm" :title="entry?.name">
         {{ entry?.name || '播放器' }}
