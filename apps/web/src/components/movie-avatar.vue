@@ -11,7 +11,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import placeholder from '@/assets/default.png';
+import placeholder from '@/assets/default.avif';
 
 // 最近观看对应的海报地址。
 const props = defineProps<{ src: string }>();
