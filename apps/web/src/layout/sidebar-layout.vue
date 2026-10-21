@@ -57,7 +57,7 @@ import {
   SidebarInset,
 } from '@/components/ui/sidebar';
 import CommonTooltip from '@/components/common/tooltip.vue';
-import icon from '@/assets/icon.png';
+import icon from '@/assets/icon.svg';
 
 // 桌面标题栏与侧栏品牌同行，并随侧栏宽度自动调整。
 const isDesktop = Boolean(window.ipc);
