@@ -177,6 +177,30 @@ const run = async () => {
       );
       viewport.scrollTop = 0;
       await until(() => Number.parseFloat(preview.style.top) === previousTop);
+
+      // 鼠标位于浮层海报或正文时，滚轮仍能上下滚动原列表。
+      for (const selector of ['img', 'p']) {
+        // 分别覆盖海报和文字，不只测试浮层容器本身。
+        const target = preview.querySelector(selector);
+
+        assert(target, '预览必须展示海报和正文');
+        target?.dispatchEvent(
+          new WheelEvent('wheel', {
+            deltaY: 40,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+        await until(() => viewport.scrollTop === 40);
+        target?.dispatchEvent(
+          new WheelEvent('wheel', {
+            deltaY: -40,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+        await until(() => viewport.scrollTop === 0);
+      }
     }
 
     card?.dispatchEvent(
