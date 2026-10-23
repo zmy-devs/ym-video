@@ -16,6 +16,7 @@ const run = async () => {
   const previous = keys.map((key) => localStorage.getItem(key));
 
   const originalFetch = window.fetch;
+  const originalIpc = window.ipc;
 
   const requests: { url: URL; credentials?: RequestCredentials }[] = [];
 
@@ -178,8 +179,33 @@ const run = async () => {
     assert(library.categories[0]?.name === '电影', '切源后显示新分类');
     report('添加成功、菜单分组分隔、选择后切换分类并清理旧路由');
 
+    // 新版桌面壳只收完整 URL，浏览器模拟端继续拦截所有网络请求。
+    const ipcRequests: URL[] = [];
+
+    window.ipc = {
+      getVersion: async () => '6.1.1',
+      checkForUpdates: async () => false,
+      installUpdate: async () => undefined,
+      on: () => () => undefined,
+      requestResource: async (url) => {
+        ipcRequests.push(new URL(url));
+
+        // 模拟 Node 返回的 JSON，不经过服务端代理。
+        const response = await window.fetch(url, { credentials: 'omit' });
+
+        return response.json();
+      },
+    };
+
     const movies = await getMovies(custom, { t: 1, wd: '测试', pg: 2 });
     const detail = await getMovies(custom, { ids: 8 });
+    const desktopPlatform = await getMovies(
+      { id: 'baofeng', name: '平台测试源' },
+      { wd: '桌面测试' },
+    );
+
+    window.ipc = originalIpc;
+
     assert(
       movies.movies[0]?.sourceId === custom.id &&
         detail.movies[0]?.episodes.length === 1,
@@ -198,7 +224,21 @@ const run = async () => {
         request.url.searchParams.get('ac') === 'detail',
       '第三方请求不携带本站会话',
     );
-    report('自定义源列表、分类、搜索、详情与会话隔离');
+    assert(
+      ipcRequests.some(
+        (url) =>
+          url.host === 'custom.example' &&
+          url.searchParams.get('token') === 'test',
+      ) &&
+        ipcRequests.some(
+          (url) =>
+            url.host === 'bfzyapi.com' &&
+            url.searchParams.get('wd') === '桌面测试',
+        ) &&
+        desktopPlatform.movies[0]?.sourceId === 'baofeng',
+      '桌面自定义源与内置源都通过 IPC 传完整 URL',
+    );
+    report('自定义源、浏览器直连和桌面 IPC 请求 URL 构造正确');
 
     await openDialog();
     fill('source-name', '重复源');
@@ -447,6 +487,7 @@ const run = async () => {
     app.unmount();
     library.$dispose();
     window.fetch = originalFetch;
+    window.ipc = originalIpc;
     keys.forEach((key, index) => {
       const value = previous[index];
       if (value === null) {

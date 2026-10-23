@@ -1,4 +1,4 @@
-// 平台源使用受限代理，自定义源使用浏览器直连地址。
+// 平台源按 ID 查询，自定义源携带地址；桌面统一使用本地代理。
 export interface Source {
   id: string;
   name: string;
