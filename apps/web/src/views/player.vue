@@ -29,8 +29,8 @@
         aria-hidden="true"
         class="size-5 shrink-0 rounded-full"
       />
-      <span class="min-w-0 truncate text-sm" :title="entry?.name">
-        {{ entry?.name || '播放器' }}
+      <span v-if="entry" class="min-w-0 truncate text-sm" :title="entry.name">
+        {{ entry.name }}
       </span>
     </header>
     <div class="min-h-0 flex flex-1">
@@ -252,7 +252,7 @@ const {
 } = usePlayer();
 
 // 标签页只更新片名，图标沿用应用入口中的 ym-video 图标。
-useTitle(() => entry.value?.name || '播放器 · ym-video');
+useTitle(() => entry.value?.name || 'ym-video');
 
 // 控制栏用于判断鼠标和键盘是否仍在操作控件。
 const controls = ref<HTMLElement | null>(null);
