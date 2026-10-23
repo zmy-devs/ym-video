@@ -21,7 +21,7 @@ README 用于项目介绍、技术栈、安装启动和使用说明；实现约�
 - 项目采用 pnpm workspace，应用位于 `apps/`，有真实跨端调用方的契约和纯业务逻辑才提取到 `packages/`。
 - 产品方向为 Vue 3 Web、Fastify API、Expo／React Native 安卓端；各端使用 TypeScript。
 - `apps/web` 是独立 PC 浏览器应用，使用 Vue 3、shadcn-vue 和 Tailwind CSS 4，不使用 Element Plus，也不做手机浏览器适配。
-- `apps/desktop` 是 Electron 壳，开发连接本地 Web，生产从 `out/renderer/` 加载随安装包内置的 Web 产物。站点来源固定在 `src/main/utils/web.ts`，通过协议处理器保留原 HTTPS 来源，仅页面和静态资源从本地读取，`/api` 和其他站点请求仍走网络；IPC 用于桌面主题和更新功能。
+- `apps/desktop` 是 Electron 壳，开发连接本地 Web，生产从 `out/renderer/` 加载随安装包内置的 Web 产物。站点来源固定在 `src/main/utils/web.ts`，通过协议处理器保留原 HTTPS 来源，仅页面和静态资源从本地读取，`/api` 和其他站点请求仍走网络；IPC 用于资源请求的本地 Node 代理、桌面主题和更新功能。
 - `apps/mobile` 是 Expo／React Native 应用，原生页面、播放器和设备能力留在移动端。
 - `apps/api` 是 Fastify Workers API；Web 静态资源和 API 使用 Cloudflare Workers 部署。
 - 应用之间不使用相对路径直接引用对方源码。共享包使用 `@ym-video/*` 命名，并通过 `workspace:*` 声明依赖。
@@ -63,6 +63,7 @@ packages/                       跨应用共享包
 - Worker 使用 `nodejs_compat` 和 `cloudflare:node` HTTP 适配入口；需要兼容日期不早于 `2025-09-01`。
 - D1 binding 命名为 `DB`；Drizzle 使用 D1 驱动，Better Auth 使用 SQLite provider。SQL 迁移通过 Drizzle Kit 生成、Wrangler 执行。
 - Worker 根据会话确定用户身份；不使用客户端提交的用户 ID 授权。代理只允许服务端配置的目标，不向上游透传登录凭证。
+- Web 资源请求检测可选 IPC：桌面内置源和自定义源通过主进程 Node 直连，浏览器内置源走服务端代理、自定义源保留浏览器直连。内置源配置位于 `@ym-video/catalog/proxy`；本地代理仅允许应用主框架通过 HTTP(S) URL 请求 JSON，不透传页面请求头。
 - API 不声明 Fastify JSON Schema；新增 schema 或相关插件前先在 workerd 中验证。
 - Web 使用会话 Cookie，观看历史使用 IndexedDB 并按现有账号同步逻辑写入 API。移动端按平台使用 expo-sqlite、MMKV 等本地存储。
 - 旧桌面版本遗留的 SQLite 数据不迁移，也不由新版本自动删除。

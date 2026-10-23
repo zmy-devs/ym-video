@@ -8,7 +8,11 @@ import {
 
 // 主进程与预加载脚本共用 IPC 通道定义。
 const ipcOptions = {
-  input: ['src/main/ipc/index.ts', 'src/main/ipc/update.ipc.ts'],
+  input: [
+    'src/main/ipc/index.ts',
+    'src/main/ipc/update.ipc.ts',
+    'src/main/ipc/resource.ipc.ts',
+  ],
   dts: 'src/preload/plugin-electron-ipc.d.ts',
 } satisfies IpcChannelsPluginOptions;
 

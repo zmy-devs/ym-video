@@ -19,6 +19,7 @@
     "deploy": "pnpm --filter @ym-video/web run build && wrangler deploy --env production"
   },
   "dependencies": {
+    "@ym-video/catalog": "workspace:*",
     "@ym-video/history": "workspace:*",
     "@better-auth/drizzle-adapter": "1.7.10",
     "@better-auth/expo": "1.7.10",

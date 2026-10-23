@@ -1,5 +1,7 @@
 interface DesktopIpcBridge {
   getVersion(): Promise<string>;
+  // 桌面端使用 Node 直连资源接口。
+  requestResource?(url: string): Promise<unknown>;
   // 旧版桌面壳可能尚未提供主题同步接口。
   toggleTheme?(
     mode: 'auto' | 'light' | 'dark',
