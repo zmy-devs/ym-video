@@ -73,6 +73,7 @@
           @pointerleave="handleClosePreview"
           @focusout="handleClosePreview"
           @click="previewOpen = false"
+          @wheel="handlePreviewWheel"
         >
           <RouterLink
             :to="playerPath(movie)"
@@ -199,6 +200,36 @@ const handleClosePreview = (event: PointerEvent | FocusEvent) => {
   }
 
   previewOpen.value = false;
+};
+
+// 独立浮层不在列表滚动链中，将滚轮交给原卡片所在的列表。
+const handlePreviewWheel = (event: WheelEvent) => {
+  // 按原卡片查找列表，避免误滚侧栏或其他页面。
+  const viewport = card.value?.closest<HTMLElement>(
+    '[data-slot="scroll-area-viewport"]',
+  );
+
+  // Ctrl + 滚轮保留浏览器缩放行为。
+  if (!viewport || event.ctrlKey) {
+    return;
+  }
+
+  event.preventDefault();
+
+  // 浏览器的滚轮增量可能使用像素、行或整页。
+  let unit = 1;
+
+  if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+    unit = 16;
+  } else if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+    unit = viewport.clientHeight;
+  }
+
+  viewport.scrollBy({
+    left: event.deltaX * unit,
+    top: event.deltaY * unit,
+    behavior: 'instant',
+  });
 };
 
 // 仅展开的卡片注册全局监听，页面缓存时关闭其独立浮层。
