@@ -225,6 +225,94 @@ const run = async () => {
       'Escape 应关闭预览',
     );
 
+    // 历史卡片和独立预览的菜单都必须按右键坐标定位。
+    await router.push('/history');
+    await nextTick();
+
+    // 使用真实历史页面，覆盖预览挂载前后及重复打开菜单。
+    const historyCard = fixture.querySelector<HTMLElement>(
+      '.movie-grid article',
+    );
+
+    if (!historyCard) {
+      throw new Error('观看历史卡片未完成渲染');
+    }
+
+    for (const mode of ['enter', 'card', 'preview', 'card']) {
+      if (mode === 'preview') {
+        historyCard.dispatchEvent(new PointerEvent('pointerenter'));
+        await nextTick();
+      }
+
+      // 点击点与卡片边缘保持距离，确保能检测锚点被覆盖的问题。
+      const target =
+        mode === 'preview'
+          ? document.querySelector<HTMLElement>('[data-slot="movie-preview"]')
+          : historyCard;
+
+      if (!target) {
+        throw new Error('历史卡片预览未显示');
+      }
+
+      // 等预览入场结束后获取稳定坐标。
+      await Promise.all(
+        target.getAnimations().map((animation) => animation.finished),
+      );
+
+      // 当前点击点留出菜单所需空间，不触发窗口边缘避让。
+      const rect = target.getBoundingClientRect();
+      const x = rect.left + rect.width / 3;
+      const y = rect.top + rect.height / 3;
+
+      // 原生右键会聚焦链接，随后菜单自动聚焦会触发浮层失焦。
+      target.querySelector('a')?.focus({ preventScroll: true });
+
+      if (mode === 'enter') {
+        // 首次移入后立即右键，预览将在同一轮更新中挂载。
+        historyCard.dispatchEvent(new PointerEvent('pointerenter'));
+      }
+
+      target.dispatchEvent(
+        new MouseEvent('contextmenu', {
+          clientX: x,
+          clientY: y,
+          button: 2,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+      await until(() => Boolean(document.querySelector('[role="menu"]')));
+
+      // 菜单应紧邻鼠标，而非悬浮卡片右上角。
+      const menu = document.querySelector<HTMLElement>('[role="menu"]');
+
+      if (!menu) {
+        throw new Error('历史右键菜单未显示');
+      }
+
+      await Promise.all(
+        menu.getAnimations().map((animation) => animation.finished),
+      );
+      assert(
+        Math.abs(menu.getBoundingClientRect().left - x - 2) < 1 &&
+          Math.abs(menu.getBoundingClientRect().top - y) < 1,
+        '历史菜单必须显示在右键位置，不能锚定到卡片边缘',
+      );
+      target.dispatchEvent(new FocusEvent('focusout', { relatedTarget: menu }));
+      target.dispatchEvent(
+        new PointerEvent('pointerleave', { relatedTarget: menu }),
+      );
+      await nextTick();
+      assert(menu.isConnected, '指针或焦点移入菜单时不能卸载菜单');
+      menu.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      );
+      await until(() => !document.querySelector('[role="menu"]'));
+    }
+
+    await router.push('/overview');
+    await nextTick();
+
     viewport.scrollTop = 350;
     assert(viewport.scrollTop === 350, '必须先滚动列表');
     await new Promise<void>((resolve) =>
