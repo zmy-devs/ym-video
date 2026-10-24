@@ -17,10 +17,10 @@ app.whenReady().then(() => {
   }
 
   // 协议处理器就绪后再打开窗口，确保首屏从本地加载。
-  const mainWindow = createMainWindow();
+  createMainWindow();
 
   app.on('second-instance', () => {
-    mainWindow.show();
+    createMainWindow();
   });
 
   app.on('window-all-closed', () => {

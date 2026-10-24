@@ -324,13 +324,25 @@ const run = async () => {
     accountUnavailable = true;
 
     for (let turn = 0; turn < 2; turn += 1) {
-      // 普通卡片点击必须走 Vue 路由，不能触发 Electron 整页 loadURL。
+      // 真实桌面壳接管新窗口链接，主窗口不能被 RouterLink 切换为播放器。
       const link = fixture.querySelector<HTMLAnchorElement>(
         'a[aria-label="播放 缓存影片1"]',
       );
 
-      assert(link && !link.target, '桌面播放入口不能使用新标签页');
+      assert(link?.target === '_blank', '播放入口必须交给独立窗口处理');
+      link?.addEventListener('click', (event) => event.preventDefault(), {
+        once: true,
+      });
       link?.click();
+      assert(page.isConnected, '打开播放窗口不得替换主窗口列表');
+      assert(viewport.scrollTop === 350, '打开播放窗口不得改变主窗口滚动位置');
+      assert(
+        listRequests === initialRequests,
+        '打开播放窗口不得刷新主窗口列表',
+      );
+
+      // 直接站内导航仍保留原有返回缓存，覆盖深层地址与旧版桌面壳。
+      await router.push('/player/cache-test/1');
 
       await until(() => Boolean(fixture.querySelector('.player-surface')));
       await until(() => Boolean(fixture.textContent?.includes('影片不存在')));
