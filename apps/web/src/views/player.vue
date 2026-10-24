@@ -5,7 +5,7 @@
   >
     <header
       v-if="isDesktop"
-      class="desktop-title-bar desktop-title-bar-standalone fixed inset-x-0 top-0 z-40 flex items-center gap-2.5 pl-[calc((var(--desktop-window-controls-height)-1.75rem)/2)] pr-36 bg-background text-foreground"
+      class="desktop-title-bar desktop-title-bar-standalone fixed inset-x-0 top-0 z-40 flex items-center gap-2.5 border-b pl-[calc((var(--desktop-window-controls-height)-1.75rem)/2)] pr-36 bg-background text-foreground"
     >
       <Tooltip>
         <TooltipTrigger as-child>
