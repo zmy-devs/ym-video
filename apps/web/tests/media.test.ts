@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { movieKey, parseEpisodes, parseMovie } from '@ym-video/catalog';
 import { filterManifest, resolveMediaUrl } from '../src/lib/m3u8.ts';
+import { isMovieComplete } from '../src/lib/movie.ts';
 
 test('同号影片在不同源之间隔离，包含分隔符的 ID 不碰撞', () => {
   assert.notEqual(movieKey('baofeng', '12'), movieKey('liangzi', '12'));
@@ -64,6 +65,46 @@ test('统一校验并转换采集站影片记录', () => {
     [{ label: '指定线路', url: 'https://media.example.com/selected.m3u8' }],
   );
   assert.equal(parseMovie({ vod_name: '缺少 ID' }, 'source'), null);
+});
+
+test('完结判断只采用明确备注，全集数量必须在本地齐全', () => {
+  // 覆盖常见完结、连载、未知状态及本地选集缺失。
+  const cases = [
+    { remarks: '完结', count: 3, complete: true },
+    { remarks: '已完结', count: 3, complete: true },
+    { remarks: '第3集完结', count: 3, complete: true },
+    { remarks: '已完', count: 3, complete: true },
+    { remarks: '大结局', count: 3, complete: true },
+    { remarks: '全集', count: 3, complete: true },
+    { remarks: ' 全 3 集 ', count: 3, complete: true },
+    { remarks: '全3集', count: 2, complete: false },
+    { remarks: '全0集', count: 3, complete: false },
+    { remarks: '未完结', count: 3, complete: false },
+    { remarks: '尚未全部完结', count: 3, complete: false },
+    { remarks: '即将完结', count: 3, complete: false },
+    { remarks: '预计全3集', count: 3, complete: false },
+    { remarks: '连载中', count: 3, complete: false },
+    { remarks: '完结预告', count: 3, complete: false },
+    { remarks: '更新至第3集', count: 3, complete: false },
+    { remarks: '更新中', count: 3, complete: false },
+    { remarks: '第3集', count: 3, complete: false },
+    { remarks: '', count: 3, complete: false },
+    { remarks: '已完结', count: 0, complete: false },
+  ];
+
+  for (const { remarks, count, complete } of cases) {
+    assert.equal(
+      isMovieComplete({
+        remarks,
+        episodes: Array.from({ length: count }, (_, index) => ({
+          label: `第${index + 1}集`,
+          url: `https://media.example/${index + 1}.mp4`,
+        })),
+      }),
+      complete,
+      `${remarks || '无备注'}，本地 ${count} 集`,
+    );
+  }
 });
 
 test('主清单、根目录子清单、相对分片、密钥都以真实响应地址解析', () => {
