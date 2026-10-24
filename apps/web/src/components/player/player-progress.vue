@@ -25,8 +25,7 @@
         aria-hidden="true"
       >
         <span
-          class="player-time absolute bottom-full whitespace-nowrap"
-          :style="{ transform: `translateX(-${previewPercent}%)` }"
+          class="player-time absolute bottom-full left-1/2 -translate-x-1/2 whitespace-nowrap"
         >
           {{ formatTime((duration * previewPercent) / 100) }}
         </span>
