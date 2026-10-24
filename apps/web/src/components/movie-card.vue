@@ -62,9 +62,12 @@
         </RouterLink>
       </article>
     </ContextMenuTrigger>
-    <!-- 独立浮层避开滚动区域裁切，并保留观看历史的右键菜单。 -->
-    <Teleport to="body">
-      <ContextMenuTrigger v-if="previewOpen" as-child :disabled="!entry">
+    <HistoryMenuContent v-if="entry" :entry="entry" />
+  </ContextMenu>
+  <!-- 卡片与预览各用一个菜单根节点，避免同时注册的锚点覆盖右键坐标。 -->
+  <Teleport to="body">
+    <ContextMenu v-if="previewVisible" v-model:open="previewMenuOpen">
+      <ContextMenuTrigger as-child :disabled="!entry">
         <div
           ref="preview"
           data-slot="movie-preview"
@@ -127,9 +130,9 @@
           </RouterLink>
         </div>
       </ContextMenuTrigger>
-    </Teleport>
-    <HistoryMenuContent v-if="entry" :entry="entry" />
-  </ContextMenu>
+      <HistoryMenuContent v-if="entry" :entry="entry" />
+    </ContextMenu>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -153,6 +156,14 @@ const playbackTarget = window.ipc ? undefined : '_blank';
 
 // 只在悬停或键盘聚焦时挂载预览，避免为全部卡片创建浮层。
 const previewOpen = ref(false);
+
+// 菜单接管焦点后保留其触发浮层，直到菜单关闭。
+const previewMenuOpen = ref(false);
+
+// 悬停和菜单状态共同决定浮层是否仍需挂载。
+const previewVisible = computed(
+  () => previewOpen.value || previewMenuOpen.value,
+);
 
 // 卡片与浮层的真实节点用于判断指针是否仍在同一张影片卡片内。
 const card = ref<HTMLElement | null>(null);
@@ -233,7 +244,7 @@ const handlePreviewWheel = (event: WheelEvent) => {
 };
 
 // 仅展开的卡片注册全局监听，页面缓存时关闭其独立浮层。
-const previewWindow = computed(() => (previewOpen.value ? window : null));
+const previewWindow = computed(() => (previewVisible.value ? window : null));
 
 useEventListener(previewWindow, 'scroll', updatePreviewPosition, {
   capture: true,
@@ -242,11 +253,13 @@ useEventListener(previewWindow, 'resize', updatePreviewPosition);
 useEventListener(previewWindow, 'keydown', (event) => {
   if (event instanceof KeyboardEvent && event.key === 'Escape') {
     previewOpen.value = false;
+    previewMenuOpen.value = false;
   }
 });
 
 onDeactivated(() => {
   previewOpen.value = false;
+  previewMenuOpen.value = false;
 });
 
 // 根据影片所属源显示名称，不随当前选择的播放源变化。
