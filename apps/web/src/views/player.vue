@@ -74,7 +74,7 @@
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button type="button" @click="loadMovie">
+            <Button type="button" @click="loadMovie(true)">
               <RotateCw aria-hidden="true" />重新加载
             </Button>
           </EmptyContent>

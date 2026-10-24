@@ -385,6 +385,9 @@ const run = async () => {
       // 控制上游新增或缩减集数。
       let episodeCount = 3;
 
+      // 模拟播放源明确给出的连载或完结备注。
+      let remarks = '';
+
       // 模拟接口明确返回影片已下架。
       let missingMovie = false;
 
@@ -421,6 +424,7 @@ const run = async () => {
                 {
                   vod_id: 'movie',
                   vod_name: '已更新的影片',
+                  vod_remarks: remarks,
                   vod_play_url: Array.from(
                     { length: episodeCount },
                     (_, index) =>
@@ -433,7 +437,7 @@ const run = async () => {
       };
 
       await active.loadMovie();
-      assert(detailRequests === 1, '已有历史也必须查询最新详情');
+      assert(detailRequests === 1, '状态不明的历史影片仍应查询最新详情');
       assert(active.entry.value?.episodes.length === 3, '应显示新增的第 3 集');
       assert(active.entry.value?.name === '已更新的影片', '影片信息应同步更新');
       assert(active.entry.value?.episode === 1, '更新后应保留当前集');
@@ -522,8 +526,50 @@ const run = async () => {
         '空详情不得覆盖有效历史',
       );
 
-      episodeCount = 2;
+      episodeCount = 3;
+      remarks = '全3集';
       await active.loadMovie();
+
+      // 完结影片重新打开直接使用历史，不重复刷新集数或地址。
+      const requestsAfterCompletion = detailRequests;
+
+      // 缓存地址用于确认跳过刷新时仍使用原播放源。
+      const completedUrl = active.video.value.src;
+      await active.loadMovie();
+      assert(
+        detailRequests === requestsAfterCompletion &&
+          active.entry.value?.episodes.length === 3 &&
+          active.video.value.src === completedUrl,
+        '已完结且选集齐全的影片应复用本地详情',
+      );
+      assert(
+        active.entry.value?.progress['0'].currentTime === 44,
+        '复用完结影片不得丢失观看进度',
+      );
+
+      // 失败页的重新加载强制刷新，修复完结影片失效的播放地址。
+      episodeCount = 4;
+      remarks = '全4集';
+      await active.loadMovie(true);
+      assert(
+        detailRequests === requestsAfterCompletion + 1 &&
+          active.entry.value?.episodes.length === 4 &&
+          active.video.value.src !== completedUrl,
+        '强制重载必须刷新已完结影片及其播放地址',
+      );
+
+      // 播放源修正完结状态后，后续打开继续检查更新。
+      episodeCount = 2;
+      remarks = '更新至第2集';
+      await active.loadMovie(true);
+
+      // 连载状态恢复后，普通加载应重新发起详情请求。
+      const requestsBeforeOngoing = detailRequests;
+      await active.loadMovie();
+      assert(
+        detailRequests === requestsBeforeOngoing + 1,
+        '连载影片仍应正常检查最新集数',
+      );
       heldDetails = new Promise((resolve) => {
         releaseDetails = resolve;
       });

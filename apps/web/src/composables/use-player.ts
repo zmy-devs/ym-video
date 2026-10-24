@@ -8,7 +8,7 @@ import { getMovies } from '@/services/api';
 import { FilteredPlaylistLoader } from '@/services/hls';
 import { useHistoryStore } from '@/stores/history';
 import { useLibraryStore } from '@/stores/library';
-import { movieKey } from '@/lib/movie';
+import { isMovieComplete, movieKey } from '@/lib/movie';
 import { readLocal, writeLocal } from '@/lib/storage';
 import { errorToast, infoToast } from '@/utils/toast';
 
@@ -229,8 +229,8 @@ export const usePlayer = () => {
     }
   };
 
-  // 打开或重载时刷新影片详情，历史仅提供续播进度与请求失败时的备用信息。
-  const loadMovie = async () => {
+  // 已完结影片优先复用历史，手动重载仍刷新集数和播放地址。
+  const loadMovie = async (forceRefresh = false) => {
     episodeRequest++;
     controller?.abort();
     controller = new AbortController();
@@ -266,26 +266,28 @@ export const usePlayer = () => {
         (item) => item.id === movieKey(sourceId, vodId),
       );
 
-      // 优先使用最新集数和地址，请求失败时才沿用历史。
+      // 已完结影片不重复检查集数，其他影片与强制重载获取最新详情。
       let movie: Movie | undefined = old;
       try {
-        // 自定义源需使用当前浏览器保存的接口地址。
-        const source = library.customSources.find(
-          (item) => item.id === sourceId,
-        );
+        if (forceRefresh || !old || !isMovieComplete(old)) {
+          // 自定义源需使用当前浏览器保存的接口地址。
+          const source = library.customSources.find(
+            (item) => item.id === sourceId,
+          );
 
-        if (!source && sourceId.startsWith('custom:')) {
-          throw new Error('此浏览器未添加该播放源，请先添加对应接口');
+          if (!source && sourceId.startsWith('custom:')) {
+            throw new Error('此浏览器未添加该播放源，请先添加对应接口');
+          }
+
+          // 平台源只需 ID，自定义源携带已验证的直连接口地址。
+          const result = await getMovies(
+            source ?? { id: sourceId, name: '' },
+            { ids: vodId },
+            signal,
+          );
+
+          movie = result.movies.find((item) => item.vodId === vodId);
         }
-
-        // 平台源只需 ID，自定义源携带已验证的直连接口地址。
-        const result = await getMovies(
-          source ?? { id: sourceId, name: '' },
-          { ids: vodId },
-          signal,
-        );
-
-        movie = result.movies.find((item) => item.vodId === vodId);
       } catch (cause) {
         if (signal.aborted || disposed) {
           return;
@@ -574,9 +576,11 @@ export const usePlayer = () => {
   onBeforeRouteLeave(async () => {
     await save();
   });
-  watch([() => route.params.sourceId, () => route.params.vodId], loadMovie, {
-    immediate: true,
-  });
+  watch(
+    [() => route.params.sourceId, () => route.params.vodId],
+    () => loadMovie(),
+    { immediate: true },
+  );
   // 会话切换立即释放旧账号的影片，路由守卫完成前也不会继续播放。
   watch(
     () => history.ownerId,
