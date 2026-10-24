@@ -5,7 +5,7 @@
   >
     <header
       v-if="isDesktop"
-      class="desktop-title-bar desktop-title-bar-standalone fixed inset-x-0 top-0 z-40 flex items-center gap-2.5 border-b pl-[calc((var(--desktop-window-controls-height)-1.75rem)/2)] pr-36 bg-background text-foreground"
+      class="desktop-title-bar desktop-title-bar-standalone fixed inset-x-0 top-0 z-40 flex items-center gap-2.5 border-b pl-[calc((var(--desktop-window-controls-height)-1.75rem)/2)] pr-36 text-foreground"
     >
       <Tooltip>
         <TooltipTrigger as-child>
@@ -161,13 +161,13 @@
             @fullscreen="toggleFullscreen"
             @menu-open="menuOpen = $event"
           />
-          <div
-            v-if="fullscreen && !controlsVisible && playing"
-            class="h-0.5 bg-white/80"
-            :style="{ width: `${progressPercent}%` }"
-            aria-hidden="true"
-          />
         </div>
+        <div
+          v-if="fullscreen"
+          class="pointer-events-none h-[3px] absolute bottom-0 left-0 z-10 bg-white"
+          :style="{ width: `${progressPercent}%` }"
+          aria-hidden="true"
+        />
         <PlayerEpisodesSheet
           v-if="entry && entry.episodes.length > 1"
           v-model:open="episodesOpen"
@@ -269,7 +269,7 @@ const episodesOpen = ref(false);
 // 使用方向键调音量时短暂显示音量提示。
 const volumeVisible = ref(false);
 
-// 全屏收起后的底部播放进度。
+// 全屏时始终在画面底边显示已播放比例，不随控制栏收起。
 const progressPercent = computed(() =>
   duration.value
     ? Math.min(100, Math.max(0, (currentTime.value / duration.value) * 100))
