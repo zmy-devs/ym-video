@@ -11,7 +11,7 @@
       >
         <RouterLink
           :to="playerPath(movie)"
-          :target="playbackTarget"
+          target="_blank"
           rel="noopener"
           class="block rounded-lg"
           :aria-label="`播放 ${movie.name}`"
@@ -80,7 +80,7 @@
         >
           <RouterLink
             :to="playerPath(movie)"
-            :target="playbackTarget"
+            target="_blank"
             rel="noopener"
             :aria-label="`播放 ${movie.name}`"
             :tabindex="-1"
@@ -150,9 +150,6 @@ import { useLibraryStore } from '@/stores/library';
 
 // 影片卡片保留桌面端海报与进度。
 const props = defineProps<{ movie: Movie; entry?: HistoryEntry }>();
-
-// 桌面使用 Vue 路由保留页面缓存，浏览器仍在新标签页播放。
-const playbackTarget = window.ipc ? undefined : '_blank';
 
 // 只在悬停或键盘聚焦时挂载预览，避免为全部卡片创建浮层。
 const previewOpen = ref(false);

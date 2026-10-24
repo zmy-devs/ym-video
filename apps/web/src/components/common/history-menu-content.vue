@@ -3,7 +3,7 @@
     <ContextMenuItem as-child>
       <RouterLink
         :to="playerPath(entry)"
-        :target="playbackTarget"
+        target="_blank"
         rel="noopener"
       >
         <Play class="text-current" />继续播放
@@ -12,7 +12,7 @@
     <ContextMenuItem as-child>
       <RouterLink
         :to="{ path: playerPath(entry), query: { restart: '1' } }"
-        :target="playbackTarget"
+        target="_blank"
         rel="noopener"
       >
         <RotateCcw class="text-current" />本集从头播放
@@ -42,9 +42,6 @@ import type { HistoryEntry } from '@/types';
 
 // 卡片与侧栏共用同一份历史操作。
 defineProps<{ entry: HistoryEntry }>();
-
-// 桌面继续播放与从头播放都使用站内路由，避免整页重载。
-const playbackTarget = window.ipc ? undefined : '_blank';
 
 // 删除后两处历史列表同步更新。
 const history = useHistoryStore();

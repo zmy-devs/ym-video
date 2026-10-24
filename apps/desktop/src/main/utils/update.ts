@@ -11,9 +11,11 @@ if (is.dev) {
   autoUpdater.forceDevUpdateConfig = true;
 }
 
-// 将更新状态通知到应用窗口。
-const sendToMainWindow = (channel: string, ...args: unknown[]) => {
-  BrowserWindow.getAllWindows()[0]?.webContents.send(channel, ...args);
+// 主窗口与播放窗口共享同一更新任务，均需收到状态变化。
+const sendToWindows = (channel: string, ...args: unknown[]) => {
+  for (const window of BrowserWindow.getAllWindows()) {
+    window.webContents.send(channel, ...args);
+  }
 };
 
 autoUpdater.on('update-available', () => {
@@ -21,13 +23,13 @@ autoUpdater.on('update-available', () => {
 });
 
 autoUpdater.on('download-progress', (info) => {
-  sendToMainWindow('update-progress', info.percent);
+  sendToWindows('update-progress', info.percent);
 });
 
 autoUpdater.on('update-downloaded', () => {
-  sendToMainWindow('update-downloaded');
+  sendToWindows('update-downloaded');
 });
 
 autoUpdater.on('error', () => {
-  sendToMainWindow('update-error');
+  sendToWindows('update-error');
 });
