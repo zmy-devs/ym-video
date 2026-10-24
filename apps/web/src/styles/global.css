@@ -14,6 +14,7 @@
 
 .desktop-title-bar {
   height: var(--desktop-window-controls-height);
+  background-color: var(--sidebar);
   -webkit-app-region: drag;
 }
 
