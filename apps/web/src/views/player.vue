@@ -107,25 +107,15 @@
           </svg>
         </button>
 
-        <div
-          v-if="volumeVisible"
-          role="status"
-          class="pointer-events-none w-60 h-10 absolute top-4 overflow-hidden rounded-xl bg-white/40 shadow-md"
-          :aria-label="`音量 ${Math.round(volume * 100)}%`"
-        >
-          <div class="h-full bg-white" :style="{ width: `${volume * 100}%` }" />
-          <Volume2
-            v-if="volume"
-            class="size-5 absolute top-2.5 left-3 text-black"
-          />
-          <VolumeX v-else class="size-5 absolute top-2.5 left-3 text-black" />
-        </div>
         <p
-          v-else-if="holdingRate"
+          v-if="volumeVisible || holdingRate"
           role="status"
           class="pointer-events-none absolute top-4 rounded-xl bg-popover px-4 py-2 text-sm text-popover-foreground"
         >
-          {{ rate }} 倍速播放中…
+          <template v-if="volumeVisible"
+            >音量：{{ Math.round(volume * 100) }}%</template
+          >
+          <template v-else>{{ rate }} 倍速播放中…</template>
         </p>
 
         <div
@@ -138,7 +128,7 @@
           @focusout="handleScheduleHide"
         >
           <PlayerControls
-            v-show="!fullscreen || controlsVisible || !playing"
+            v-show="showControls"
             :name="entry?.name ?? ''"
             :episode-label="episode?.label ?? ''"
             :has-episodes="!!entry && entry.episodes.length > 1"
@@ -163,7 +153,7 @@
           />
         </div>
         <div
-          v-if="fullscreen"
+          v-if="!showControls"
           class="pointer-events-none h-[3px] absolute bottom-0 left-0 z-10 bg-white"
           :style="{ width: `${progressPercent}%` }"
           aria-hidden="true"
@@ -187,8 +177,6 @@ import { RouterLink } from 'vue-router';
 import { useEventListener, useTitle } from '@vueuse/core';
 import {
   ArrowLeft,
-  Volume2,
-  VolumeX,
   LoaderCircle,
   CircleAlert,
   RotateCw,
@@ -269,7 +257,12 @@ const episodesOpen = ref(false);
 // 使用方向键调音量时短暂显示音量提示。
 const volumeVisible = ref(false);
 
-// 全屏时始终在画面底边显示已播放比例，不随控制栏收起。
+// 控制栏与底部细进度互斥，暂停和非全屏状态始终显示完整控件。
+const showControls = computed(
+  () => !fullscreen.value || controlsVisible.value || !playing.value,
+);
+
+// 完整控件收起后在画面底边显示已播放比例。
 const progressPercent = computed(() =>
   duration.value
     ? Math.min(100, Math.max(0, (currentTime.value / duration.value) * 100))
@@ -388,6 +381,16 @@ onScopeDispose(() => {
 .player-surface:fullscreen {
   width: 100%;
   height: 100%;
+}
+
+/* 普通桌面窗口的选集与遮罩避开系统按钮，全屏时铺满画面。 */
+.player-surface:not(:fullscreen) :deep([data-slot='sheet-content']) {
+  top: var(--desktop-title-bar-height);
+  height: calc(100% - var(--desktop-title-bar-height));
+}
+
+.player-surface:not(:fullscreen) :deep([data-slot='sheet-overlay']) {
+  top: var(--desktop-title-bar-height);
 }
 
 .player-page {

@@ -67,6 +67,16 @@ const history = useHistoryStore();
 // 当前业务页面用于登录后的站内回跳。
 const route = useRoute();
 
+// 播放器整窗固定暗色，包含原生标题栏按钮、弹层和提示消息。
+watch(
+  () => route.name,
+  (name) => theme.setPlayerMode(name === 'player'),
+  {
+    immediate: true,
+  },
+);
+onUnmounted(() => theme.setPlayerMode(false));
+
 // 会话失效时替换当前页面，避免继续停留在业务界面。
 const router = useRouter();
 

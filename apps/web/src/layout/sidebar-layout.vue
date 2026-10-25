@@ -36,7 +36,7 @@
       <div
         v-if="isDesktop"
         aria-hidden="true"
-        class="desktop-title-bar shrink-0 pr-36"
+        class="desktop-title-bar shrink-0 border-b pr-36"
       />
       <div class="min-h-0 flex-1">
         <slot />
