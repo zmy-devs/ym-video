@@ -1,20 +1,12 @@
 <template>
   <ContextMenuContent class="w-56">
     <ContextMenuItem as-child>
-      <RouterLink
-        :to="playerPath(entry)"
-        target="_blank"
-        rel="noopener"
-      >
+      <RouterLink :to="playerPath(entry)">
         <Play class="text-current" />继续播放
       </RouterLink>
     </ContextMenuItem>
     <ContextMenuItem as-child>
-      <RouterLink
-        :to="{ path: playerPath(entry), query: { restart: '1' } }"
-        target="_blank"
-        rel="noopener"
-      >
+      <RouterLink :to="{ path: playerPath(entry), query: { restart: '1' } }">
         <RotateCcw class="text-current" />本集从头播放
       </RouterLink>
     </ContextMenuItem>

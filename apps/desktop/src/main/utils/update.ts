@@ -11,7 +11,7 @@ if (is.dev) {
   autoUpdater.forceDevUpdateConfig = true;
 }
 
-// 主窗口与播放窗口共享同一更新任务，均需收到状态变化。
+// 将更新任务的状态变化发送给当前应用窗口。
 const sendToWindows = (channel: string, ...args: unknown[]) => {
   for (const window of BrowserWindow.getAllWindows()) {
     window.webContents.send(channel, ...args);

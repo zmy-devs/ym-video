@@ -324,25 +324,13 @@ const run = async () => {
     accountUnavailable = true;
 
     for (let turn = 0; turn < 2; turn += 1) {
-      // 真实桌面壳接管新窗口链接，主窗口不能被 RouterLink 切换为播放器。
+      // 点击真实卡片进入当前窗口，覆盖入口行为与登录会话复用。
       const link = fixture.querySelector<HTMLAnchorElement>(
         'a[aria-label="播放 缓存影片1"]',
       );
 
-      assert(link?.target === '_blank', '播放入口必须交给独立窗口处理');
-      link?.addEventListener('click', (event) => event.preventDefault(), {
-        once: true,
-      });
+      assert(link && !link.target, '播放入口应使用当前窗口内的路由');
       link?.click();
-      assert(page.isConnected, '打开播放窗口不得替换主窗口列表');
-      assert(viewport.scrollTop === 350, '打开播放窗口不得改变主窗口滚动位置');
-      assert(
-        listRequests === initialRequests,
-        '打开播放窗口不得刷新主窗口列表',
-      );
-
-      // 直接站内导航仍保留原有返回缓存，覆盖深层地址与旧版桌面壳。
-      await router.push('/player/cache-test/1');
 
       await until(() => Boolean(fixture.querySelector('.player-surface')));
       await until(() => Boolean(fixture.textContent?.includes('影片不存在')));
@@ -352,6 +340,7 @@ const run = async () => {
       );
       assert(pendingHistory.length > 0, '必须在历史接口仍挂起时完成影片加载');
       assert(!page.isConnected, '进入播放器应暂存首页节点');
+      assert(listRequests === initialRequests, '打开影片不能重新请求首页列表');
       assert(
         !document.querySelector('[data-slot="movie-preview"]'),
         '缓存首页时必须关闭独立浮层',
