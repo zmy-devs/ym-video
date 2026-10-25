@@ -1,7 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import AppLayout from '@/layout/index.vue';
-import { authClient, getCachedUser } from '@/services/auth';
+import { authClient, getCachedUser, verifySession } from '@/services/auth';
 import { getLoginReturnPath } from '@/lib/auth';
+import { errorToast } from '@/utils/toast';
 
 // Web 路由可直接刷新，静态托管负责 SPA 回退。
 export const router = createRouter({
@@ -75,8 +76,17 @@ export const router = createRouter({
   ],
 });
 
+// 新导航会取消上一轮会话验证及重试等待。
+let sessionController: AbortController | undefined;
+
 // 首次进入时确认会话，后续导航复用账号状态，避免播放等待重复验证。
 router.beforeEach(async (to, from) => {
+  sessionController?.abort();
+  sessionController = new AbortController();
+
+  // 当前导航的取消信号，旧校验不能弹出迟到的失败提示。
+  const signal = sessionController.signal;
+
   // 登录回退已经检查过会话，不再次等待不可用的服务。
   if (to.meta.public || (to.name === 'login' && to.redirectedFrom)) {
     return true;
@@ -90,14 +100,12 @@ router.beforeEach(async (to, from) => {
     let user = getCachedUser();
 
     if (!user) {
-      // 首次请求最多等待 3 秒，取消后保留可操作的登录入口。
-      const result = await authClient.getSession({
-        fetchOptions: { signal: AbortSignal.timeout(3000) },
-      });
+      // 每次最多等待三秒，五次都失败后保留可操作的登录入口。
+      const result = await verifySession(signal);
 
-      if (result.data) {
-        authClient.hydrateSession(result.data);
-        user = result.data.user;
+      if (result) {
+        authClient.hydrateSession(result);
+        user = result.user;
       }
     }
 
@@ -113,6 +121,13 @@ router.beforeEach(async (to, from) => {
         : true;
     }
   } catch {
+    if (signal.aborted) {
+      return false;
+    }
+
+    errorToast('登录状态验证失败，请刷新后重试', {
+      id: 'session-check-error',
+    });
     // 服务不可用时保留登录入口，由表单提供重试反馈。
     return to.name === 'login'
       ? true
