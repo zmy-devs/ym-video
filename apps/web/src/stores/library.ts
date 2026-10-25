@@ -1,9 +1,11 @@
-import { computed, ref } from 'vue';
+import { computed, onScopeDispose, ref } from 'vue';
 import { defineStore } from 'pinia';
 import type { Category, CustomSource, Source } from '@/types';
 import { getCategories, getSources } from '@/services/api';
 import { readLocal, writeLocal } from '@/lib/storage';
 import { isCustomSourceList, normalizeSourceUrl } from '@/lib/source';
+import { retryRequest } from '@/lib/request-retry';
+import { errorToast } from '@/utils/toast';
 
 // 统一管理平台源、本机自定义源与当前分类。
 export const useLibraryStore = defineStore('library', () => {
@@ -71,9 +73,16 @@ export const useLibraryStore = defineStore('library', () => {
       return;
     }
     categoryLoading.value = true;
+
+    // 重试期间固定当前源，切源后旧任务不能继续请求新接口。
+    const currentSource = source.value;
+
     try {
       // 本次异步操作返回结果。
-      const result = await getCategories(source.value, signal);
+      const result = await retryRequest(
+        () => getCategories(currentSource, signal),
+        signal,
+      );
       if (!signal.aborted) {
         categories.value = result;
       }
@@ -81,6 +90,7 @@ export const useLibraryStore = defineStore('library', () => {
       if (!signal.aborted) {
         categoryError.value =
           cause instanceof Error ? cause.message : '分类加载失败';
+        errorToast('分类加载失败，请刷新后重试', { id: 'category-load-error' });
       }
     } finally {
       if (!signal.aborted) {
@@ -244,6 +254,9 @@ export const useLibraryStore = defineStore('library', () => {
 
     error.value = sources.value.length ? '' : '暂无可用播放源，请添加播放源';
   };
+
+  // 销毁数据层时停止请求与重试等待。
+  onScopeDispose(() => controller?.abort());
 
   return {
     selected,

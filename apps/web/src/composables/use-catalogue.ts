@@ -1,6 +1,8 @@
 import { onScopeDispose, ref, watch, type WatchSource } from 'vue';
 import type { Movie, Source } from '@/types';
 import { getMovies } from '@/services/api';
+import { retryRequest } from '@/lib/request-retry';
+import { errorToast } from '@/utils/toast';
 
 // 首页、分类与搜索共用分页和请求取消行为。
 export const useCatalogue = (
@@ -68,9 +70,13 @@ export const useCatalogue = (
     error.value = '';
     try {
       // 本次异步操作返回结果。
-      const result = await getMovies(
-        query.source,
-        { t: query.category, wd: query.keyword, pg: targetPage },
+      const result = await retryRequest(
+        () =>
+          getMovies(
+            query.source,
+            { t: query.category, wd: query.keyword, pg: targetPage },
+            signal,
+          ),
         signal,
       );
       if (signal.aborted) {
@@ -89,6 +95,9 @@ export const useCatalogue = (
       if (!signal.aborted) {
         error.value =
           cause instanceof Error ? cause.message : '加载失败，请重试';
+        errorToast('影片加载失败，请刷新后重试', {
+          id: 'catalogue-load-error',
+        });
       }
     } finally {
       if (!signal.aborted) {

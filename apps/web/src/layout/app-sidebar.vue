@@ -79,20 +79,15 @@
       </button>
     </SidebarGroupLabel>
     <div id="category-menu" v-show="categoriesOpen">
-      <SidebarMenu v-if="library.loading || library.categoryLoading">
+      <SidebarMenu
+        v-if="
+          library.loading || library.categoryLoading || library.categoryError
+        "
+      >
         <SidebarMenuItem v-for="i in 4" :key="i">
           <SidebarMenuSkeleton show-icon />
         </SidebarMenuItem>
       </SidebarMenu>
-      <p
-        v-else-if="library.categoryError"
-        class="px-2 text-xs text-muted-foreground"
-      >
-        {{ library.categoryError
-        }}<Button size="sm" variant="link" @click="library.loadCategories"
-          >重试</Button
-        >
-      </p>
       <SidebarMenu v-else
         ><SidebarMenuItem v-for="item in library.parents" :key="item.id"
           ><CommonTooltip :label="open ? '' : item.name">
@@ -123,7 +118,6 @@ import {
   SidebarMenuSkeleton,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 import CommonTooltip from '@/components/common/tooltip.vue';
 import HistoryMenuContent from '@/components/common/history-menu-content.vue';

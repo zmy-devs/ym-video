@@ -62,7 +62,11 @@
         <div :key="selection.selectedId">
           <MovieGridSkeleton
             v-if="
-              (library.loading || library.categoryLoading || loading) &&
+              (library.loading ||
+                library.categoryLoading ||
+                library.categoryError ||
+                loading ||
+                error) &&
               !movies.length
             "
           />
@@ -76,16 +80,7 @@
           <div v-else class="movie-grid">
             <MovieCard v-for="movie in movies" :key="movie.id" :movie="movie" />
           </div>
-          <div
-            v-if="error"
-            role="alert"
-            class="my-10 flex flex-col items-center gap-3"
-          >
-            <p class="text-sm text-muted-foreground">{{ error }}</p>
-            <Button variant="outline" @click="load(page === 0)"
-              >重新加载</Button
-            >
-          </div>
+          <MovieGridSkeleton v-if="error && movies.length" class="mt-10" />
           <div
             v-else-if="movies.length"
             ref="loadMoreTarget"
