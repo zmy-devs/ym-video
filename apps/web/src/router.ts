@@ -125,10 +125,19 @@ router.beforeEach(async (to, from) => {
       return false;
     }
 
-    errorToast('登录状态验证失败，请刷新后重试', {
+    // 重走原目标的路由守卫，登录页本身也允许强制重试。
+    const handleRetry = () =>
+      router
+        .replace({ path: to.path, query: to.query, hash: to.hash, force: true })
+        .catch(() => {
+          errorToast('无法重新验证登录状态，请重试');
+        });
+
+    errorToast('登录状态验证失败，请重试', {
       id: 'session-check-error',
+      action: { label: '重试', onClick: handleRetry },
     });
-    // 服务不可用时保留登录入口，由表单提供重试反馈。
+    // 服务不可用时保留登录入口，提示按钮可重新验证原目标。
     return to.name === 'login'
       ? true
       : { name: 'login', query: { redirect: to.fullPath }, replace: true };

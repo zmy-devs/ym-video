@@ -4,6 +4,11 @@
       v-if="isDesktop && !route.meta.sidebar && route.name !== 'player'"
       aria-hidden="true"
       class="desktop-title-bar desktop-title-bar-standalone fixed inset-x-0 top-0 z-40 pr-36"
+      :class="
+        !route.matched.length || route.name === 'login'
+          ? 'bg-transparent!'
+          : 'border-b'
+      "
     />
     <div
       v-if="!route.matched.length"

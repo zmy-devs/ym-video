@@ -1,5 +1,6 @@
-import { createApp } from 'vue';
+import { createApp, nextTick } from 'vue';
 import { createPinia } from 'pinia';
+import { emptyHistory } from '@ym-video/history';
 import '../../src/styles/global.css';
 
 // 通过实际请求取消与路由结果，回归首屏服务无响应的场景。
@@ -7,6 +8,18 @@ const run = async () => {
   // 测试结束后恢复页面地址和网络实现。
   const originalUrl = window.location.href;
   const originalFetch = window.fetch;
+  // 模拟桌面环境，验证首次会话等待期间的标题栏。
+  const originalIpc = Object.getOwnPropertyDescriptor(window, 'ipc');
+
+  Object.defineProperty(window, 'ipc', {
+    configurable: true,
+    value: {
+      getVersion: async () => '6.1.4',
+      checkForUpdates: async () => false,
+      installUpdate: async () => undefined,
+      on: () => () => undefined,
+    } satisfies NonNullable<Window['ipc']>,
+  });
 
   // 首轮模拟无响应，后续分别验证匿名用户与两种账号权限。
   let mode:
@@ -32,6 +45,25 @@ const run = async () => {
 
     if (!url.pathname.startsWith('/api/')) {
       return originalFetch(input, options);
+    }
+
+    // 重试成功会挂载真实主布局，业务接口需返回对应契约的数据。
+    if (!url.pathname.startsWith('/api/auth/')) {
+      if (url.pathname.startsWith('/api/v1/history')) {
+        return Response.json(emptyHistory('navigation-test'));
+      }
+
+      if (url.pathname === '/api/v1/proxy/sources') {
+        return Response.json({
+          sources: [{ id: 'navigation-test', name: '会话测试源' }],
+        });
+      }
+
+      return Response.json({
+        class: [{ type_id: 1, type_name: '测试分类' }],
+        list: [],
+        pagecount: 1,
+      });
     }
 
     if (url.pathname === '/api/auth/get-session') {
@@ -70,6 +102,8 @@ const run = async () => {
     return Response.json({
       user: {
         id: 'navigation-test',
+        name: '会话测试',
+        email: 'navigation@example.com',
         role: mode === 'recovery' ? 'user' : mode,
       },
       session: { id: 'session-test' },
@@ -100,11 +134,20 @@ const run = async () => {
           !fixture.textContent?.trim(),
         '等待首次会话时只显示 Spinner，不显示文字',
       );
+      // 加载态标题栏透明且无分隔线，保留原生按钮和拖动区域。
+      const titleBar = fixture.querySelector('.desktop-title-bar');
+
+      assert(
+        titleBar &&
+          getComputedStyle(titleBar).borderBottomWidth === '0px' &&
+          getComputedStyle(titleBar).backgroundColor === 'rgba(0, 0, 0, 0)',
+        '桌面加载态标题栏应无背景色和底边框',
+      );
       await until(() => router.currentRoute.value.name === 'login');
       assert(abortedRequests >= 5, '五次校验超时都必须取消真实会话请求');
       assert(
-        document.body.textContent?.includes('登录状态验证失败，请刷新后重试'),
-        '五次失败后应显示刷新重试 toast',
+        document.body.textContent?.includes('登录状态验证失败，请重试'),
+        '五次失败后应显示重试 toast',
       );
       assert(
         router.currentRoute.value.query.redirect ===
@@ -115,9 +158,77 @@ const run = async () => {
         fixture.textContent?.includes('欢迎回来'),
         '服务无响应时应显示登录表单',
       );
-      report(
-        '首屏只显示 Spinner，五次校验超时后显示 toast 和登录表单，保留回跳地址',
+      assert(
+        titleBar &&
+          getComputedStyle(titleBar).borderBottomWidth === '0px' &&
+          getComputedStyle(titleBar).backgroundColor === 'rgba(0, 0, 0, 0)',
+        '桌面登录页标题栏应无背景色和底边框',
       );
+      // 透明标题栏露出的底层颜色与登录页主体保持一致。
+      const loginPage = fixture.querySelector('.login-page');
+
+      assert(
+        loginPage &&
+          getComputedStyle(document.body).backgroundColor ===
+            getComputedStyle(loginPage).backgroundColor,
+        '透明标题栏与登录页背景应同色',
+      );
+      report(
+        '加载和登录页标题栏均无背景色及底边框，五次超时后保留登录入口与回跳地址',
+      );
+
+      // 点击实际提示按钮，恢复会话后直接回到原业务地址。
+      const retry = Array.from(
+        document.querySelectorAll<HTMLButtonElement>(
+          '[data-sonner-toast] button',
+        ),
+      ).find((button) => button.textContent === '重试');
+
+      assert(retry, '会话失败 toast 必须提供重试按钮');
+      mode = 'user';
+      retry?.click();
+      await until(
+        () =>
+          router.currentRoute.value.fullPath ===
+          '/history?test=session-timeout',
+      );
+      await nextTick();
+      report('点击 Toast 重试后重新验证会话，并恢复原业务地址');
+
+      // 从登录页自身重试也必须执行守卫，不能被同地址导航去重。
+      mode = 'anonymous';
+      await authClient.$store.atoms.session.get().refetch();
+      await until(() => router.currentRoute.value.name === 'login');
+      await nextTick();
+      mode = 'unavailable';
+      await router.replace('/login');
+      // 新提示的按钮应能强制重进当前登录路由。
+      const loginRetry = Array.from(
+        document.querySelectorAll<HTMLButtonElement>(
+          '[data-sonner-toast] button',
+        ),
+      ).find((button) => button.textContent === '重试');
+
+      assert(loginRetry, '登录页会话失败也必须提供重试按钮');
+      mode = 'anonymous';
+      // 使用请求计数判断按钮确实触发校验。
+      const beforeLoginRetry = sessionRequests;
+      // 同地址强制导航完成后才卸载根组件，避免打断尚未结束的渲染。
+      let loginRetryComplete = false;
+      // 完成钩子覆盖原地导航，不能只靠路径相同判断成功。
+      const stopLoginNavigation = router.afterEach(() => {
+        loginRetryComplete = true;
+      });
+      loginRetry?.click();
+      await until(() => sessionRequests > beforeLoginRetry);
+      await until(() => loginRetryComplete);
+      stopLoginNavigation();
+      await nextTick();
+      assert(
+        router.currentRoute.value.name === 'login',
+        '匿名重试后仍保留登录表单',
+      );
+      report('登录页点击重试确实请求会话，匿名结果保留登录入口');
     } finally {
       app.unmount();
       pendingRequests.forEach((resolve) => resolve(Response.json(null)));
@@ -221,6 +332,12 @@ const run = async () => {
   } finally {
     window.fetch = originalFetch;
     window.history.replaceState(null, '', originalUrl);
+
+    if (originalIpc) {
+      Object.defineProperty(window, 'ipc', originalIpc);
+    } else {
+      Reflect.deleteProperty(window, 'ipc');
+    }
   }
 };
 
@@ -230,7 +347,9 @@ const until = async (ready: () => boolean) => {
 
   while (!ready()) {
     if (Date.now() > deadline) {
-      throw new Error('会话超时后未及时显示登录页');
+      throw new Error(
+        `等待会话回归超时，当前地址：${location.pathname}${location.search}`,
+      );
     }
 
     await new Promise((resolve) => setTimeout(resolve, 10));
@@ -262,14 +381,14 @@ document.querySelector('#run')?.addEventListener('click', (event) => {
       const status = document.querySelector('#status');
 
       if (status) {
-        status.textContent = '全部通过（9 个场景）';
+        status.textContent = `全部通过（${document.querySelectorAll('#results li').length} 个场景）`;
       }
     },
     (cause: unknown) => {
       const status = document.querySelector('#status');
 
       if (status) {
-        status.textContent = `失败：${cause instanceof Error ? cause.message : String(cause)}`;
+        status.textContent = `失败：${cause instanceof Error ? cause.stack || cause.message : String(cause)}`;
       }
     },
   );
