@@ -9,11 +9,19 @@ const run = async () => {
   const originalFetch = window.fetch;
 
   // 首轮模拟无响应，后续分别验证匿名用户与两种账号权限。
-  let mode: 'pending' | 'anonymous' | 'user' | 'admin' | 'forbidden' =
-    'pending';
+  let mode:
+    | 'pending'
+    | 'anonymous'
+    | 'user'
+    | 'admin'
+    | 'forbidden'
+    | 'unavailable'
+    | 'recovery' = 'pending';
   let abortedRequests = 0;
   // 统计守卫和后台监听的会话请求，检查业务导航是否新增验证。
   let sessionRequests = 0;
+  // 恢复场景前两次故障，第三次返回有效会话。
+  let recoveryRequests = 0;
   const pendingRequests: Array<(response: Response) => void> = [];
 
   window.fetch = async (input, options) => {
@@ -48,12 +56,22 @@ const run = async () => {
       return Response.json(null);
     }
 
+    if (
+      mode === 'unavailable' ||
+      (mode === 'recovery' && ++recoveryRequests < 3)
+    ) {
+      return Response.json({ message: '模拟服务故障' }, { status: 503 });
+    }
+
     if (mode === 'forbidden') {
       return Response.json({ message: '测试账号已停用' }, { status: 403 });
     }
 
     return Response.json({
-      user: { id: 'navigation-test', role: mode },
+      user: {
+        id: 'navigation-test',
+        role: mode === 'recovery' ? 'user' : mode,
+      },
       session: { id: 'session-test' },
     });
   };
@@ -63,7 +81,7 @@ const run = async () => {
 
   // 动态加载让 Better Auth 捕获模拟 fetch，所有请求均留在内存。
   const { router } = await import('../../src/router');
-  const { authClient } = await import('../../src/services/auth');
+  const { authClient, verifySession } = await import('../../src/services/auth');
   const { default: App } = await import('../../src/App.vue');
   const fixture = document.querySelector('#fixture');
 
@@ -83,7 +101,11 @@ const run = async () => {
         '等待首次会话时只显示 Spinner，不显示文字',
       );
       await until(() => router.currentRoute.value.name === 'login');
-      assert(abortedRequests >= 1, '超时必须取消真实会话请求');
+      assert(abortedRequests >= 5, '五次校验超时都必须取消真实会话请求');
+      assert(
+        document.body.textContent?.includes('登录状态验证失败，请刷新后重试'),
+        '五次失败后应显示刷新重试 toast',
+      );
       assert(
         router.currentRoute.value.query.redirect ===
           '/history?test=session-timeout',
@@ -93,13 +115,63 @@ const run = async () => {
         fixture.textContent?.includes('欢迎回来'),
         '服务无响应时应显示登录表单',
       );
-      report('首屏只显示 Spinner，超时后取消请求并显示登录表单，保留回跳地址');
+      report(
+        '首屏只显示 Spinner，五次校验超时后显示 toast 和登录表单，保留回跳地址',
+      );
     } finally {
       app.unmount();
       pendingRequests.forEach((resolve) => resolve(Response.json(null)));
     }
 
+    mode = 'unavailable';
+    // 显式调用与路由共用的校验，精确核对请求上限。
+    const beforeFailures = sessionRequests;
+    let verificationFailed = false;
+    try {
+      await verifySession(new AbortController().signal);
+    } catch {
+      verificationFailed = true;
+    }
+    assert(
+      verificationFailed && sessionRequests - beforeFailures === 5,
+      '服务持续故障时总共只验证五次',
+    );
+    report('503 和客户端错误结果同样最多验证五次，不叠加额外重试');
+
+    mode = 'recovery';
+    // 短暂故障恢复后立即结束，避免继续发送剩余请求。
+    const beforeRecovery = sessionRequests;
+    const recovered = await verifySession(new AbortController().signal);
+    assert(
+      recovered?.user.role === 'user' && sessionRequests - beforeRecovery === 3,
+      '第三次恢复后应立即返回会话',
+    );
+    report('短暂故障后自动恢复会话，不用尽剩余重试');
+
+    mode = 'unavailable';
+    // 新导航取消旧校验时，等待中的重试也应取消。
+    const controller = new AbortController();
+    const beforeCancellation = sessionRequests;
+    const cancelled = verifySession(controller.signal).catch(() => null);
+    await until(() => sessionRequests > beforeCancellation);
+    controller.abort();
+    await cancelled;
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    assert(
+      sessionRequests === beforeCancellation + 1,
+      '取消校验后不能继续重试',
+    );
+    report('取消校验会停止旧请求和重试等待');
+
     mode = 'anonymous';
+    await authClient.$store.atoms.session.get().refetch();
+    // 匿名响应是有效校验结果，直接结束且无需重试。
+    const beforeAnonymous = sessionRequests;
+    const anonymous = await verifySession(new AbortController().signal);
+    assert(
+      !anonymous && sessionRequests === beforeAnonymous + 1,
+      '正常未登录不需要重复校验',
+    );
     await router.replace('/history');
     assert(router.currentRoute.value.name === 'login', '匿名用户须进入登录');
     report('匿名用户不能进入业务页面');
@@ -152,9 +224,9 @@ const run = async () => {
   }
 };
 
-// 等待异步路由完成，同时限制回退不得再次等待一轮会话。
+// 五次三秒超时及逐步延长的重试间隔后应完成回退。
 const until = async (ready: () => boolean) => {
-  const deadline = Date.now() + 4500;
+  const deadline = Date.now() + 30_000;
 
   while (!ready()) {
     if (Date.now() > deadline) {
@@ -190,7 +262,7 @@ document.querySelector('#run')?.addEventListener('click', (event) => {
       const status = document.querySelector('#status');
 
       if (status) {
-        status.textContent = '全部通过（6 个场景）';
+        status.textContent = '全部通过（9 个场景）';
       }
     },
     (cause: unknown) => {
