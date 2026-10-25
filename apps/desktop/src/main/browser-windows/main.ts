@@ -3,13 +3,10 @@ import { join } from 'node:path';
 import { is } from '@electron-toolkit/utils';
 import { webUrl } from '../utils/web';
 
-// 主窗口与播放器窗口分别管理，关闭后释放原生窗口引用。
+// 影片列表与播放器共用主窗口，关闭后释放原生窗口引用。
 let mainWindow: BrowserWindow | undefined;
 
-// 同时只保留一个播放窗口，切换影片时复用。
-let playerWindow: BrowserWindow | undefined;
-
-// 开发和生产窗口使用相同来源，共享登录态与本地观看历史。
+// 开发连接本地 Web，生产保留站点来源并加载内置页面。
 const pageUrl = is.dev
   ? new URL(process.env.ELECTRON_RENDERER_URL ?? 'http://localhost:3000')
   : webUrl;
@@ -24,7 +21,7 @@ const showWindow = (window: BrowserWindow) => {
   window.focus();
 };
 
-// 主窗口与播放窗口复用标题栏、预加载和浏览器隔离配置。
+// 创建带原生标题栏按钮、预加载和浏览器隔离配置的主窗口。
 const createWindow = (url: URL) => {
   // 桌面窗口保留原生标题栏按钮，页面使用 Web 应用。
   const window = new BrowserWindow({
@@ -55,17 +52,13 @@ const createWindow = (url: URL) => {
 
   window.loadURL(url.href).catch(console.error);
 
-  // 播放链接交给独立窗口，其他站内链接保留导航，外部链接交给浏览器。
+  // 站内新窗口请求回到当前窗口，外部链接交给浏览器。
   window.webContents.setWindowOpenHandler(({ url }) => {
     // Electron 提供已解析的链接，限制允许打开的来源与协议。
     const destination = new URL(url);
 
     if (destination.origin === pageUrl.origin) {
-      if (/^\/player\/[^/]+\/[^/]+\/?$/.test(destination.pathname)) {
-        openPlayerWindow(destination);
-      } else {
-        window.loadURL(url).catch(console.error);
-      }
+      window.loadURL(url).catch(console.error);
     } else if (['https:', 'mailto:'].includes(destination.protocol)) {
       shell.openExternal(url).catch(console.error);
     }
@@ -76,47 +69,7 @@ const createWindow = (url: URL) => {
   return window;
 };
 
-// 播放窗口返回主页时唤起原列表，并关闭播放器以释放媒体。
-const openPlayerWindow = (url: URL) => {
-  if (playerWindow && !playerWindow.isDestroyed()) {
-    if (
-      playerWindow.webContents.getURL() !== url.href ||
-      url.searchParams.get('restart') === '1'
-    ) {
-      playerWindow.loadURL(url.href).catch(console.error);
-    }
-
-    showWindow(playerWindow);
-    return;
-  }
-
-  // 播放窗口拥有同样的 IPC 与默认会话，不依赖主窗口的生命周期。
-  const window = createWindow(url);
-  playerWindow = window;
-
-  window.on('closed', () => {
-    playerWindow = undefined;
-  });
-
-  window.webContents.on(
-    'did-navigate-in-page',
-    (_event, address, isMainFrame) => {
-      // Vue 返回主页完成后再关闭，确保路由离开前的进度已保存。
-      const destination = new URL(address);
-
-      if (
-        isMainFrame &&
-        destination.origin === pageUrl.origin &&
-        destination.pathname === '/overview'
-      ) {
-        createMainWindow();
-        window.close();
-      }
-    },
-  );
-};
-
-// 再次启动或从播放器返回时复用主窗口，已关闭则重新创建。
+// 再次启动时复用主窗口，已关闭则重新创建。
 export const createMainWindow = () => {
   if (mainWindow && !mainWindow.isDestroyed()) {
     showWindow(mainWindow);

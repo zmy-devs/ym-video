@@ -11,8 +11,6 @@
       >
         <RouterLink
           :to="playerPath(movie)"
-          target="_blank"
-          rel="noopener"
           class="block rounded-lg"
           :aria-label="`播放 ${movie.name}`"
         >
@@ -80,8 +78,6 @@
         >
           <RouterLink
             :to="playerPath(movie)"
-            target="_blank"
-            rel="noopener"
             :aria-label="`播放 ${movie.name}`"
             :tabindex="-1"
             class="flex flex-1 flex-col outline-none"

@@ -44,12 +44,7 @@
                   as-child
                   class="group-data-[collapsible=icon]:p-1.5!"
                 >
-                  <RouterLink
-                    :to="playerPath(item)"
-                    target="_blank"
-                    rel="noopener"
-                    :aria-label="item.name"
-                  >
+                  <RouterLink :to="playerPath(item)" :aria-label="item.name">
                     <MovieAvatar :src="item.pic" />
                     <span>{{ item.name }}</span>
                   </RouterLink>

@@ -1,8 +1,9 @@
 const assert = require('node:assert/strict');
 const { mkdtempSync, readFileSync } = require('node:fs');
-const { createServer } = require('node:http');
+const { createRequire } = require('node:module');
 const { tmpdir } = require('node:os');
 const { join } = require('node:path');
+const { pathToFileURL } = require('node:url');
 const { runInNewContext } = require('node:vm');
 const electron = require('electron');
 const ts = require('typescript');
@@ -10,26 +11,28 @@ const ts = require('typescript');
 // 使用独立数据目录，真实窗口只访问本机测试页面。
 const { app, BrowserWindow } = electron;
 app.setPath('userData', mkdtempSync(join(tmpdir(), 'ym-video-window-test-')));
+// 清理窗口后仍需等待 Vite 关闭，再由测试结果决定退出码。
+app.on('window-all-closed', () => {});
 
-// 页面链接与正式卡片一致，使用 target 和 noopener 打开播放器。
-const server = createServer((_request, response) => {
-  response.setHeader('content-type', 'text/html; charset=utf-8');
-  response.setHeader(
-    'set-cookie',
-    'window-test=shared; HttpOnly; SameSite=Lax',
-  );
-  response.end(`<!doctype html><html><body>
-    <div id="list" style="height:200px;overflow:auto"><div style="height:2000px">影片列表</div></div>
-    <a id="play" href="/player/source/movie" target="_blank" rel="noopener">播放</a>
-    <a id="other" href="/player/source/other?restart=1" target="_blank" rel="noopener">重新播放</a>
-  </body></html>`);
-});
+// 沿用 Web 端现有浏览器回归页面，接口和 IPC 均由测试页在内存模拟。
+const webRoot = join(__dirname, '../../web');
 
-// 保留真实 Electron 创建、导航与关闭行为，测试窗口不显示在桌面上。
+// 从实际使用 Vite 的 Web 工作区解析依赖。
+const requireWeb = createRequire(join(webRoot, 'package.json'));
+
+// 保留真实窗口和路由行为，测试页自行注入 IPC，避免连接更新或远程服务。
 class HiddenWindow {
   constructor(options) {
-    // 返回原生 BrowserWindow，避免 Electron 的窗口枚举过滤子类。
-    const window = new BrowserWindow({ ...options, show: false });
+    // 测试页注入可替换桥接，不加载生产预加载脚本。
+    const window = new BrowserWindow({
+      ...options,
+      show: false,
+      webPreferences: {
+        ...options.webPreferences,
+        preload: undefined,
+        backgroundThrottling: false,
+      },
+    });
     window.show = () => {};
     window.focus = () => {};
 
@@ -37,159 +40,134 @@ class HiddenWindow {
   }
 }
 
-// 等待原生窗口事件或页面完成加载，超时给出明确错误。
+// 等待会话超时、重试和真实组件更新，失败直接停止。
 const until = async (check) => {
-  const deadline = Date.now() + 8_000;
+  // 会话回归包含五次真实超时和后续重试。
+  const deadline = Date.now() + 60_000;
 
-  while (!check()) {
+  while (!(await check())) {
     if (Date.now() > deadline) {
-      throw new Error('等待播放窗口超时');
+      throw new Error('等待播放与会话回归测试超时');
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await new Promise((resolve) => setTimeout(resolve, 50));
   }
 };
 
-// 运行真实主进程窗口模块，仅替换初始来源并隐藏测试窗口。
+// 运行真实主窗口及 Web 组件，检查播放全过程只保留一个窗口。
 const run = async () => {
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-
-  const origin = new URL(`http://127.0.0.1:${server.address().port}`);
-  const source = readFileSync(
-    join(__dirname, '../src/main/browser-windows/main.ts'),
-    'utf8',
+  // 直接启动现有 Vite 配置，无需额外常驻开发服务。
+  const { createServer } = await import(
+    pathToFileURL(requireWeb.resolve('vite')).href
   );
-  const compiled = ts.transpileModule(source, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS },
-  }).outputText;
-  const exports = {};
 
-  runInNewContext(compiled, {
-    exports,
-    __dirname: join(__dirname, '../out/main'),
-    URL,
-    console,
-    process,
-    require: (name) => {
-      if (name === 'electron') {
-        return { ...electron, BrowserWindow: HiddenWindow };
-      }
-
-      if (name === '@electron-toolkit/utils') {
-        return { is: { dev: false } };
-      }
-
-      if (name === '../utils/web') {
-        return { webUrl: origin };
-      }
-
-      return require(name);
+  // 使用临时端口，避免占用现有开发服务。
+  const server = await createServer({
+    root: webRoot,
+    server: {
+      host: '127.0.0.1',
+      port: 0,
+      strictPort: true,
+      hmr: false,
+      watch: null,
     },
   });
 
-  const main = exports.createMainWindow();
-  await until(() => !main.webContents.isLoadingMainFrame());
-  await main.webContents.executeJavaScript(
-    `
-    document.querySelector('#list').scrollTop = 120;
-    window.listState = 'preserved';
-    localStorage.setItem('window-test', 'shared');
-    document.querySelector('#play').click();
-  `,
-    true,
-  );
+  try {
+    await server.listen();
 
-  await until(() => BrowserWindow.getAllWindows().length === 2);
-  const player = BrowserWindow.getAllWindows().find(
-    (window) => window !== main,
-  );
-  await until(() => !player.webContents.isLoadingMainFrame());
+    // 测试页与桌面模块共享实际监听来源。
+    const address = server.httpServer.address();
 
-  assert.equal(
-    new URL(player.webContents.getURL()).pathname,
-    '/player/source/movie',
-  );
-  assert.equal(main.webContents.getURL(), origin.href);
-  assert.equal(
-    await main.webContents.executeJavaScript('window.listState'),
-    'preserved',
-  );
-  assert.equal(
-    await main.webContents.executeJavaScript(
-      "document.querySelector('#list').scrollTop",
-    ),
-    120,
-  );
-  assert.equal(player.webContents.session, main.webContents.session);
-  assert.equal(
-    await player.webContents.executeJavaScript(
-      "localStorage.getItem('window-test')",
-    ),
-    'shared',
-  );
-  assert.equal(
-    await player.webContents.executeJavaScript('typeof window.ipc'),
-    'object',
-  );
-  assert.equal(
-    (await player.webContents.session.cookies.get({ url: origin.href }))[0]
-      ?.value,
-    'shared',
-  );
-  console.log(
-    '通过：真实新窗口打开播放页，主列表及滚动位置保留，IPC、会话和存储共享',
-  );
+    // Electron 的同源判断使用本次本地服务。
+    const origin = new URL(`http://127.0.0.1:${address.port}`);
 
-  await player.webContents.executeJavaScript(
-    "window.playbackState = 'preserved'",
-  );
-  await main.webContents.executeJavaScript(
-    "document.querySelector('#play').click()",
-    true,
-  );
-  assert.equal(BrowserWindow.getAllWindows().length, 2);
-  assert.equal(
-    await player.webContents.executeJavaScript('window.playbackState'),
-    'preserved',
-  );
+    // 读取真实窗口实现，仅替换来源、显示和预加载边界。
+    const source = readFileSync(
+      join(__dirname, '../src/main/browser-windows/main.ts'),
+      'utf8',
+    );
 
-  await main.webContents.executeJavaScript(
-    "document.querySelector('#other').click()",
-    true,
-  );
-  await until(
-    () =>
-      new URL(player.webContents.getURL()).pathname ===
-        '/player/source/other' && !player.webContents.isLoadingMainFrame(),
-  );
-  assert.equal(BrowserWindow.getAllWindows().length, 2);
-  assert.equal(
-    new URL(player.webContents.getURL()).searchParams.get('restart'),
-    '1',
-  );
-  console.log('通过：重复点击不重载相同影片，切换影片和从头播放复用同一窗口');
+    // 将 TypeScript 窗口实现放进可替换 Electron 边界的上下文。
+    const compiled = ts.transpileModule(source, {
+      compilerOptions: { module: ts.ModuleKind.CommonJS },
+    }).outputText;
 
-  await player.webContents.executeJavaScript(
-    "setTimeout(() => history.pushState({}, '', '/overview'), 0)",
-  );
-  await until(() => player.isDestroyed());
-  assert.equal(BrowserWindow.getAllWindows().length, 1);
-  assert.equal(
-    await main.webContents.executeJavaScript('window.listState'),
-    'preserved',
-  );
-  console.log('通过：播放器返回主页时关闭，原主窗口及列表状态保留');
+    // 获取实际的主窗口创建入口。
+    const exports = {};
 
-  main.destroy();
-  server.closeAllConnections();
-  await new Promise((resolve) => server.close(resolve));
+    runInNewContext(compiled, {
+      exports,
+      __dirname: join(__dirname, '../out/main'),
+      URL,
+      console,
+      process,
+      require: (name) => {
+        if (name === 'electron') {
+          return { ...electron, BrowserWindow: HiddenWindow };
+        }
+
+        if (name === '@electron-toolkit/utils') {
+          return { is: { dev: false } };
+        }
+
+        if (name === '../utils/web') {
+          return {
+            webUrl: new URL('tests/browser/auth-navigation.html', origin),
+          };
+        }
+
+        return require(name);
+      },
+    });
+
+    // 两组真实组件测试复用同一个主窗口。
+    const window = exports.createMainWindow();
+    await until(() => !window.webContents.isLoadingMainFrame());
+
+    for (const page of ['auth-navigation', 'playback-cache']) {
+      if (page !== 'auth-navigation') {
+        await window.loadURL(
+          new URL(`tests/browser/${page}.html`, origin).href,
+        );
+      }
+      await window.webContents.executeJavaScript(
+        "document.querySelector('#run').click()",
+        true,
+      );
+      await until(() =>
+        window.webContents.executeJavaScript(
+          "/^(全部通过|失败)/.test(document.querySelector('#status')?.textContent ?? '')",
+        ),
+      );
+
+      // 读取页面报告，确保业务断言失败会让命令返回非零状态。
+      const status = await window.webContents.executeJavaScript(
+        "document.querySelector('#status')?.textContent",
+      );
+      assert.match(
+        status,
+        /^全部通过/,
+        await window.webContents.executeJavaScript(
+          "document.querySelector('#results')?.textContent || '尚未通过首个场景'",
+        ),
+      );
+      assert.equal(BrowserWindow.getAllWindows().length, 1);
+      console.log(`通过：${page} ${status}，全过程仅使用一个窗口`);
+    }
+
+    window.destroy();
+  } finally {
+    BrowserWindow.getAllWindows().forEach((window) => window.destroy());
+    await server.close();
+  }
 };
 
 // 原生加载失败时也必须退出，避免测试进程长期挂起。
 const timeout = setTimeout(() => {
-  console.error('播放窗口测试超时');
+  console.error('播放与会话回归测试超时');
   app.exit(1);
-}, 30_000);
+}, 120_000);
 
 app
   .whenReady()

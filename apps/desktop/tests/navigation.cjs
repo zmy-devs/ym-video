@@ -25,8 +25,6 @@ const createWindow = (currentUrl, dev = true) => {
   class BrowserWindow {
     internal = [];
     events = new Map();
-    contentEvents = new Map();
-    url = '';
     destroyed = false;
     minimized = false;
     shown = 0;
@@ -40,15 +38,12 @@ const createWindow = (currentUrl, dev = true) => {
 
     webContents = {
       openDevTools() {},
-      getURL: () => this.url,
       setWindowOpenHandler: (handler) => {
         this.handleOpen = handler;
       },
-      on: (name, handler) => this.contentEvents.set(name, handler),
     };
 
     loadURL(url) {
-      this.url = url;
       this.internal.push(url);
       return Promise.resolve();
     }
@@ -144,65 +139,43 @@ test('生产入口使用线上 HTTPS 来源加载内置页面', () => {
   ]);
 });
 
-test('播放页在独立窗口打开，保留主窗口并使用相同的预加载和隔离配置', () => {
+test('播放页留在当前窗口，站内新窗口请求不会创建播放器窗口', () => {
   for (const origin of ['http://localhost:5173', 'https://video.example']) {
     const window = createWindow(`${origin}/history`);
     const target = `${origin}/player/source/movie?restart=1`;
 
     assert.equal(window.open(target).action, 'deny');
-    assert.deepEqual(window.internal, []);
+    assert.deepEqual(window.internal, [target]);
     assert.deepEqual(window.external, []);
-    assert.equal(window.windows.length, 2);
-    const player = window.windows[1];
-    assert.deepEqual(player.internal, [target]);
-    assert.equal(player.options.webPreferences.contextIsolation, true);
-    assert.equal(player.options.webPreferences.nodeIntegration, false);
-    assert.equal(
-      player.options.webPreferences.preload,
-      window.main.options.webPreferences.preload,
-    );
+    assert.equal(window.windows.length, 1);
+    assert.equal(window.main.options.webPreferences.contextIsolation, true);
+    assert.equal(window.main.options.webPreferences.nodeIntegration, false);
   }
 });
 
-test('相同影片只唤起播放器，其他影片及从头播放复用同一窗口', () => {
+test('切换影片和从头播放始终使用当前窗口', () => {
   const window = createWindow('http://localhost:5173/');
   const target = 'http://localhost:5173/player/source/movie';
 
   window.open(target);
-  const player = window.windows[1];
-  player.minimized = true;
-  window.open(target);
-  assert.equal(player.restored, 1);
-  assert.equal(player.focused, 1);
-  assert.deepEqual(player.internal, [target]);
-  window.open(`${target}?restart=1`);
   window.open(`${target}?restart=1`);
   window.open('http://localhost:5173/player/source/other');
-  assert.equal(window.windows.length, 2);
-  assert.equal(player.internal.length, 4);
+  assert.equal(window.windows.length, 1);
+  assert.equal(window.internal.length, 3);
   assert.equal(
-    player.internal.at(-1),
+    window.internal.at(-1),
     'http://localhost:5173/player/source/other',
   );
 });
 
-test('播放器返回主页会关闭播放器并还原主窗口，关闭后可以重新打开', () => {
+test('播放页返回主页仍使用当前窗口', () => {
   const window = createWindow('http://localhost:5173/');
   window.open('http://localhost:5173/player/source/movie');
-  const player = window.windows[1];
-  window.main.minimized = true;
-
-  player.contentEvents.get('did-navigate-in-page')(
-    {},
-    'http://localhost:5173/overview',
-    true,
-  );
-  assert.equal(player.destroyed, true);
-  assert.equal(window.main.restored, 1);
-  assert.equal(window.main.focused, 1);
-  assert.deepEqual(window.internal, []);
-  window.open('http://localhost:5173/player/source/movie');
-  assert.equal(window.windows.length, 3);
+  window.open('http://localhost:5173/overview');
+  assert.equal(window.main.destroyed, false);
+  assert.equal(window.windows.length, 1);
+  assert.equal(window.createMain(), window.main);
+  assert.equal(window.internal.at(-1), 'http://localhost:5173/overview');
 });
 
 test('主窗口关闭后可以重建，已存在的主窗口只唤起不重复加载', () => {
