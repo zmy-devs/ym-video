@@ -1,6 +1,6 @@
 <template>
   <main
-    class="min-h-full flex items-center justify-center bg-muted p-4 dark:bg-background sm:p-8"
+    class="login-page min-h-full flex items-center justify-center bg-muted p-4 dark:bg-background sm:p-8"
   >
     <Card
       aria-labelledby="login-heading"

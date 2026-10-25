@@ -25,6 +25,10 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* 登录页底色延伸至透明标题栏所在的顶部留白。 */
+  body:has(.login-page) {
+    @apply bg-muted dark:bg-background;
+  }
   #app {
     height: 100dvh;
     padding-top: var(--desktop-title-bar-height);
