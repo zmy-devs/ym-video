@@ -99,8 +99,8 @@ const server = createServer(async (request, response) => {
 
 // 等待真实 Vue 首屏渲染，超时立即报告失败。
 const waitForLogin = async (window) => {
-  // 会话请求最多等待 3 秒，额外预留资源读取和渲染时间。
-  const deadline = Date.now() + 8_000;
+  // 五次会话请求最多等待十五秒，逐步重试共十秒，并预留页面渲染时间。
+  const deadline = Date.now() + 30_000;
 
   while (Date.now() < deadline) {
     if (
@@ -323,7 +323,7 @@ const run = async () => {
 const timeout = setTimeout(() => {
   console.error('桌面 Web 回归测试超时');
   app.exit(1);
-}, 30_000);
+}, 60_000);
 
 app
   .whenReady()
