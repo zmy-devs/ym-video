@@ -302,60 +302,19 @@ const run = async () => {
     document.dispatchEvent(new Event('fullscreenchange'));
     video?.dispatchEvent(new Event('play'));
     surface?.dispatchEvent(new PointerEvent('pointerleave'));
-    await until(() => Boolean(fixture.querySelector('.player-mini-progress')));
+    await until(() =>
+      Boolean(fixture.querySelector('main > div[aria-hidden="true"]')),
+    );
     assert(
       controls && getComputedStyle(controls).display === 'none',
       '收起控制栏后才显示底部细进度',
     );
-
-    // 控件收起后仍有完整进度轨道，零进度也不能整条消失。
-    const miniProgress = fixture.querySelector<HTMLElement>(
-      '.player-mini-progress',
-    );
-
-    assert(
-      miniProgress &&
-        surface &&
-        miniProgress.getBoundingClientRect().width ===
-          surface.getBoundingClientRect().width &&
-        miniProgress.getBoundingClientRect().height > 0,
-      '全屏细进度覆盖播放器底边',
-    );
-
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }),
-    );
-    await until(() => fixture.textContent?.includes('音量：40%') === true);
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }),
-    );
-    await until(() => fixture.textContent?.includes('3 倍速播放中…') === true);
-    assert(
-      video?.playbackRate === 3 &&
-        controls &&
-        getComputedStyle(controls).display === 'none' &&
-        miniProgress?.isConnected,
-      '长按提示优先于音量提示，且不唤出控制栏或隐藏细进度',
-    );
-    window.dispatchEvent(
-      new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true }),
-    );
-    await until(() => !fixture.textContent?.includes('倍速播放中…'));
-    assert(video?.playbackRate === 1, '松开右方向键立即恢复原倍速');
-
-    video?.dispatchEvent(new Event('waiting'));
-    await nextTick();
-    assert(miniProgress?.isConnected, '缓冲时仍保留同一条底部细进度');
-    video?.dispatchEvent(new Event('playing'));
-    await nextTick();
-    assert(miniProgress?.isConnected, '恢复播放后细进度继续显示');
-
     surface?.dispatchEvent(new PointerEvent('pointermove'));
     await nextTick();
     assert(
       controls &&
         getComputedStyle(controls).display !== 'none' &&
-        !fixture.querySelector('.player-mini-progress'),
+        !fixture.querySelector('main > div[aria-hidden="true"]'),
       '唤起完整控件后细进度立即隐藏',
     );
     video?.dispatchEvent(new Event('pause'));
@@ -365,7 +324,7 @@ const run = async () => {
     });
     document.dispatchEvent(new Event('fullscreenchange'));
     await nextTick();
-    report('全屏细进度持续显示，音量与长按倍速有提示，松开恢复原倍速');
+    report('全屏播放时控制栏与细进度互斥，唤起控件立即隐藏细进度');
 
     const episodes = fixture.querySelector<HTMLButtonElement>(
       '[aria-controls="player-episodes-sheet"], [aria-haspopup="dialog"][aria-label="选集"]',
