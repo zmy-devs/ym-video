@@ -464,6 +464,8 @@ export const usePlayer = () => {
         container.value?.requestFullscreen
       ) {
         await container.value.requestFullscreen();
+        // 进入全屏后把焦点交还画面，避免按钮吞掉方向键快捷操作。
+        container.value.focus({ preventScroll: true });
       } else {
         infoToast('当前浏览器不支持全屏');
       }
