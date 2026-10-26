@@ -36,7 +36,7 @@
     <div class="min-h-0 flex flex-1">
       <main
         ref="container"
-        class="player-surface min-w-0 relative isolate flex flex-1 flex-col items-center justify-center overflow-hidden bg-black text-white"
+        class="player-surface min-w-0 relative isolate flex flex-1 flex-col items-center justify-center overflow-hidden outline-none bg-black text-white"
         :class="{ 'cursor-none': fullscreen && !controlsVisible && playing }"
         tabindex="-1"
         aria-label="视频播放器"
