@@ -36,16 +36,15 @@
     <div class="min-h-0 flex flex-1">
       <main
         ref="container"
-        class="player-surface min-w-0 relative isolate flex flex-1 items-center justify-center overflow-hidden bg-black text-white"
+        class="player-surface min-w-0 relative flex flex-1 items-center justify-center overflow-hidden bg-black text-white"
         :class="{ 'cursor-none': fullscreen && !controlsVisible && playing }"
-        tabindex="-1"
         aria-label="视频播放器"
         @pointermove="handleShowControls"
         @pointerleave="handleScheduleHide"
       >
         <video
           ref="video"
-          class="size-full relative z-0 object-contain"
+          class="size-full object-contain"
           playsinline
           @click="togglePlay"
           @loadedmetadata="handleMetadata"
@@ -108,63 +107,57 @@
           </svg>
         </button>
 
-        <div
-          class="player-overlay pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
+        <p
+          v-if="volumeVisible || holdingRate"
+          role="status"
+          class="pointer-events-none absolute top-4 rounded-xl bg-popover px-4 py-2 text-sm text-popover-foreground"
         >
-          <p
-            v-if="volumeVisible || holdingRate"
-            role="status"
-            class="absolute top-4 z-20 rounded-xl bg-popover px-4 py-2 text-sm text-popover-foreground"
+          <template v-if="volumeVisible"
+            >音量：{{ Math.round(volume * 100) }}%</template
           >
-            <template v-if="holdingRate">{{ rate }} 倍速播放中…</template>
-            <template v-else>音量：{{ Math.round(volume * 100) }}%</template>
-          </p>
+          <template v-else>{{ rate }} 倍速播放中…</template>
+        </p>
 
-          <div
-            ref="controls"
-            class="pointer-events-auto w-full absolute bottom-0 left-0 z-10"
-            @pointerenter="handleKeepControls"
-            @pointerleave="handleScheduleHide"
-            @pointermove="handleKeepControls"
-            @focusin="handleKeepControls"
-            @focusout="handleScheduleHide"
-          >
-            <PlayerControls
-              v-show="showControls"
-              :name="entry?.name ?? ''"
-              :episode-label="episode?.label ?? ''"
-              :has-episodes="!!entry && entry.episodes.length > 1"
-              :episodes-open="episodesOpen"
-              :current-time="currentTime"
-              :duration="duration"
-              :rate="rate"
-              :volume="volume"
-              :fullscreen="fullscreen"
-              :container="container"
-              :has-previous="!!entry && entry.episode > 0"
-              :has-next="!!entry && entry.episode < entry.episodes.length - 1"
-              :pip-available="pipAvailable"
-              @seek="handleSeek"
-              @rate="setRate"
-              @volume="setVolume"
-              @previous="handlePrevious"
-              @next="handleNext"
-              @pip="togglePip"
-              @fullscreen="toggleFullscreen"
-              @menu-open="menuOpen = $event"
-            />
-          </div>
-          <div
-            v-if="!showControls"
-            class="player-mini-progress w-full h-[3px] absolute bottom-0 left-0 z-10 bg-[var(--player-control)]"
-            aria-hidden="true"
-          >
-            <div
-              class="h-full bg-white/80"
-              :style="{ width: `${progressPercent}%` }"
-            />
-          </div>
+        <div
+          ref="controls"
+          class="w-full absolute bottom-0 left-0 z-10"
+          @pointerenter="handleKeepControls"
+          @pointerleave="handleScheduleHide"
+          @pointermove="handleKeepControls"
+          @focusin="handleKeepControls"
+          @focusout="handleScheduleHide"
+        >
+          <PlayerControls
+            v-show="showControls"
+            :name="entry?.name ?? ''"
+            :episode-label="episode?.label ?? ''"
+            :has-episodes="!!entry && entry.episodes.length > 1"
+            :episodes-open="episodesOpen"
+            :current-time="currentTime"
+            :duration="duration"
+            :rate="rate"
+            :volume="volume"
+            :fullscreen="fullscreen"
+            :container="container"
+            :has-previous="!!entry && entry.episode > 0"
+            :has-next="!!entry && entry.episode < entry.episodes.length - 1"
+            :pip-available="pipAvailable"
+            @seek="handleSeek"
+            @rate="setRate"
+            @volume="setVolume"
+            @previous="handlePrevious"
+            @next="handleNext"
+            @pip="togglePip"
+            @fullscreen="toggleFullscreen"
+            @menu-open="menuOpen = $event"
+          />
         </div>
+        <div
+          v-if="!showControls"
+          class="pointer-events-none h-[3px] absolute bottom-0 left-0 z-10 bg-white"
+          :style="{ width: `${progressPercent}%` }"
+          aria-hidden="true"
+        />
         <PlayerEpisodesSheet
           v-if="entry && entry.episodes.length > 1"
           v-model:open="episodesOpen"
@@ -385,11 +378,6 @@ onScopeDispose(() => {
 </script>
 
 <style scoped>
-/* 独立合成提示和进度，避免全屏视频持续播放时跳过浮层重绘。 */
-.player-overlay {
-  transform: translateZ(0);
-}
-
 .player-surface:fullscreen {
   width: 100%;
   height: 100%;
