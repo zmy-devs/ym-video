@@ -163,7 +163,6 @@ test('观看历史按账号隔离、逐集合并，并尊重删除和清空版�
     vodId: 'movie',
     name: '测试影片',
     pic: 'https://image.example/poster.jpg',
-    content: '',
     year: '',
     area: '',
     lang: '',

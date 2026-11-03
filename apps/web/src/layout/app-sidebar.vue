@@ -46,7 +46,9 @@
                 >
                   <RouterLink :to="playerPath(item)" :aria-label="item.name">
                     <MovieAvatar :src="item.pic" />
-                    <span>{{ item.name }}</span>
+                    <span
+                      >{{ item.name }} · {{ historyEpisodeLabel(item) }}</span
+                    >
                   </RouterLink>
                 </SidebarMenuButton>
               </CommonTooltip>
@@ -154,6 +156,7 @@ const activeCategoryId = computed(() => {
 
 // 最近观看提示显示影片名称、当前集进度与所属播放源。
 const historyTooltip = (item: HistoryEntry) => {
+  const episodeLabel = historyEpisodeLabel(item);
   // 当前集未记录有效时长时按零进度显示。
   const current = item.progress[String(item.episode)];
 
@@ -173,8 +176,13 @@ const historyTooltip = (item: HistoryEntry) => {
     library.sources.find((source) => source.id === item.sourceId)?.name ||
     '未知播放源';
 
-  return `${item.name} · 观看至${percentage}% · ${sourceName}`;
+  return `${item.name}
+  ${episodeLabel} · 观看至${percentage}% · ${sourceName}`;
 };
+
+// 最近观看列表与历史卡片共用当前集名称。
+const historyEpisodeLabel = (item: HistoryEntry) =>
+  item.episodes[item.episode]?.label || '第 1 集';
 
 // 侧边栏固定导航入口。
 const navigation = [

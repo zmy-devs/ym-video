@@ -5,7 +5,6 @@ export {
   httpUrl,
   movieKey,
   parseEpisodes,
-  plainText,
 } from '@ym-video/catalog';
 
 // 路由不携带影片对象，保证刷新与直接访问可恢复。

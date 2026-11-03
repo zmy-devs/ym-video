@@ -1,5 +1,5 @@
 import { configState } from "@/stores/useConfigStore";
-import { parseMovie } from "@ym-video/catalog";
+import { parseMovie, plainText } from "@ym-video/catalog";
 import {
   Detail_Res_List,
   Detail_Res,
@@ -33,7 +33,7 @@ const formatDetail = (data: Detail_Res_List[]): MovieInfo[] => {
       area: formatSub(movie.area),
       lang: formatSub(movie.lang),
       type: movie.category,
-      content: formatContent(movie.content),
+      content: formatContent(plainText(item.vod_content)),
       year: formatSub(movie.year),
       episodes: movie.episodes.map((episode, index) => ({
         label: formatRemarks(episode.label),

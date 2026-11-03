@@ -80,7 +80,6 @@ const entry = (seconds = 20, watchedAt = Date.now()): HistoryEntry => ({
   vodId: 'movie',
   name: '浏览器测试影片',
   pic: '',
-  content: '',
   year: '',
   area: '',
   lang: '',

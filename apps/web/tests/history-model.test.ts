@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { groupHistory } from '../src/lib/history.ts';
 import {
   applyHistoryOperation,
   emptyHistory,
@@ -18,7 +19,6 @@ const createEntry = (episode: number, currentTime: number): HistoryEntry => ({
   vodId: 'movie',
   name: '测试影片',
   pic: 'https://image.example/poster.jpg',
-  content: '',
   year: '',
   area: '',
   lang: '',
@@ -165,4 +165,77 @@ test('历史操作校验影片标识、媒体 URL 和当前集进度', () => {
     }),
     false,
   );
+});
+
+test('观看历史按本地日期互斥分组，并保持观看时间顺序', () => {
+  // 周二覆盖全部日期分组，并区分一年内与超过一年的旧记录。
+  const now = new Date(2026, 10, 17, 12);
+
+  const entries = [
+    new Date(2026, 10, 17, 8),
+    new Date(2026, 10, 17),
+    new Date(2026, 10, 16),
+    new Date(2026, 10, 15, 23, 59, 59, 999),
+    new Date(2026, 10, 1),
+    new Date(2026, 9, 31, 23, 59, 59, 999),
+    new Date(2026, 0, 1),
+    new Date(2025, 11, 31, 23, 59, 59, 999),
+    new Date(2025, 9, 31, 23, 59, 59, 999),
+  ].map((date) => ({ ...createEntry(0, 10), watchedAt: date.getTime() }));
+
+  const groups = groupHistory(entries, now);
+
+  assert.deepEqual(
+    groups.map((group) => group.label),
+    ['今日', '本周', '本月', '今年', '更早', '很久之前'],
+  );
+  assert.deepEqual(
+    groups.map((group) => group.entries.length),
+    [2, 1, 2, 2, 1, 1],
+  );
+  assert.deepEqual(
+    groups.flatMap((group) => group.entries),
+    entries,
+  );
+  assert.deepEqual(groupHistory([], now), []);
+  assert.deepEqual(
+    groupHistory([entries[0], entries[4]], now).map((group) => group.label),
+    ['今日', '本月'],
+  );
+});
+
+test('观看历史在周一、跨月和跨年时按最近日期范围归类', () => {
+  // 跨年周内的记录属于本周，周日也归入周一开始的同一周。
+  const cases = [
+    {
+      now: new Date(2026, 10, 16),
+      watchedAt: new Date(2026, 10, 15, 23, 59),
+      label: '本月',
+    },
+    {
+      now: new Date(2026, 10, 1),
+      watchedAt: new Date(2026, 9, 31),
+      label: '本周',
+    },
+    {
+      now: new Date(2027, 0, 1),
+      watchedAt: new Date(2026, 11, 31),
+      label: '本周',
+    },
+    {
+      now: new Date(2027, 0, 1),
+      watchedAt: new Date(2026, 11, 27),
+      label: '更早',
+    },
+  ];
+
+  for (const { now, watchedAt, label } of cases) {
+    assert.deepEqual(
+      groupHistory(
+        [{ ...createEntry(0, 10), watchedAt: watchedAt.getTime() }],
+        now,
+      ).map((group) => group.label),
+      [label],
+    );
+  }
 });

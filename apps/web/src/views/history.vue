@@ -4,30 +4,21 @@
       <div class="mb-8 flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-semibold">观看历史</h1>
-          <div
-            class="mt-2 flex items-center gap-3 text-sm text-muted-foreground"
+          <p
+            class="mt-2 text-sm text-muted-foreground"
+            :title="history.syncError"
           >
-            <p :title="history.syncError">
-              {{ statusLabel }} · {{ history.entries.length }} 部影片
-            </p>
-            <Button
-              v-if="history.syncStatus === 'error'"
-              variant="ghost"
-              size="sm"
-              :disabled="retrying"
-              @click="handleRetry"
-            >
-              <RefreshCw class="size-4" />重试
-            </Button>
-          </div>
+            {{ history.entries.length }} 部影片 · {{ statusLabel }}
+          </p>
         </div>
         <Button
+          v-if="history.syncStatus === 'error'"
           type="button"
-          variant="outline"
-          :disabled="!history.entries.length"
-          @click="handleClear"
+          variant="default"
+          :disabled="syncing"
+          @click="handleSync"
         >
-          <Trash2 class="size-4" />清空历史
+          <RefreshCw class="size-4" />同步
         </Button>
       </div>
       <MovieGridSkeleton v-if="!history.loaded" />
@@ -38,9 +29,6 @@
         <History class="size-10" />
         <h2 class="text-base text-foreground">无法读取云端观看历史</h2>
         <p>{{ history.syncError }}</p>
-        <Button variant="outline" :disabled="retrying" @click="handleRetry">
-          <RefreshCw class="size-4" />重试
-        </Button>
       </div>
       <div v-else-if="!history.entries.length" class="empty-state">
         <History class="size-10" />
@@ -50,13 +38,18 @@
           ><RouterLink to="/overview">去找一部影片</RouterLink></Button
         >
       </div>
-      <div v-else class="movie-grid">
-        <MovieCard
-          v-for="entry in history.entries"
-          :key="entry.id"
-          :movie="entry"
-          :entry="entry"
-        />
+      <div v-else class="space-y-10">
+        <section v-for="group in groups" :key="group.label">
+          <h2 class="mb-5 text-lg font-semibold">{{ group.label }}</h2>
+          <div class="movie-grid">
+            <MovieCard
+              v-for="entry in group.entries"
+              :key="entry.id"
+              :movie="entry"
+              :entry="entry"
+            />
+          </div>
+        </section>
       </div>
     </div>
   </ScrollArea>
@@ -64,35 +57,32 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { useNow } from '@vueuse/core';
 import { RouterLink } from 'vue-router';
-import { History, RefreshCw, Trash2 } from 'lucide-vue-next';
+import { History, RefreshCw } from 'lucide-vue-next';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import MovieCard from '@/components/movie-card.vue';
 import MovieGridSkeleton from '@/components/movie-grid-skeleton.vue';
 import { useHistoryStore } from '@/stores/history';
-import { eventBus } from '@/utils/event-bus';
+import { groupHistory } from '@/lib/history';
 
 // 历史页展示当前登录账号的云端记录与同步状态。
 const history = useHistoryStore();
 
-// 重试期间禁用按钮，避免重复发起刷新。
-const retrying = ref(false);
+// 跨日后自动按当前本地日期更新分组。
+const now = useNow({ interval: 60_000 });
 
-// 清空操作只通过根确认弹窗执行。
-const handleClear = () => {
-  eventBus.emit('confirm:show', {
-    title: '清空观看历史？',
-    description: '这会删除当前账号云端的全部观看记录和播放进度，无法恢复。',
-    confirmText: '确认清空',
-    onConfirm: () => history.clear(),
-  });
-};
+// 仅展示有观看记录的日期分组。
+const groups = computed(() => groupHistory(history.entries, now.value));
+
+// 重试期间禁用按钮，避免重复发起刷新。
+const syncing = ref(false);
 
 // 列表明确区分云端已确认与仍在本机的记录。
 const statusLabel = computed(() => {
   if (history.syncStatus === 'error') {
-    return '同步失败，可重试';
+    return '同步失败';
   }
   if (history.syncStatus === 'pending') {
     return '待同步';
@@ -101,9 +91,12 @@ const statusLabel = computed(() => {
 });
 
 // 失败详情继续留在页面，用户可再次重试。
-const handleRetry = async () => {
-  retrying.value = true;
-  await history.retry();
-  retrying.value = false;
+const handleSync = async () => {
+  syncing.value = true;
+  try {
+    await history.retry();
+  } finally {
+    syncing.value = false;
+  }
 };
 </script>

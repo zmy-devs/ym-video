@@ -6,9 +6,7 @@
     <TooltipContent
       :side="side"
       :show-arrow="false"
-      :class="
-        shortcut ? 'flex items-center gap-2 whitespace-nowrap' : 'max-w-72'
-      "
+      class="flex items-center gap-2 whitespace-pre-line"
     >
       {{ label }}
       <Kbd v-if="shortcut">{{ shortcut }}</Kbd>

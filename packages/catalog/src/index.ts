@@ -15,7 +15,6 @@ export interface Movie {
   sourceId: string;
   name: string;
   pic: string;
-  content: string;
   year: string;
   area: string;
   lang: string;
@@ -53,7 +52,7 @@ export const parseEpisodes = (value: string): Episode[] => {
   });
 };
 
-// 影片描述以纯文本呈现，避免上游 HTML 进入页面。
+// 原生端展示的影片介绍转为纯文本。
 export const plainText = (value: string) =>
   value
     .replace(/<[^>]*>/g, '')
@@ -86,7 +85,6 @@ export const parseMovie = (
     sourceId,
     name: text(value.vod_name) || '未命名影片',
     pic: httpUrl(text(value.vod_pic)),
-    content: plainText(text(value.vod_content)),
     year: text(value.vod_year),
     area: text(value.vod_area),
     lang: text(value.vod_lang),

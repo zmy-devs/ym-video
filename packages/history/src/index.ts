@@ -199,7 +199,6 @@ export const isHistoryEntry = (value: unknown): value is HistoryEntry => {
     !['name', 'year', 'area', 'lang', 'category', 'remarks'].every((key) =>
       isText(value[key]),
     ) ||
-    !isText(value.content, 32_768) ||
     !isText(value.pic, 4096) ||
     (value.pic !== '' && !isHttpUrl(value.pic)) ||
     !Number.isInteger(value.episode) ||

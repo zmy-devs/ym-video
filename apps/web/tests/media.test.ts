@@ -42,15 +42,12 @@ test('统一校验并转换采集站影片记录', () => {
       sourceId: 'source',
       name: '示例影片',
       pic: '',
-      content: '简介 &详情',
       year: '2026',
       area: '中国',
       lang: '中文',
       category: '电影',
       remarks: '更新中',
-      episodes: [
-        { label: '第一集', url: 'https://media.example.com/1.m3u8' },
-      ],
+      episodes: [{ label: '第一集', url: 'https://media.example.com/1.m3u8' }],
     },
   );
   assert.deepEqual(

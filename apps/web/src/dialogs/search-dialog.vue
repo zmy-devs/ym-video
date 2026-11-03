@@ -42,7 +42,7 @@
             variant="ghost"
             size="icon-xs"
             :aria-label="`删除搜索记录：${item}`"
-            class="absolute top-1/2 right-1 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+            class="absolute top-1/2 right-1 -translate-y-1/2 opacity-0 transition-none group-hover:opacity-100 group-focus-within:opacity-100"
             @pointerdown.prevent
             @click.stop="handleRemove(item)"
             @keydown.enter.stop

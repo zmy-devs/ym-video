@@ -2,7 +2,7 @@
   <Dialog v-model:open="open">
     <slot name="trigger" />
     <DialogContent
-      class="overflow-hidden p-0"
+      class="top-[20vh] translate-y-0 overflow-hidden p-0"
       overlay-class="bg-black/50 backdrop-blur-sm"
       @close-auto-focus="emit('closeAutoFocus', $event)"
     >
