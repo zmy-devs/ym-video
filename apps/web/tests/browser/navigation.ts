@@ -134,10 +134,12 @@ const run = async () => {
     ],
   });
   await router.push('/overview');
-  const fixture = document.querySelector('#fixture');
+  const fixture = document.querySelector<HTMLElement>('#fixture');
   if (!fixture) {
     throw new Error('测试容器不存在');
   }
+  fixture.style.height = '100vh';
+  fixture.style.overflow = 'hidden';
   const app = createApp({ render: () => [h(RouterView), h(AppDialogs)] })
     .use(pinia)
     .use(router);
@@ -147,7 +149,9 @@ const run = async () => {
     await until(() => Boolean(fixture.textContent?.includes('概览影片29')));
     const sidebar = fixture.querySelector('[data-slot="sidebar"]');
     const previousPage = fixture.querySelector('.page-content');
-    const previousViewport = fixture.querySelector<HTMLElement>(
+
+    // 页面滚动区域独立于侧栏的 ScrollArea。
+    const previousViewport = previousPage?.closest<HTMLElement>(
       '[data-slot="scroll-area-viewport"]',
     );
     if (!previousPage || !previousViewport) {
@@ -166,9 +170,10 @@ const run = async () => {
       previousPage.textContent === previousText,
       '缓存的概览不能变成其他页面标题',
     );
-    const currentViewport = fixture.querySelector<HTMLElement>(
-      '[data-slot="scroll-area-viewport"]',
-    );
+    // 新路由使用自己的内容滚动区域。
+    const currentViewport = fixture
+      .querySelector('.page-content')
+      ?.closest<HTMLElement>('[data-slot="scroll-area-viewport"]');
     assert(currentViewport !== previousViewport, '新页面应有独立滚动区域');
     assert(currentViewport?.scrollTop === 0, '新页面应从顶部展示');
     assert(
@@ -331,6 +336,7 @@ const run = async () => {
     localStorage.setItem('ym-video:searches', JSON.stringify(['测试搜索记录']));
     document.getElementById('search-trigger')?.click();
     await until(() => Boolean(document.getElementById('search-keyword')));
+
     [...document.querySelectorAll<HTMLElement>('[role="option"]')]
       .find((item) => item.textContent?.includes('清空搜索历史'))
       ?.click();

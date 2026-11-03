@@ -6,6 +6,7 @@ import tailwindcss from '@tailwindcss/vite';
 // 浏览器端独立构建，开发与预览均通过同源路径访问 API。
 export default defineConfig({
   plugins: [vue(), tailwindcss()],
+  publicDir: fileURLToPath(new URL('../../assets', import.meta.url)),
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   server: {
     port: 3000,

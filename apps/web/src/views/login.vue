@@ -91,7 +91,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { LoaderCircle } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
@@ -100,8 +100,9 @@ import { Card } from '@/components/ui/card';
 import FormField from '@/components/common/form-field.vue';
 import { signIn } from '@/services/auth';
 import { getLoginReturnPath } from '@/lib/auth';
+import { retryRequest } from '@/lib/request-retry';
 import { infoToast } from '@/utils/toast';
-import icon from '@/assets/icon.svg';
+import icon from '../../../../assets/icon.png';
 
 // 登录前的目标页面通过站内回跳参数恢复。
 const route = useRoute();
@@ -117,6 +118,10 @@ const password = ref('');
 
 // 提交期间阻止重复请求。
 const pending = ref(false);
+
+// 离开登录页时取消持续重试的请求。
+const loginController = new AbortController();
+onUnmounted(() => loginController.abort());
 
 // 当前登录失败原因。
 const error = ref('');
@@ -157,13 +162,31 @@ const handleSubmit = async () => {
   error.value = '';
 
   try {
-    const result = await signIn(email.value, password.value);
+    // 网络和临时服务故障持续重试，凭据错误交由表单提示。
+    const result = await retryRequest(
+      async () => {
+        // 单次请求沿用账号服务的超时，并接受页面取消信号。
+        const response = await signIn(
+          email.value,
+          password.value,
+          loginController.signal,
+        );
+
+        if (
+          response.error &&
+          ([0, 408].includes(response.error.status) ||
+            response.error.status >= 500)
+        ) {
+          throw response.error;
+        }
+
+        return response;
+      },
+      loginController.signal,
+      Number.POSITIVE_INFINITY,
+    );
 
     if (result.error) {
-      if (result.error.status >= 500) {
-        error.value = '账号服务暂时不可用，请稍后重试';
-        return;
-      }
       if (result.error.code === 'BANNED_USER') {
         error.value = '账号已停用，请联系管理员';
         return;
@@ -182,7 +205,9 @@ const handleSubmit = async () => {
       getLoginReturnPath(route.query.redirect, result.data?.user.role),
     );
   } catch {
-    error.value = '无法连接账号服务，请稍后重试';
+    if (!loginController.signal.aborted) {
+      error.value = '无法连接账号服务，请稍后重试';
+    }
   } finally {
     pending.value = false;
   }

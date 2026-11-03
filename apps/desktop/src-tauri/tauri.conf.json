@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Ym Video",
+  "version": "../package.json",
+  "identifier": "com.2514765066.ym-video",
+  "build": {
+    "beforeDevCommand": "pnpm --filter @ym-video/web dev",
+    "devUrl": "http://localhost:3000",
+    "beforeBuildCommand": "pnpm --filter @ym-video/web build",
+    "frontendDist": "../../web/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Ym Video",
+        "create": false,
+        "width": 1280,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "decorations": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http: https:; media-src 'self' blob: http: https:; connect-src 'self' ipc: http: https:; worker-src 'self' blob:; frame-src 'none'; object-src 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
+    "icon": ["../build/generated/icon.ico"],
+    "windows": {
+      "nsis": {
+        "displayLanguageSelector": false,
+        "languages": ["SimpChinese"],
+        "installMode": "currentUser"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDIzQTRCOThCRDMxMjc3QUIKUldTcmR4TFRpN21rSTBySFkxTDRRcE1NZjl0SEJUQzVRV2NuVWZsVm5VRGJ4OWlHTHhxTldFMlcK",
+      "endpoints": [
+        "https://gitee.com/zmy-devs/ym-video/releases/download/latest/latest.json",
+        "https://github.com/zmy-devs/ym-video/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

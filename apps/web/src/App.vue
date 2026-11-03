@@ -21,6 +21,7 @@
         <component :is="Component" />
       </KeepAlive>
     </RouterView>
+    <DesktopControls v-if="isDesktop" />
     <AppDialogs />
     <Toaster :theme="theme.resolved" position="top-center" />
     <div
@@ -38,13 +39,16 @@
 </template>
 
 <script setup lang="ts">
+import { isTauri } from '@/lib/desktop';
 import { onUnmounted, ref, watch } from 'vue';
 import { useEventListener } from '@vueuse/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import { Toaster } from '@/components/ui/sonner';
 import { Spinner } from '@/components/ui/spinner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import AppDialogs from '@/dialogs/index.vue';
+import DesktopControls from '@/components/desktop-controls.vue';
 import { useHistoryStore } from '@/stores/history';
 import { useThemeStore } from '@/stores/theme';
 import { authClient } from '@/services/auth';
@@ -52,8 +56,17 @@ import { errorToast } from '@/utils/toast';
 import { getLoginReturnPath } from '@/lib/auth';
 import { useUpdateStore } from '@/stores/update';
 
-// 桌面壳注入 IPC 时预留原生窗口标题栏区域。
-const isDesktop = Boolean(window.ipc);
+// 桌面窗口同步浏览器播放器的全屏状态。
+const isDesktop = isTauri();
+
+// 浏览器进入或退出全屏时同步原生窗口状态。
+useEventListener(document, 'fullscreenchange', () => {
+  if (isDesktop) {
+    getCurrentWindow()
+      .setFullscreen(Boolean(document.fullscreenElement))
+      .catch(console.error);
+  }
+});
 
 // 客户端启动后持续监听更新，设置弹窗关闭不影响下载与安装提示。
 if (isDesktop) {
@@ -72,7 +85,7 @@ const history = useHistoryStore();
 // 当前业务页面用于登录后的站内回跳。
 const route = useRoute();
 
-// 播放器整窗固定暗色，包含原生标题栏按钮、弹层和提示消息。
+// 播放器整窗固定暗色，包含窗口控件、弹层和提示消息。
 watch(
   () => route.name,
   (name) => theme.setPlayerMode(name === 'player'),

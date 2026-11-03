@@ -100,7 +100,7 @@ router.beforeEach(async (to, from) => {
     let user = getCachedUser();
 
     if (!user) {
-      // 每次最多等待三秒，五次都失败后保留可操作的登录入口。
+      // 每次验证最多等待三秒，网络恢复前持续自动重试。
       const result = await verifySession(signal);
 
       if (result) {

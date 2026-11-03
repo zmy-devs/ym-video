@@ -1,3 +1,4 @@
+import { apiFetch, webOrigin } from '@/lib/desktop';
 import { authClient } from './auth';
 import { isRecord } from './api';
 
@@ -43,7 +44,7 @@ export const accountRequest = async (
   path: string,
   options: RequestInit = {},
 ): Promise<unknown> => {
-  const response = await fetch(`/api/v1${path}`, {
+  const response = await apiFetch(`/api/v1${path}`, {
     ...options,
     credentials: 'include',
     headers: {
@@ -142,4 +143,4 @@ export const createInvitation = async (name: string, signal?: AbortSignal) => {
 
 // 当前访问域名生成可直接分享的邀请链接。
 export const invitationUrl = (token: string) =>
-  `${window.location.origin}/invite/${encodeURIComponent(token)}`;
+  `${webOrigin}/invite/${encodeURIComponent(token)}`;

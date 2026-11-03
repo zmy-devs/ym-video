@@ -1,12 +1,13 @@
 import { createAuthClient } from 'better-auth/vue';
 import { adminClient, usernameClient } from 'better-auth/client/plugins';
 import { retryRequest } from '@/lib/request-retry';
+import { apiFetch, webOrigin } from '@/lib/desktop';
 
 // 开发代理与生产同域共用 Cookie 会话，不在本地保存登录令牌。
 export const authClient = createAuthClient({
-  baseURL: window.location.origin,
-  // 登录等请求超时后交由表单反馈，允许用户重新连接。
-  fetchOptions: { timeout: 10_000 },
+  baseURL: webOrigin,
+  // 单次请求超时由对应流程继续重试或反馈。
+  fetchOptions: { timeout: 10_000, customFetchImpl: apiFetch },
   plugins: [usernameClient({ displayUsername: false }), adminClient()],
 });
 
@@ -22,11 +23,11 @@ export const getCachedUser = () => {
   return session.data?.user;
 };
 
-// 首次会话验证最多请求五次，匿名或明确失效的会话直接进入登录。
+// 首次会话验证最多重试五次，匿名或明确失效的会话直接进入登录。
 export const verifySession = (signal: AbortSignal) =>
   retryRequest(
     async () => {
-      // 每次验证独立计时，禁止客户端额外重试超出五次上限。
+      // 单次验证独立计时，切换页面时立即取消旧请求。
       const result = await authClient.getSession({
         fetchOptions: {
           signal: AbortSignal.any([signal, AbortSignal.timeout(3000)]),
@@ -44,6 +45,14 @@ export const verifySession = (signal: AbortSignal) =>
     4,
   );
 
-// 仅使用邮箱登录，去除邮箱首尾空白，密码保持原样。
-export const signIn = (email: string, password: string) =>
-  authClient.signIn.email({ email: email.trim(), password });
+// 邮箱登录保留密码原值，并允许页面取消正在执行的请求。
+export const signIn = (
+  email: string,
+  password: string,
+  signal?: AbortSignal,
+) =>
+  authClient.signIn.email({
+    email: email.trim(),
+    password,
+    fetchOptions: { signal, retry: 0 },
+  });

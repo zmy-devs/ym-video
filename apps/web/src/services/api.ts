@@ -1,3 +1,4 @@
+import { apiFetch, isTauri, requestDesktopResource } from '@/lib/desktop';
 import type { Category, Source } from '@/types';
 import { parseMovie } from '@ym-video/catalog';
 import { proxySources } from '@ym-video/catalog/proxy';
@@ -35,7 +36,7 @@ const request = async (
   signal?: AbortSignal,
 ): Promise<unknown> => {
   // 同源 API 返回的 HTTP 响应。
-  const response = await fetch(path, { credentials: 'include', signal });
+  const response = await apiFetch(path, { credentials: 'include', signal });
   if (!response.ok) {
     // 尚未信任的接口响应数据。
     const body: unknown = await response.json().catch(() => null);
@@ -47,18 +48,14 @@ const request = async (
   return response.json();
 };
 
-// 桌面资源优先走本地 Node，浏览器保留平台代理与自定义源直连。
+// 桌面资源优先走本地能力，浏览器保留平台代理与自定义源直连。
 const requestResource = async (
   source: Source,
   query: URLSearchParams,
   signal?: AbortSignal,
 ): Promise<unknown> => {
-  // 旧版桌面壳未提供资源代理时继续走浏览器逻辑。
-  const ipc = window.ipc;
-
-  if (ipc?.requestResource) {
-    // 桌面 IPC 只传完整 URL，主进程直接 fetch。
-    return ipc.requestResource(buildResourceURL(source, query));
+  if (isTauri()) {
+    return requestDesktopResource(buildResourceURL(source, query), signal);
   }
 
   // 普通浏览器的内置源继续走现有服务端代理。
@@ -124,7 +121,7 @@ const requestResource = async (
 
 // 桌面从本地读取共用配置，浏览器从服务端获取可用源。
 export const getSources = async (): Promise<Source[]> => {
-  if (window.ipc?.requestResource) {
+  if (isTauri()) {
     return proxySources.map(({ id, name }) => ({ id, name }));
   }
 

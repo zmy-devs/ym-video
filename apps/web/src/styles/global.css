@@ -2,20 +2,21 @@
 @import 'vue-sonner/style.css';
 @import './catalogue.css';
 
-/* 独立页面在顶部留出桌面标题栏，侧栏布局自行安排标题栏。 */
+/* 桌面标题栏统一使用 40px 高度。 */
 :root {
-  --desktop-window-controls-height: env(titlebar-area-height, 44px);
+  --title-bar-height: 0px;
   --desktop-title-bar-height: 0px;
 }
 
-:root:has(.desktop-title-bar-standalone) {
-  --desktop-title-bar-height: var(--desktop-window-controls-height);
+:root:has(.desktop-title-bar) {
+  --title-bar-height: 40px;
+  --desktop-title-bar-height: var(--title-bar-height);
 }
 
 .desktop-title-bar {
-  height: var(--desktop-window-controls-height);
+  height: var(--title-bar-height);
   background-color: var(--sidebar);
-  -webkit-app-region: drag;
+  touch-action: none;
 }
 
 @layer base {
@@ -25,13 +26,15 @@
   body {
     @apply bg-background text-foreground;
   }
-  /* 登录页底色延伸至透明标题栏所在的顶部留白。 */
+  /* 登录页沿用页面背景。 */
   body:has(.login-page) {
     @apply bg-muted dark:bg-background;
   }
   #app {
     height: 100dvh;
-    padding-top: var(--desktop-title-bar-height);
+  }
+  #app:has(.desktop-title-bar-standalone) {
+    padding-top: var(--title-bar-height);
   }
 }
 

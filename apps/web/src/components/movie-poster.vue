@@ -26,7 +26,7 @@
 import { ref, watch } from 'vue';
 import placeholder from '@/assets/default.avif';
 
-// 卡片与悬浮预览共用海报加载和占位行为。
+// 影片海报统一管理图片加载和占位状态。
 const props = defineProps<{ src: string; alt: string }>();
 
 // 图片完成加载前显示本地默认海报，避免显示破图或空白。

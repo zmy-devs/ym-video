@@ -9,7 +9,7 @@
         </div>
         <Button as-child size="sm" variant="outline">
           <a
-            href="https://github.com/2514765066/ym-video/issues"
+            href="https://github.com/zmy-devs/ym-video/issues"
             target="_blank"
             rel="noopener noreferrer"
             >反馈</a
@@ -33,11 +33,12 @@
 </template>
 
 <script setup lang="ts">
+import { isTauri } from '@/lib/desktop';
 import { Button } from '@/components/ui/button';
 import { useUpdateStore } from '@/stores/update';
 
 // 浏览器不展示桌面客户端版本。
-const isDesktop = Boolean(window.ipc);
+const isDesktop = isTauri();
 
 // 复用应用启动时读取的客户端版本。
 const update = useUpdateStore();

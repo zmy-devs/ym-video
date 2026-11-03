@@ -2,6 +2,8 @@ import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { useColorMode } from '@vueuse/core';
 import { readLocal, writeLocal } from '@/lib/storage';
+import { isTauri } from '@/lib/desktop';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 
 // 主题色沿用 ym-printer 的 Tailwind 色板。
 export const themeColors = {
@@ -77,15 +79,26 @@ export const useThemeStore = defineStore('theme', () => {
     { immediate: true },
   );
 
-  // 恢复偏好、切换主题及系统明暗变化时同步浏览器和桌面壳。
+  // 实际明暗主题决定浏览器工具栏颜色。
   watch(
-    [mode, resolved],
-    ([nextMode, nextTheme]) => {
+    resolved,
+    (nextTheme) => {
       document
         .querySelector('meta[name="theme-color"]')
         ?.setAttribute('content', nextTheme === 'dark' ? '#0a0a0a' : '#fcfcfc');
+    },
+    { immediate: true },
+  );
 
-      window.ipc?.toggleTheme?.(nextMode, nextTheme).catch(console.error);
+  // 自动模式交回系统控制，避免窗口主题反过来固定 WebView 的媒体查询。
+  watch(
+    effectiveMode,
+    (nextMode) => {
+      if (isTauri()) {
+        getCurrentWindow()
+          .setTheme(nextMode === 'auto' ? null : nextMode)
+          .catch(console.error);
+      }
     },
     { immediate: true },
   );

@@ -82,6 +82,7 @@
 </template>
 
 <script setup lang="ts">
+import { isTauri } from '@/lib/desktop';
 import { onScopeDispose, ref, watch } from 'vue';
 import {
   CircleAlert,
@@ -117,14 +118,16 @@ const selected = ref('appearance');
 // 账号提交期间禁止切换分类和手动关闭，切页仍可强制清理。
 const pending = ref<'username' | 'password' | null>(null);
 
-// 通过预加载桥接识别桌面客户端。
-const isDesktop = Boolean(window.ipc);
+// 通过 Tauri 运行环境识别桌面客户端。
+const isDesktop = isTauri();
 
 // 更新入口只向桌面客户端提供。
 const navigation = [
   { value: 'appearance', label: '外观', icon: Palette },
   { value: 'account', label: '账号', icon: UserRound },
-  ...(isDesktop ? [{ value: 'update', label: '更新', icon: CircleArrowUp }] : []),
+  ...(isDesktop
+    ? [{ value: 'update', label: '更新', icon: CircleArrowUp }]
+    : []),
   { value: 'about', label: '关于', icon: CircleAlert },
 ];
 

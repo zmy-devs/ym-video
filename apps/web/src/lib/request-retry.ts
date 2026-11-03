@@ -19,7 +19,7 @@ const waitForRetry = (signal: AbortSignal, delay: number) =>
     signal.addEventListener('abort', handleAbort, { once: true });
   });
 
-// 请求失败后默认最多重试五次，登录校验可单独限制重试次数。
+// 请求失败后按调用方指定的次数重试，支持持续重试到成功或取消。
 export const retryRequest = async <T>(
   request: () => Promise<T>,
   signal: AbortSignal,

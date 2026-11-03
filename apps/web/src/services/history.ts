@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/desktop';
 import {
   emptyHistory,
   isHistoryOperation,
@@ -245,7 +246,7 @@ const requestHistory = async (
   path: string,
   init?: RequestInit,
 ): Promise<unknown> => {
-  const response = await fetch(path, {
+  const response = await apiFetch(path, {
     credentials: 'include',
     ...init,
     signal: init?.signal
@@ -253,7 +254,7 @@ const requestHistory = async (
       : AbortSignal.timeout(8_000),
     keepalive: Boolean(
       init?.body &&
-        new TextEncoder().encode(String(init.body)).byteLength < 60_000,
+      new TextEncoder().encode(String(init.body)).byteLength < 60_000,
     ),
     headers: {
       ...(init?.body ? { 'content-type': 'application/json' } : {}),

@@ -1,3 +1,4 @@
+import { mockDesktop } from './desktop-mock';
 import { createApp, nextTick } from 'vue';
 import { createPinia } from 'pinia';
 import { emptyHistory } from '@ym-video/history';
@@ -9,25 +10,27 @@ import '../../src/styles/global.css';
 const run = async () => {
   // 测试结束后恢复浏览器环境。
   const originalFetch = window.fetch;
+
   const originalUrl = window.location.href;
-  const originalIpc = Object.getOwnPropertyDescriptor(window, 'ipc');
+
   let listRequests = 0;
+
   let ownerId = 'playback-cache-test';
-  // 历史读取保持挂起，验证已有本机进度的影片不等待云端快照。
+
   const pendingHistory: Array<(response: Response) => void> = [];
-  // 账号服务切为不可用后，进入播放器不能新增阻塞请求。
+
   let accountUnavailable = false;
-  // 记录账号接口访问次数，区分后台刷新与页面导航请求。
+
   let sessionRequests = 0;
 
-  Object.defineProperty(window, 'ipc', {
-    configurable: true,
-    value: {
-      getVersion: async () => '6.1.0',
-      checkForUpdates: async () => false,
-      installUpdate: async () => undefined,
-      on: () => () => undefined,
-    } satisfies NonNullable<Window['ipc']>,
+  const restoreDesktop = mockDesktop({
+    resource: async (address) => {
+      const response = await window.fetch(
+        '/api/v1/proxy/cache-test?' + new URL(address).searchParams,
+      );
+
+      return response.json();
+    },
   });
 
   window.fetch = async (input, options) => {
@@ -39,9 +42,11 @@ const run = async () => {
 
     if (url.pathname.startsWith('/api/auth/')) {
       sessionRequests += 1;
+
       if (accountUnavailable) {
         throw new TypeError('测试账号服务不可用');
       }
+
       return Response.json({
         user: { id: ownerId, role: 'user', name: '缓存测试' },
         session: { id: 'cache-session' },
@@ -76,13 +81,18 @@ const run = async () => {
 
   // Better Auth 初始化时捕获模拟 fetch。
   const { router } = await import('../../src/router');
+
   const { default: App } = await import('../../src/App.vue');
+
   const { useHistoryStore } = await import('../../src/stores/history');
+
   const pinia = createPinia();
+
   const library = useLibraryStore(pinia);
 
-  library.selected = 'cache-test';
-  library.sources = [{ id: 'cache-test', name: '缓存测试源' }];
+  library.selected = 'baofeng';
+
+  library.sources = [{ id: 'baofeng', name: '缓存测试源' }];
 
   const fixture = document.querySelector('#fixture');
 
@@ -96,20 +106,22 @@ const run = async () => {
 
   try {
     await until(() => Boolean(fixture.textContent?.includes('缓存影片60')));
+
     await until(() => useHistoryStore(pinia).loaded);
 
     // 先建立本机观看记录，后台云端读取继续保持挂起。
     const history = useHistoryStore(pinia);
+
     // 与生产播放器使用相同的影片复合标识。
-    const id = movieKey('cache-test', '1');
+    const id = movieKey('baofeng', '1');
+
     await history.save(
       {
         id,
-        sourceId: 'cache-test',
+        sourceId: 'baofeng',
         vodId: '1',
         name: '缓存影片1',
         pic: '',
-        content: '',
         year: '',
         area: '',
         lang: '',
@@ -127,109 +139,28 @@ const run = async () => {
     await nextTick();
 
     const page = fixture.querySelector('.page-content');
-    const viewport = fixture.querySelector<HTMLElement>(
-      '[data-slot="scroll-area-viewport"]',
-    );
+
+    // 保存列表的滚动容器，用于验证返回后的位置恢复。
+    const viewport = fixture
+      .querySelector('.page-content')
+      ?.closest<HTMLElement>('[data-slot="scroll-area-viewport"]');
 
     if (!page || !viewport) {
       throw new Error('首页未完成渲染');
     }
 
-    // 左列预览必须跨过滚动容器边界，实际盖住侧边栏。
+    // 键盘聚焦与鼠标悬停使用相同的整卡缩放。
     const card = page.querySelector('article');
 
-    card?.dispatchEvent(new PointerEvent('pointerenter'));
-    await until(() => {
-      const preview = document.querySelector<HTMLElement>(
-        '[data-slot="movie-preview"]',
-      );
-      const sidebar = fixture.querySelector('[data-sidebar="sidebar"]');
+    card?.querySelector('a')?.focus({ preventScroll: true });
 
-      if (!preview || !sidebar) {
-        return false;
-      }
+    await until(() => Boolean(card && getComputedStyle(card).scale === '1.1'));
 
-      const rect = preview.getBoundingClientRect();
-      const sidebarRight = sidebar.getBoundingClientRect().right;
-
-      return (
-        preview.parentElement === document.body &&
-        rect.left < sidebarRight &&
-        preview.contains(
-          document.elementFromPoint(
-            (rect.left + sidebarRight) / 2,
-            rect.top + rect.height / 2,
-          ),
-        )
-      );
-    });
-
-    // 从卡片移动到独立浮层时保持显示，离开后关闭。
-    const preview = document.querySelector('[data-slot="movie-preview"]');
-
-    if (preview instanceof HTMLElement) {
-      // 浮层随列表滚动，不能停留在窗口的旧位置。
-      const previousTop = Number.parseFloat(preview.style.top);
-
-      viewport.scrollTop = 20;
-      await until(
-        () => Number.parseFloat(preview.style.top) === previousTop - 20,
-      );
-      viewport.scrollTop = 0;
-      await until(() => Number.parseFloat(preview.style.top) === previousTop);
-
-      // 鼠标位于浮层海报或正文时，滚轮仍能上下滚动原列表。
-      for (const selector of ['img', 'p']) {
-        // 分别覆盖海报和文字，不只测试浮层容器本身。
-        const target = preview.querySelector(selector);
-
-        assert(target, '预览必须展示海报和正文');
-        target?.dispatchEvent(
-          new WheelEvent('wheel', {
-            deltaY: 40,
-            bubbles: true,
-            cancelable: true,
-          }),
-        );
-        await until(() => viewport.scrollTop === 40);
-        target?.dispatchEvent(
-          new WheelEvent('wheel', {
-            deltaY: -40,
-            bubbles: true,
-            cancelable: true,
-          }),
-        );
-        await until(() => viewport.scrollTop === 0);
-      }
-    }
-
-    card?.dispatchEvent(
-      new PointerEvent('pointerleave', { relatedTarget: preview }),
-    );
-    await nextTick();
-    assert(preview?.isConnected, '移动到预览上不能闪退');
-    preview?.dispatchEvent(new PointerEvent('pointerleave'));
-    await nextTick();
-    assert(!preview?.isConnected, '离开预览后应关闭浮层');
-
-    card?.dispatchEvent(new FocusEvent('focusin'));
-    await nextTick();
-    assert(
-      document.querySelector('[data-slot="movie-preview"]'),
-      '键盘聚焦也应显示预览',
-    );
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-    await nextTick();
-    assert(
-      !document.querySelector('[data-slot="movie-preview"]'),
-      'Escape 应关闭预览',
-    );
-
-    // 历史卡片和独立预览的菜单都必须按右键坐标定位。
     await router.push('/history');
+
     await nextTick();
 
-    // 使用真实历史页面，覆盖预览挂载前后及重复打开菜单。
+    // 历史页面按日期展示分组，副标题末尾显示所属播放源。
     const historyCard = fixture.querySelector<HTMLElement>(
       '.movie-grid article',
     );
@@ -238,41 +169,29 @@ const run = async () => {
       throw new Error('观看历史卡片未完成渲染');
     }
 
-    for (const mode of ['enter', 'card', 'preview', 'card']) {
-      if (mode === 'preview') {
-        historyCard.dispatchEvent(new PointerEvent('pointerenter'));
-        await nextTick();
-      }
+    assert(
+      historyCard.closest('section')?.querySelector('h2')?.textContent ===
+        '今日' &&
+        historyCard
+          .querySelector('p')
+          ?.textContent?.trim()
+          .endsWith('缓存测试源'),
+      '历史卡片应归入今日并展示所属播放源',
+    );
 
-      // 点击点与卡片边缘保持距离，确保能检测锚点被覆盖的问题。
-      const target =
-        mode === 'preview'
-          ? document.querySelector<HTMLElement>('[data-slot="movie-preview"]')
-          : historyCard;
+    for (let turn = 0; turn < 2; turn += 1) {
+      // 等聚焦缩放完成后，在卡片内部打开菜单。
+      historyCard.querySelector('a')?.focus({ preventScroll: true });
 
-      if (!target) {
-        throw new Error('历史卡片预览未显示');
-      }
+      await until(() => getComputedStyle(historyCard).scale === '1.1');
 
-      // 等预览入场结束后获取稳定坐标。
-      await Promise.all(
-        target.getAnimations().map((animation) => animation.finished),
-      );
+      const rect = historyCard.getBoundingClientRect();
 
-      // 当前点击点留出菜单所需空间，不触发窗口边缘避让。
-      const rect = target.getBoundingClientRect();
       const x = rect.left + rect.width / 3;
+
       const y = rect.top + rect.height / 3;
 
-      // 原生右键会聚焦链接，随后菜单自动聚焦会触发浮层失焦。
-      target.querySelector('a')?.focus({ preventScroll: true });
-
-      if (mode === 'enter') {
-        // 首次移入后立即右键，预览将在同一轮更新中挂载。
-        historyCard.dispatchEvent(new PointerEvent('pointerenter'));
-      }
-
-      target.dispatchEvent(
+      historyCard.dispatchEvent(
         new MouseEvent('contextmenu', {
           clientX: x,
           clientY: y,
@@ -281,9 +200,9 @@ const run = async () => {
           cancelable: true,
         }),
       );
+
       await until(() => Boolean(document.querySelector('[role="menu"]')));
 
-      // 菜单应紧邻鼠标，而非悬浮卡片右上角。
       const menu = document.querySelector<HTMLElement>('[role="menu"]');
 
       if (!menu) {
@@ -293,34 +212,36 @@ const run = async () => {
       await Promise.all(
         menu.getAnimations().map((animation) => animation.finished),
       );
+
       assert(
         Math.abs(menu.getBoundingClientRect().left - x - 2) < 1 &&
           Math.abs(menu.getBoundingClientRect().top - y) < 1,
-        '历史菜单必须显示在右键位置，不能锚定到卡片边缘',
+        '历史菜单必须显示在右键位置',
       );
-      target.dispatchEvent(new FocusEvent('focusout', { relatedTarget: menu }));
-      target.dispatchEvent(
-        new PointerEvent('pointerleave', { relatedTarget: menu }),
-      );
-      await nextTick();
-      assert(menu.isConnected, '指针或焦点移入菜单时不能卸载菜单');
+
       menu.dispatchEvent(
         new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
       );
+
       await until(() => !document.querySelector('[role="menu"]'));
     }
 
     await router.push('/overview');
+
     await nextTick();
 
     viewport.scrollTop = 350;
+
     assert(viewport.scrollTop === 350, '必须先滚动列表');
+
     await new Promise<void>((resolve) =>
       requestAnimationFrame(() => resolve()),
     );
 
     const initialRequests = listRequests;
+
     const initialSessionRequests = sessionRequests;
+
     accountUnavailable = true;
 
     for (let turn = 0; turn < 2; turn += 1) {
@@ -330,72 +251,83 @@ const run = async () => {
       );
 
       assert(link && !link.target, '播放入口应使用当前窗口内的路由');
+
       link?.click();
 
       await until(() => Boolean(fixture.querySelector('.player-surface')));
+
       await until(() => Boolean(fixture.textContent?.includes('影片不存在')));
+
       assert(
         sessionRequests === initialSessionRequests,
         '账号服务不可用时，打开影片不能再请求会话',
       );
-      assert(pendingHistory.length > 0, '必须在历史接口仍挂起时完成影片加载');
-      assert(!page.isConnected, '进入播放器应暂存首页节点');
-      assert(listRequests === initialRequests, '打开影片不能重新请求首页列表');
-      assert(
-        !document.querySelector('[data-slot="movie-preview"]'),
-        '缓存首页时必须关闭独立浮层',
-      );
 
-      const back = fixture.querySelector<HTMLAnchorElement>(
-        'a[aria-label="返回主页"]',
+      assert(pendingHistory.length > 0, '必须在历史接口仍挂起时完成影片加载');
+
+      assert(!page.isConnected, '进入播放器应暂存首页节点');
+
+      assert(listRequests === initialRequests, '打开影片不能重新请求首页列表');
+
+      const back = fixture.querySelector<HTMLButtonElement>(
+        'button[aria-label="返回"]',
       );
 
       back?.click();
+
       await until(() => page.isConnected);
+
       await nextTick();
 
       assert(
         fixture.querySelector('.page-content') === page,
         '返回时必须复用同一个首页节点',
       );
+
       assert(viewport.scrollTop === 350, '返回时必须保留滚动位置');
+
       assert(listRequests === initialRequests, '返回时不能重新请求首页列表');
+
       assert(!fixture.querySelector('video'), '离开播放器必须释放媒体组件');
     }
 
     // 账号切换必须销毁旧缓存，避免沿用上一账号的页面状态。
     ownerId = 'playback-cache-next';
+
     await useHistoryStore(pinia).setAccount(ownerId);
+
     await until(
       () =>
         Boolean(fixture.querySelector('.page-content')) && !page.isConnected,
     );
+
     assert(listRequests > initialRequests, '新账号应重新创建首页');
   } finally {
     app.unmount();
+
     useHistoryStore(pinia).$dispose();
+
     library.$dispose();
+
     pendingHistory.forEach((resolve) =>
       resolve(Response.json(emptyHistory(ownerId))),
     );
+
     window.fetch = originalFetch;
+
     window.history.replaceState(null, '', originalUrl);
 
-    if (originalIpc) {
-      Object.defineProperty(window, 'ipc', originalIpc);
-    } else {
-      Reflect.deleteProperty(window, 'ipc');
-    }
+    restoreDesktop();
   }
 };
 
 // 等待真实组件更新，超时即报告失败。
 const until = async (ready: () => boolean) => {
-  const deadline = Date.now() + 8_000;
+  const deadline = Date.now() + 8000;
 
   while (!ready()) {
     if (Date.now() > deadline) {
-      throw new Error('等待页面更新超时');
+      throw new Error('等待页面更新超时：' + ready.toString());
     }
 
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -409,7 +341,7 @@ const assert = (condition: unknown, message: string) => {
   }
 };
 
-// 结果显示在页面，供浏览器或 Electron 测试读取。
+// 结果显示在页面，供浏览器或 Tauri 测试读取。
 document.querySelector('#run')?.addEventListener('click', () => {
   run().then(
     () => {

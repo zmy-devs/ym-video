@@ -5,23 +5,20 @@
   >
     <header
       v-if="isDesktop"
-      class="desktop-title-bar desktop-title-bar-standalone fixed inset-x-0 top-0 z-40 flex items-center gap-2.5 border-b pl-[calc((var(--desktop-window-controls-height)-1.75rem)/2)] pr-36 text-foreground"
+      class="desktop-title-bar shrink-0 flex items-center gap-2.5 border-b pl-[calc((var(--title-bar-height)-1.75rem)/2)] pr-36 text-foreground"
     >
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <Button
-            as-child
-            variant="ghost"
-            size="icon"
-            class="size-7 shrink-0 [-webkit-app-region:no-drag]"
-          >
-            <RouterLink to="/overview" aria-label="返回主页">
-              <ArrowLeft class="size-4" aria-hidden="true" />
-            </RouterLink>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom">返回主页</TooltipContent>
-      </Tooltip>
+      <CommonTooltip label="返回" side="bottom">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          class="size-7 shrink-0"
+          aria-label="返回"
+          @click="handleBack"
+        >
+          <ArrowLeft class="size-4" aria-hidden="true" />
+        </Button>
+      </CommonTooltip>
       <MoviePoster
         v-if="entry"
         :src="entry.pic"
@@ -180,8 +177,9 @@
 </template>
 
 <script setup lang="ts">
+import { isTauri } from '@/lib/desktop';
 import { computed, onScopeDispose, ref, watch } from 'vue';
-import { RouterLink } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { useEventListener, useTitle } from '@vueuse/core';
 import {
   ArrowLeft,
@@ -198,22 +196,32 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import CommonTooltip from '@/components/common/tooltip.vue';
 import MoviePoster from '@/components/movie-poster.vue';
 import PlayerControls from '@/components/player/player-controls.vue';
 import PlayerEpisodesSheet from '@/components/player/player-episodes-sheet.vue';
 import { usePlayer } from '@/composables/use-player';
 import { useThemeStore } from '@/stores/theme';
 
-// 仅桌面播放器显示带影片信息的可拖动标题栏。
-const isDesktop = Boolean(window.ipc);
+// 桌面播放器标题栏显示影片信息和返回按钮。
+const isDesktop = isTauri();
 
 // 播放器使用公共暗色主题，并沿用用户选择的强调色。
 const theme = useThemeStore();
+
+// 通过站内历史恢复进入播放器前的列表与筛选状态。
+const router = useRouter();
+
+// 有上一条站内记录时返回，直接打开播放器时进入主页。
+const handleBack = () => {
+  if (router.options.history.state.back) {
+    router.back();
+
+    return;
+  }
+
+  return router.replace('/overview');
+};
 
 // 媒体加载、播放状态与浏览器能力。
 const {
@@ -396,14 +404,14 @@ onScopeDispose(() => {
   height: 100%;
 }
 
-/* 普通桌面窗口的选集与遮罩避开系统按钮，全屏时铺满画面。 */
+/* 桌面窗口的选集与遮罩避开页面工具栏，全屏时铺满画面。 */
 .player-surface:not(:fullscreen) :deep([data-slot='sheet-content']) {
-  top: var(--desktop-title-bar-height);
-  height: calc(100% - var(--desktop-title-bar-height));
+  top: var(--title-bar-height);
+  height: calc(100% - var(--title-bar-height));
 }
 
 .player-surface:not(:fullscreen) :deep([data-slot='sheet-overlay']) {
-  top: var(--desktop-title-bar-height);
+  top: var(--title-bar-height);
 }
 
 .player-page {

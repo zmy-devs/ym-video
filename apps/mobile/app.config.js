@@ -9,7 +9,7 @@ export default {
     slug: name,
     version,
     orientation: 'portrait',
-    icon: './src/assets/images/icon.png',
+    icon: '../../assets/icon.png',
     userInterfaceStyle: 'automatic',
     scheme: name.replace('-', ''),
     android: {
@@ -23,7 +23,7 @@ export default {
       [
         'expo-splash-screen',
         {
-          image: './src/assets/images/icon.png',
+          image: '../../assets/icon.png',
           imageWidth: 200,
           resizeMode: 'contain',
           backgroundColor: '#191919',
