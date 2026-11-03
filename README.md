@@ -10,7 +10,28 @@
 | [API](apps/api/README.md)        | 账号、观看历史、资源代理与 Web 托管 | Fastify、Better Auth、Drizzle ORM、Cloudflare Workers、D1          |
 | [桌面端](apps/desktop/README.md) | 内置 Web 页面的 Windows 桌面客户端  | Electron 43、electron-vite 5、electron-updater 6                   |
 | [安卓端](apps/mobile/README.md)  | Android 客户端                      | Expo、React Native、TypeScript、NativeWind、Valtio、SQLite、MMKV   |
-| [共享包](packages/README.md)     | Web 与 API 共用的观看历史模型       | TypeScript                                                         |
+| [共享包](packages/README.md)     | 影片模型、播放源解析与观看历史逻辑   | TypeScript                                                         |
+
+## 目录结构
+
+```text
+apps/
+  web/                         PC Web 页面、浏览器播放器与状态管理
+  desktop/                     Windows 桌面应用
+    src/main/                  主进程、窗口、资源请求与更新
+    src/preload/               Electron IPC 桥接
+    build/                     安装图标等打包资源
+    docs/release-note.md        桌面端版本说明
+    scripts/                   桌面发布脚本
+  mobile/                      安卓原生页面、播放器与设备能力
+  api/                         API 服务与 Web 静态资源托管
+    migrations/                D1 数据库迁移
+packages/
+  catalog/                     影片模型、采集站数据转换与播放线路解析
+  history/                     观看历史类型、数据校验与进度合并
+```
+
+根目录的 `package.json` 提供统一脚本入口，`pnpm-workspace.yaml` 定义工作区，`pnpm-lock.yaml` 记录依赖版本。各应用目录维护自身的平台配置、资源和发布脚本。
 
 ## 安装
 
@@ -59,6 +80,29 @@ pnpm dev:mobile
 ```
 
 各端的详细用法与打包命令见上方项目说明。
+
+## 常用脚本
+
+以下命令均在仓库根目录执行：
+
+| 命令 | 用途 |
+| --- | --- |
+| `pnpm dev:web`、`pnpm dev:api` | 分别启动 Web、API 开发服务 |
+| `pnpm dev:desktop` | 启动桌面应用及 Web 开发服务 |
+| `pnpm dev:mobile`、`pnpm android` | 生成安卓原生工程并运行、运行已有安卓工程 |
+| `pnpm migrate:api` | 应用本地数据库迁移 |
+| `pnpm typecheck`、`pnpm check` | 工作区类型检查 |
+| `pnpm typecheck:web`、`pnpm typecheck:api`、`pnpm typecheck:desktop`、`pnpm typecheck:mobile` | 单应用类型检查 |
+| `pnpm check:mobile` | 移动端类型检查与 Expo 项目检查 |
+| `pnpm test:web`、`pnpm test:api`、`pnpm test:desktop` | Web、API、桌面端测试 |
+| `pnpm build:web`、`pnpm preview:web` | 构建 Web、预览 Web 产物 |
+| `pnpm build:api` | 构建 Web、检查 API 类型并执行 Worker 部署预演 |
+| `pnpm build`、`pnpm build:desktop` | 编译桌面应用与内置 Web |
+| `pnpm build:win`、`pnpm build:unpack` | 生成 Windows 安装包、未打包应用目录 |
+| `pnpm build:mobile` | 使用 EAS 云构建安卓应用 |
+| `pnpm release:desktop`、`pnpm release:mobile` | 上传对应应用的 Release 产物 |
+
+桌面打包和发布配置见[桌面端说明](apps/desktop/README.md)，安卓构建配置见[安卓端说明](apps/mobile/README.md)，数据库配置和部署方法见 [API 说明](apps/api/README.md)。
 
 ## 下载
 

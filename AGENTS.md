@@ -1,105 +1,59 @@
 # 项目协作指南
 
-默认用中文回答，结论优先、简洁直接。修改前查看受影响应用的配置和相邻实现，并保留已有未提交改动。
+默认用中文回答，结论优先、简洁直接。
 
-README 用于项目介绍、技术栈、安装启动和使用说明；实现约定放在本文件，测试记录和临时迁移过程不写入 README。
+## 文档维护
+
+- `AGENTS.md` 维护协作规范、架构约束、实现和验证规则。
+- 根 `README.md` 维护项目介绍、技术栈、目录结构、安装启动和常用脚本；各应用与共享包的详细配置、使用和发布说明放在对应目录的 `README.md`。
+- 项目现状以代码和配置为准，架构目标在本文件中明确约束；测试记录和临时实施过程不写入 README。
+
+## 协作原则
+
+1. 不保留向后兼容。过时的直接删，别加兼容层、别写migration、别留fallback。
+2. 选能满足当前需求的最简单实现。不要预防性抽象，不要多此一举的配置层。
+3. 系统分层长。先跑通一个最小的端到端版本，再往上加东西。绝不为了未完成的复杂度拆掉能跑的东西。
+4. 组件保持模块化，关注点分离。
+5. 优先用成熟的、有人维护的库。没有明确理由别自己重写。
+6. 先翻项目里已有的依赖能做什么，再考虑加新包或自己写。别上来就假设库里没有。
+7. 架构决策往长了做。不接受"先这样以后再换" 的临时方案。
+8. 先看成熟产品怎么解决同一个问题，用已验证的模式，别从零发明。
 
 <!-- CODEGRAPH_START -->
 
 ## CodeGraph
 
-在根目录存在 `.codegraph/` 时，理解或定位代码前先使用 CodeGraph：
-
-- 优先使用 `codegraph_explore`；不可用时运行 `codegraph explore "<问题或符号>"`。
-- 查询中指定文件或符号，以查看当前源代码和调用关系。
-- 如果根目录没有 `.codegraph/`，跳过 CodeGraph，不主动创建索引。
+根目录存在 `.codegraph/` 时，理解或定位代码前先使用 `codegraph_explore`，不可用时运行 `codegraph explore "<问题或符号>"`。查询指定文件或符号，以查看当前源码和调用关系。根目录没有 `.codegraph/` 时跳过，索引由用户决定。
 
 <!-- CODEGRAPH_END -->
 
-## 项目方向与边界
+<!-- NoNegativeEcho_START -->
 
-- 项目采用 pnpm workspace，应用位于 `apps/`，有真实跨端调用方的契约和纯业务逻辑才提取到 `packages/`。
-- 产品方向为 Vue 3 Web、Fastify API、Expo／React Native 安卓端；各端使用 TypeScript。
-- `apps/web` 是独立 PC 浏览器应用，使用 Vue 3、shadcn-vue 和 Tailwind CSS 4，不使用 Element Plus，也不做手机浏览器适配。
-- `apps/desktop` 是 Electron 壳，开发连接本地 Web，生产从 `out/renderer/` 加载随安装包内置的 Web 产物。站点来源固定在 `src/main/utils/web.ts`，通过协议处理器保留原 HTTPS 来源，仅页面和静态资源从本地读取，`/api` 和其他站点请求仍走网络；IPC 用于资源请求的本地 Node 代理、桌面主题和更新功能。
-- `apps/mobile` 是 Expo／React Native 应用，原生页面、播放器和设备能力留在移动端。
-- `apps/api` 是 Fastify Workers API；Web 静态资源和 API 使用 Cloudflare Workers 部署。
-- 应用之间不使用相对路径直接引用对方源码。共享包使用 `@ym-video/*` 命名，并通过 `workspace:*` 声明依赖。
-- Vue 与 React Native 组件、浏览器与原生播放器分别留在各自应用，不强行共享 UI 或平台能力。
+## No Negative Echo
 
-## 目录职责
+生成最终产物及其包装时，包括标题、文件名、正文、注释、标签、commit、PR 和交付说明，只描述最终采用的状态，假设读者没看过本次会话。
 
-```text
-apps/
-  desktop/                     Electron 壳、内置 Web 产物、主题与更新 IPC
-    src/main/                  主进程、窗口、导航与更新
-    src/preload/               受限的 Electron IPC 桥接
-    build/                      安装图标等打包资源
-    docs/release-note.md        桌面端版本说明
-    scripts/publish.ts          桌面 Release 发布脚本
-  web/                          Vue 3 PC Web
-  api/                          Fastify Workers API
-  mobile/                       Expo／React Native 安卓应用
-packages/                       跨应用共享包
-```
+- 会话里的否决、中间尝试和措辞纠正，只当作控制信息，不要让它们成为最终产物的命名或叙述中心。
+- 对每个交付面分别判断：不知道本次会话的读者需要这条信息吗？省略会不会导致不准确、不安全、误导或兼容性信息缺失？它是不是任务开始时已提交或用户确认状态中的真实变化，而且当前交付面需要解释它？
+- 「不要提 X」不是让你写「无 X」。标题、文件名、开篇和标签应从正向目标重新生成，不要逐词修改被否文案。
+- 保留真实的基线变化、已经执行的外部操作，以及必要的技术名称、诊断、测试和快照。任务开始前已有的用户改动不算被否内容。
+- 不要把与本任务无关的改动写进本次 commit、PR 或交付说明。对比、引用、审计和迁移说明，只在用户要求或当前交付面确实需要时保留。
+- 写完后通读全部用户可见内容及其包装，包括文件名、元数据和 hook 改写。内容发生变化后重新检查，不要另加「已清理」或「无残留」类声明。
 
-根目录维护 workspace 入口和通用配置。Electron 配置、资源与版本说明归桌面应用；Expo、Metro 和 EAS 配置归移动应用。
+<!-- NoNegativeEcho_END -->
 
-## 当前技术栈
+## 架构边界
 
-| 范围   | 技术                                                                  |
-| ------ | --------------------------------------------------------------------- |
-| 工程   | Node.js 22.21.1、pnpm 11.20.0、TypeScript、单一根锁文件               |
-| 桌面   | Electron 43、electron-vite 5、electron-builder 26、electron-updater 6 |
-| Web    | Vue 3、Vite、shadcn-vue、Tailwind CSS 4                               |
-| API    | Fastify 5、Better Auth、Drizzle ORM、Cloudflare Workers、D1           |
-| 移动端 | Expo SDK 54、React 19、React Native 0.81、Expo Router 6               |
+- Web 界面与交互按 PC 浏览器设计，使用 Vue 3、shadcn-vue 和 Tailwind CSS 4。
+- 桌面端技术目标为 Tauri 2 最新稳定版与 Rust，仅面向 Windows；开发复用本地 Web，生产内置 Web 产物，窗口、系统能力、资源请求与更新由桌面应用负责。
+- 移动端使用 Expo／React Native，原生页面、播放器和设备能力归移动应用。
+- API 使用 Fastify、Better Auth、Drizzle 和 D1，与 Web 静态资源一同部署在 Cloudflare Workers。
+- 应用各自维护平台配置、资源和发布脚本。跨端契约与纯业务逻辑有真实共享调用方时才提取到 `packages/`，UI、播放器和系统能力按平台组织。
+- 应用之间通过 `@ym-video/*` 共享包与 `workspace:*` 依赖协作，不通过相对路径引用其他应用源码。
 
-精确依赖范围以各应用 `package.json` 为准，解析结果以根 `pnpm-lock.yaml` 为准。
+## 实现与验证
 
-## API 与数据
-
-- API 接口、配置和运行说明见 [apps/api/README.md](apps/api/README.md)。Better Auth 使用 `/api/auth/*`，业务接口使用 `/api/v1/*`。
-- Worker 使用 `nodejs_compat` 和 `cloudflare:node` HTTP 适配入口；需要兼容日期不早于 `2025-09-01`。
-- D1 binding 命名为 `DB`；Drizzle 使用 D1 驱动，Better Auth 使用 SQLite provider。SQL 迁移通过 Drizzle Kit 生成、Wrangler 执行。
-- Worker 根据会话确定用户身份；不使用客户端提交的用户 ID 授权。代理只允许服务端配置的目标，不向上游透传登录凭证。
-- Web 资源请求检测可选 IPC：桌面内置源和自定义源通过主进程 Node 直连，浏览器内置源走服务端代理、自定义源保留浏览器直连。内置源配置位于 `@ym-video/catalog/proxy`；本地代理仅允许应用主框架通过 HTTP(S) URL 请求 JSON，不透传页面请求头。
-- API 不声明 Fastify JSON Schema；新增 schema 或相关插件前先在 workerd 中验证。
-- Web 使用会话 Cookie，观看历史使用 IndexedDB 并按现有账号同步逻辑写入 API。移动端按平台使用 expo-sqlite、MMKV 等本地存储。
-- 旧桌面版本遗留的 SQLite 数据不迁移，也不由新版本自动删除。
-- 密钥通过本地忽略的环境文件或部署平台 Secret 提供，不写入源码和文档；桌面发布令牌参考 `apps/desktop/.env.development.example`。
-
-## 安装与常用命令
-
-- 在仓库根目录使用 `pnpm install --frozen-lockfile`。所有应用共用根 `pnpm-workspace.yaml` 和 `pnpm-lock.yaml`，不要创建子锁文件或混用 npm／yarn。
-- 根 `nodeLinker: isolated` 是安装策略；各应用通过自己的 `node_modules` 链接所声明的依赖，复用根目录 `node_modules/.pnpm` 存储，不为局部改动切换安装模型或引入 Turbo／Nx。
-- 新依赖应声明在实际调用它的 workspace 应用中，不因依赖提升而省略直接依赖。
-- 工作区包名与面向用户的应用名、安装包名、仓库 slug 分开维护；改包名时核对各平台 ID、scheme、更新源和安装包命名。
-
-| 命令                                                                 | 用途                              |
-| -------------------------------------------------------------------- | --------------------------------- |
-| `pnpm dev:web`、`pnpm dev:api`                                       | 启动 Web、API 开发服务            |
-| `pnpm dev:desktop`                                                   | 启动 Electron 桌面壳              |
-| `pnpm dev:mobile`、`pnpm android`、`pnpm ios`                        | 移动端开发与设备运行              |
-| `pnpm typecheck:web`、`pnpm typecheck:desktop`、`pnpm typecheck:api` | 单应用类型检查                    |
-| `pnpm typecheck`、`pnpm check`                                       | 工作区类型检查                    |
-| `pnpm test:web`、`pnpm test:api`、`pnpm test:desktop`                | Web、API 与桌面端测试             |
-| `pnpm build:web`、`pnpm build:api`、`pnpm build:win`                 | 构建 Web、API、Windows 桌面安装包 |
-| `pnpm build:mobile`                                                  | EAS 云构建，会访问外部服务        |
-| `pnpm release:desktop`、`pnpm release:mobile`                        | 上传 Release 产物                 |
-
-electron-vite 的 renderer 指向 apps/web 并复用其 Vite 配置，将产物输出到 `apps/desktop/out/renderer/`。生产模式的页面从安装包加载，API 和媒体仍依赖网络；修改内置页面后需要发布桌面更新。发布脚本从 `apps/desktop/.env.development` 读取 `GITEE_TOKEN` 和 `GH_TOKEN`。真实发布、部署和 Git 提交按用户当次授权执行。
-
-## 修改与验证
-
-- 涉及前端代码且本地提供 `ym-rules` 时，按技能说明读取对应规范并完成自审；技能不是项目运行依赖。
-- 遵守根 `.prettierrc`，只格式化本次涉及的文件。TypeScript 不新增逃避类型检查的 `any` 或忽略指令。
-- 根据改动运行相关类型检查、测试或构建；说明实际执行的命令和结果。未运行设备、云构建、远程登录同步或发布时，不描述为已验证。
-- 移动端首次安装后的 Expo 类型和原生目录由 Expo／Metro 生成；先初始化现有工具，不用宽泛声明掩盖类型错误。
-- 保留无关工作区改动。删除或移动资源前核对所有引用，并验证文件移动完整性。
-
-<!-- postman-cli:installation:start -->
-
-Postman CLI is installed on this device, and can be used for API Engineering work.
-
-<!-- postman-cli:installation:end -->
+- 前端代码按本地 `ym-rules` 读取对应规范，实现后完成自审、修复和复查。
+- Tauri API 与配置以官方 v2 文档和实际依赖版本为准。
+- 按真实职责复用与拆分代码，只格式化本次涉及的文件。前端遵守根 `.prettierrc`，TypeScript 不新增逃避类型检查的 `any` 或忽略指令，Rust 使用 rustfmt 和 Clippy。
+- 根据改动运行相关类型检查、测试或构建，交付时说明实际执行的命令、结果与验证限制。设备运行、远程登录同步、云构建和发布以实际执行结果为准。
