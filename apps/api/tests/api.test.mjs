@@ -18,8 +18,9 @@ before(async () => {
       compatibilityDate: '2026-10-12',
       compatibilityFlags: ['nodejs_compat'],
       assets: {
-        directory: fileURLToPath(new URL('../../web/dist/', import.meta.url)),
-        run_worker_first: ['/api', '/api/*'],
+        directory: fileURLToPath(new URL('../.assets/', import.meta.url)),
+        binding: 'ASSETS',
+        run_worker_first: ['/api', '/api/*', '/admin', '/admin/*'],
         routerConfig: { has_user_worker: true },
         assetConfig: { not_found_handling: 'single-page-application' },
       },
@@ -1546,4 +1547,29 @@ test('邀请分页、注册原子性、并发单次使用与删除状态', async
     headers: { origin, 'access-control-request-method': 'PATCH' },
   });
   assert.match(preflight.headers.get('access-control-allow-methods'), /PATCH/);
+});
+
+test('影视和管理应用使用独立静态入口，管理子路由支持刷新', async () => {
+  const web = await worker.dispatchFetch('https://api.example.com/overview', {
+    headers: { 'sec-fetch-mode': 'navigate', accept: 'text/html' },
+  });
+  const webHtml = await web.text();
+  assert.equal(web.status, 200);
+  assert.match(webHtml, /<title>Ym Video<\/title>/);
+
+  const response = await worker.dispatchFetch(
+    'https://api.example.com/admin/invitations',
+    { headers: { accept: 'text/html' } },
+  );
+  const html = await response.text();
+  assert.equal(response.status, 200);
+  assert.match(html, /<title>Ym Video 管理后台<\/title>/);
+  const asset = html.match(/src="(\/admin\/assets\/[^"]+\.js)"/);
+  assert.ok(asset);
+  const bundle = await worker.dispatchFetch(
+    'https://api.example.com' + asset[1],
+    { headers: { accept: 'text/html' } },
+  );
+  assert.equal(bundle.status, 200);
+  assert.match(bundle.headers.get('content-type'), /javascript/);
 });

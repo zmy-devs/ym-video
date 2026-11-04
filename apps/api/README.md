@@ -1,6 +1,6 @@
 # ym-video API
 
-运行在 Cloudflare Workers 上的 API 服务，提供邮箱登录、账号管理、邀请注册、观看历史同步和第三方资源代理，同时托管 Web 页面。
+运行在 Cloudflare Workers 上的 API 服务，提供邮箱登录、账号管理、邀请注册、观看历史同步和第三方资源代理，同时托管独立构建的 Web 与 Admin 页面。
 
 ## 技术栈
 
@@ -21,13 +21,13 @@ pnpm migrate:api
 pnpm dev:api
 ```
 
-服务地址为 <http://localhost:8787>，健康检查地址为 <http://localhost:8787/api/v1/health>。启动命令会先构建 Web。
+服务地址为 <http://localhost:8787>，健康检查地址为 <http://localhost:8787/api/v1/health>。启动命令会分别构建 Web、Admin，并组装到本应用的 `.assets/`。
 
-另开终端运行 `pnpm dev:web`，通过 <http://localhost:5173> 使用 Web 页面。
+另开终端运行 `pnpm dev:web`，通过 <http://localhost:3000> 使用 Web 页面；运行 `pnpm dev:admin` 后通过 <http://localhost:3001/admin/> 使用管理页面。
 
 ## 账号使用
 
-Web 使用邮箱和密码登录。新账号由管理员在后台创建，或通过邀请链接注册，不提供公开注册入口。
+Web 与 Admin 使用邮箱和密码登录。新账号由管理员在管理应用创建，或通过邀请链接注册，不提供公开注册入口。
 
 本地已有 `admin@ym-video.local` 账号时，可运行以下 PowerShell 命令，将其设为管理员，并在缺少普通账号时创建 `user@ym-video.local`：
 
@@ -76,7 +76,7 @@ Remove-Item Env:YM_INITIAL_USER_PASSWORD
 | `WEB_ORIGINS`        | 允许访问 API 的 Web 来源，多个地址以逗号分隔 |
 | `DB`                 | D1 数据库 binding                            |
 
-生产配置位于 `apps/api/wrangler.jsonc`，Web 与 API 共用 <https://ym-video.zhangmingyang.dpdns.org>，数据库为 `ym-video-auth`。
+生产配置位于 `apps/api/wrangler.jsonc`，Web、Admin 与 API 共用 <https://ym-video.zhangmingyang.dpdns.org>，管理入口为 `/admin/`，数据库为 `ym-video-auth`。
 
 从仓库根目录运行：
 
@@ -86,4 +86,4 @@ pnpm --filter @ym-video/api exec wrangler d1 migrations apply DB --remote --env 
 pnpm --filter @ym-video/api run deploy
 ```
 
-部署命令会构建 Web，并将网页和 API 一起发布到同一个 Worker。
+部署命令会分别构建 Web、Admin，并将两份前端产物和 API 一起发布到同一个 Worker。管理页面刷新由 `/admin/` 入口处理。

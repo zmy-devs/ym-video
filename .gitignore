@@ -29,3 +29,6 @@ coverage/
 /apps/desktop/src-tauri/target/
 /apps/desktop/src-tauri/gen/
 /apps/desktop/build/generated/
+
+# Worker 组装后的前端静态资源
+/apps/api/.assets/

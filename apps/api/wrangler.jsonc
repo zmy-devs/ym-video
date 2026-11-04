@@ -6,15 +6,16 @@
   "compatibility_flags": ["nodejs_compat"],
   "upload_source_maps": true,
   "assets": {
-    "directory": "../web/dist",
+    "directory": ".assets",
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api", "/api/*"],
+    "run_worker_first": ["/api", "/api/*", "/admin", "/admin/*"],
   },
   "observability": { "enabled": true, "head_sampling_rate": 1 },
   "secrets": { "required": ["BETTER_AUTH_SECRET"] },
   "vars": {
     "BETTER_AUTH_URL": "http://localhost:8787",
-    "WEB_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173",
+    "WEB_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173,http://localhost:3001,http://127.0.0.1:3001,http://localhost:4174",
   },
   "d1_databases": [
     {

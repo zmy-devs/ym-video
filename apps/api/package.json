@@ -7,16 +7,17 @@
     "extends": "../../package.json"
   },
   "scripts": {
-    "dev": "pnpm --filter @ym-video/web run build && wrangler dev --local",
+    "dev": "pnpm run build:assets && wrangler dev --local",
     "types": "wrangler types",
     "typecheck": "pnpm run types && tsc --noEmit",
-    "build": "pnpm --filter @ym-video/web run build && pnpm run typecheck && wrangler deploy --dry-run --outdir dist",
+    "build": "pnpm run build:assets && pnpm run typecheck && wrangler deploy --dry-run --outdir dist",
     "test": "pnpm run build && node --test tests/*.test.mjs",
     "db:generate": "drizzle-kit generate",
     "db:schema": "node scripts/generate-auth-schema.mjs",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:init:local": "node scripts/initialize-accounts.mjs",
-    "deploy": "pnpm --filter @ym-video/web run build && wrangler deploy --env production"
+    "deploy": "pnpm run build:assets && wrangler deploy --env production",
+    "build:assets": "pnpm --filter @ym-video/web run build && pnpm --filter @ym-video/admin run build && node scripts/assemble-assets.mjs"
   },
   "dependencies": {
     "@ym-video/catalog": "workspace:*",
