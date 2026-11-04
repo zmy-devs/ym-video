@@ -1,19 +1,15 @@
 <template>
   <Sheet v-model:open="open">
     <SheetContent
-      id="player-episodes-sheet"
       :portal-container="container"
-      class="w-80 gap-0"
+      class="w-80 gap-0 data-[state=open]:duration-300"
       @open-auto-focus="handleOpenAutoFocus"
       @close-auto-focus="handleCloseAutoFocus"
     >
       <SheetHeader class="shrink-0 gap-4">
         <SheetTitle>选集</SheetTitle>
-        <SheetDescription class="sr-only">
-          共 {{ episodes.length }} 集，每页显示 50 集，选择后开始播放。
-        </SheetDescription>
         <Select v-model="page">
-          <SelectTrigger class="w-full" aria-label="集数分页">
+          <SelectTrigger class="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent :portal-container="container">
@@ -31,11 +27,9 @@
         <ol ref="list" class="grid grid-cols-2 gap-2 px-4 pb-4">
           <li v-for="item in visibleEpisodes" :key="item.index" class="min-w-0">
             <Button
-              type="button"
               class="w-full h-10"
               :variant="selected === item.index ? 'default' : 'outline'"
-              :title="item.episode.label"
-              :aria-current="selected === item.index ? 'true' : undefined"
+              :data-selected="selected === item.index"
               @click="handleSelect(item.index)"
             >
               <span class="min-w-0 truncate">
@@ -50,23 +44,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onScopeDispose, ref, watch } from 'vue';
-import { Button } from '@/components/ui/button';
+import { computed, onScopeDispose, ref, useTemplateRef } from 'vue';
+import { watchImmediate } from '@vueuse/core';
+import { Button } from '@ym-video/ui/components/button';
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
-} from '@/components/ui/sheet';
+} from '@ym-video/ui/components/sheet';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
+} from '@ym-video/ui/components/select';
+import { ScrollArea } from '@ym-video/ui/components/scroll-area';
 import { formatRemarks } from '@/lib/movie';
 import { eventBus } from '@/utils/event-bus';
 import type { Episode } from '@/types';
@@ -88,13 +82,16 @@ const open = defineModel<boolean>('open', { required: true });
 const returnFocus = ref<HTMLElement | null>(null);
 
 // 当前页的列表用于打开时聚焦正在播放的集数。
-const list = ref<HTMLOListElement | null>(null);
+const list = useTemplateRef<HTMLOListElement>('list');
 
 // 每页最多展示五十集。
 const pageSize = 50;
 
 // 页码使用选择器所需的字符串值。
 const page = ref('0');
+
+// 当前分页在完整集数列表中的起始索引。
+const pageStart = computed(() => Number(page.value) * pageSize);
 
 // 尾页按真实集数截断。
 const pages = computed(() =>
@@ -110,10 +107,10 @@ const pages = computed(() =>
 // 仅处理当前页，并保留每集在完整列表中的真实索引。
 const visibleEpisodes = computed(() =>
   props.episodes
-    .slice(Number(page.value) * pageSize, (Number(page.value) + 1) * pageSize)
+    .slice(pageStart.value, pageStart.value + pageSize)
     .map((episode, index) => ({
       episode,
-      index: Number(page.value) * pageSize + index,
+      index: pageStart.value + index,
     })),
 );
 
@@ -140,7 +137,7 @@ const handleSelect = (index: number) => {
 const handleOpenAutoFocus = (event: Event) => {
   // 当前页内正在播放的按钮。
   const selectedButton = list.value?.querySelector<HTMLButtonElement>(
-    '[aria-current="true"]',
+    '[data-selected="true"]',
   );
 
   if (selectedButton) {
@@ -158,12 +155,11 @@ const handleCloseAutoFocus = (event: Event) => {
   }
 };
 
-watch(
+watchImmediate(
   [() => props.selected, () => props.episodes, open],
   () => {
     page.value = String(Math.floor(props.selected / pageSize));
   },
-  { immediate: true },
 );
 
 // 离开播放页时注销监听，避免重复打开旧面板。

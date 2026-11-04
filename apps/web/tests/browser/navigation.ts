@@ -1,15 +1,11 @@
 import { createApp, h, nextTick } from 'vue';
 import { createPinia } from 'pinia';
-import { createMemoryHistory, createRouter, RouterView } from 'vue-router';
+import { createMemoryHistory, createRouter } from 'vue-router';
 import AppLayout from '../../src/layout/index.vue';
 import Catalogue from '../../src/views/catalogue.vue';
 import History from '../../src/views/history.vue';
-import AdminLayout from '../../src/layout/admin-layout.vue';
-import Users from '../../src/views/admin/users.vue';
-import Invitations from '../../src/views/admin/invitations.vue';
-import AppDialogs from '../../src/dialogs/index.vue';
-import { eventBus } from '../../src/utils/event-bus';
-import { useLibraryStore } from '../../src/stores/library';
+import AppDialogs from '../../src/components/dialogs/index.vue';
+import { useLibraryStore } from '../../src/stores/library-store';
 import '../../src/styles/global.css';
 
 // 真实组件只访问此测试页的模拟接口，不读写开发数据库。
@@ -21,14 +17,12 @@ const run = async () => {
   // 搜索记录只用于本轮测试，结束后恢复浏览器原值。
   const previousSearches = localStorage.getItem('ym-video:searches');
 
-  // 后台写入只计数，不访问真实账号与邀请数据。
-  let userCreates = 0;
-  let invitationCreates = 0;
-  let deleteAttempts = 0;
+  localStorage.setItem('ym-video:searches', JSON.stringify(['测试搜索记录']));
+
   const pinia = createPinia();
   const library = useLibraryStore(pinia);
   library.selected = 'navigation-test';
-  library.sources = [{ id: 'navigation-test', name: '导航测试源' }];
+  library.platformSources = [{ id: 'navigation-test', name: '导航测试源' }];
   library.categories = [{ id: 1, parentId: 0, name: '测试分类' }];
 
   // 挂起新页数据，验证等待期间不会把旧列表改成新标题。
@@ -39,55 +33,6 @@ const run = async () => {
       input instanceof Request ? input.url : String(input),
       window.location.origin,
     );
-    if (url.pathname.startsWith('/api/v1/admin/')) {
-      if (options?.method === 'POST') {
-        if (url.pathname.endsWith('/users')) {
-          userCreates += 1;
-          return Response.json({ success: true });
-        }
-
-        invitationCreates += 1;
-        return Response.json({
-          invitation: {
-            id: 'created',
-            name: '测试分享',
-            token: 'created-token',
-            createdAt: 0,
-            usedAt: null,
-          },
-        });
-      }
-
-      if (options?.method === 'DELETE') {
-        deleteAttempts += 1;
-
-        if (deleteAttempts === 1) {
-          return Response.json({ message: '模拟删除失败' }, { status: 500 });
-        }
-
-        return Response.json({ success: true });
-      }
-
-      const items = Array.from({ length: 20 }, (_, index) =>
-        url.pathname.endsWith('/users')
-          ? {
-              id: `user-${index}`,
-              name: `navigation_user_${index}`,
-              username: `navigation_user_${index}`,
-              email: `user${index}@example.com`,
-              role: 'user',
-              banned: false,
-            }
-          : {
-              id: `invite-${index}`,
-              name: `navigation_invitation_${index}`,
-              token: `token-${index}`,
-              createdAt: 0,
-              usedAt: null,
-            },
-      );
-      return Response.json({ items, total: 20, page: 1, pageSize: 20 });
-    }
     if (!url.pathname.startsWith('/api/v1/proxy/')) {
       return Response.json(null);
     }
@@ -110,16 +55,8 @@ const run = async () => {
     history: createMemoryHistory(),
     routes: [
       {
-        path: '/admin',
-        component: AdminLayout,
-        children: [
-          { path: 'users', component: Users },
-          { path: 'invitations', component: Invitations },
-        ],
-      },
-      {
         path: '/',
-        component: AppLayout,
+        meta: { sidebar: true },
         children: [
           {
             path: 'overview',
@@ -140,7 +77,7 @@ const run = async () => {
   }
   fixture.style.height = '100vh';
   fixture.style.overflow = 'hidden';
-  const app = createApp({ render: () => [h(RouterView), h(AppDialogs)] })
+  const app = createApp({ render: () => [h(AppLayout), h(AppDialogs)] })
     .use(pinia)
     .use(router);
   app.mount(fixture);
@@ -148,7 +85,7 @@ const run = async () => {
   try {
     await until(() => Boolean(fixture.textContent?.includes('概览影片29')));
     const sidebar = fixture.querySelector('[data-slot="sidebar"]');
-    const previousPage = fixture.querySelector('.page-content');
+    const previousPage = fixture.querySelector('[data-slot="catalogue-page"]');
 
     // 页面滚动区域独立于侧栏的 ScrollArea。
     const previousViewport = previousPage?.closest<HTMLElement>(
@@ -157,6 +94,127 @@ const run = async () => {
     if (!previousPage || !previousViewport) {
       throw new Error('概览页未就绪');
     }
+
+    // 加载覆盖整个视口，结束后保留当前列表实例。
+    library.status = 'loading';
+    await nextTick();
+    const loading = fixture.querySelector<HTMLElement>(
+      '[data-slot="loading-overlay"]',
+    );
+    const bounds = loading?.getBoundingClientRect();
+    assert(
+      loading &&
+        getComputedStyle(loading).position === 'fixed' &&
+        bounds?.top === 0 &&
+        bounds.left === 0 &&
+        bounds.width === document.documentElement.clientWidth &&
+        bounds.height === document.documentElement.clientHeight,
+      '加载层应固定覆盖整个视口',
+    );
+    assert(
+      loading?.querySelector('[data-slot="spinner"]'),
+      '加载层通过 Overlay 插槽显示 Spinner',
+    );
+
+    // 模拟全屏宿主，检查覆盖层会进入全屏容器并在退出后归位。
+    const fullscreenHost = document.createElement('div');
+    const fullscreenDescriptor = Object.getOwnPropertyDescriptor(
+      document,
+      'fullscreenElement',
+    );
+    document.body.append(fullscreenHost);
+    try {
+      Object.defineProperty(document, 'fullscreenElement', {
+        configurable: true,
+        value: fullscreenHost,
+      });
+      document.dispatchEvent(new Event('fullscreenchange'));
+      await nextTick();
+      assert(
+        fullscreenHost.querySelector('[data-slot="loading-overlay"]') ===
+          loading,
+        '视频全屏时覆盖层应进入全屏宿主',
+      );
+    } finally {
+      if (fullscreenDescriptor) {
+        Object.defineProperty(
+          document,
+          'fullscreenElement',
+          fullscreenDescriptor,
+        );
+      } else {
+        Reflect.deleteProperty(document, 'fullscreenElement');
+      }
+      document.dispatchEvent(new Event('fullscreenchange'));
+      await nextTick();
+      fullscreenHost.remove();
+    }
+    assert(
+      fixture.querySelector('[data-slot="loading-overlay"]') === loading,
+      '退出全屏后覆盖层应归位',
+    );
+    library.status = 'ready';
+    await nextTick();
+    assert(
+      !fixture.querySelector('[data-slot="loading-overlay"]') &&
+        previousPage.isConnected,
+      '加载结束保留原页面',
+    );
+    report('全屏加载层覆盖视口，结束后保留页面');
+
+    // 断网只展示覆盖层，恢复网络后继续使用原来的页面和侧栏。
+    window.dispatchEvent(new Event('offline'));
+    await nextTick();
+    const offline = fixture.querySelector('[data-slot="offline-overlay"]');
+    assert(
+      offline?.querySelector('[data-slot="empty"]') &&
+        offline.textContent?.includes('网络已断开'),
+      '断网层使用 Empty 展示网络提示',
+    );
+    assert(
+      document
+        .elementFromPoint(innerWidth / 2, innerHeight / 2)
+        ?.closest('[data-slot="offline-overlay"]'),
+      '断网层应覆盖页面交互区域',
+    );
+    window.dispatchEvent(new Event('online'));
+    await nextTick();
+    assert(
+      !fixture.querySelector('[data-slot="offline-overlay"]') &&
+        previousPage.isConnected &&
+        sidebar === fixture.querySelector('[data-slot="sidebar"]'),
+      '联网后自动关闭覆盖层并保留页面实例',
+    );
+    report('断网 Empty 覆盖界面，联网后恢复原页面');
+
+    const categoryToggle = [
+      ...fixture.querySelectorAll<HTMLElement>(
+        '[data-slot="sidebar-group-label"] button',
+      ),
+    ].find((item) => item.textContent?.trim() === '分类');
+    categoryToggle?.click();
+    await nextTick();
+    const categoryMenu = fixture.querySelector<HTMLElement>('#category-menu');
+    assert(categoryMenu?.style.display === 'none', '分类分组应支持折叠');
+    categoryToggle?.click();
+    await nextTick();
+    assert(categoryMenu?.style.display !== 'none', '分类分组应支持展开');
+    const trigger = fixture.querySelector<HTMLElement>(
+      '[data-sidebar="trigger"]',
+    );
+    trigger?.click();
+    await nextTick();
+    assert(
+      sidebar?.getAttribute('data-state') === 'collapsed',
+      `封装后的侧栏应支持收起，按钮 ${Boolean(trigger)}，实际状态 ${sidebar?.getAttribute('data-state')}`,
+    );
+    trigger?.click();
+    await nextTick();
+    assert(
+      sidebar?.getAttribute('data-state') === 'expanded',
+      '封装后的侧栏应支持展开',
+    );
+    report('共享侧栏和分类分组保持收缩交互');
     const previousText = previousPage.textContent;
     previousViewport.scrollTop = 300;
     assert(previousViewport.scrollTop > 0, '测试必须先滚动旧页面');
@@ -172,12 +230,12 @@ const run = async () => {
     );
     // 新路由使用自己的内容滚动区域。
     const currentViewport = fixture
-      .querySelector('.page-content')
+      .querySelector('[data-slot="catalogue-page"]')
       ?.closest<HTMLElement>('[data-slot="scroll-area-viewport"]');
     assert(currentViewport !== previousViewport, '新页面应有独立滚动区域');
     assert(currentViewport?.scrollTop === 0, '新页面应从顶部展示');
     assert(
-      fixture.textContent?.includes('正在加载影片'),
+      fixture.querySelector('[data-slot="movie-grid-skeleton"]'),
       '新页等待数据时展示加载状态',
     );
     assert(
@@ -191,7 +249,9 @@ const run = async () => {
 
     await router.push('/search?q=alpha');
     await until(() => Boolean(fixture.textContent?.includes('alpha影片29')));
-    const previousSearch = fixture.querySelector('.page-content');
+    const previousSearch = fixture.querySelector(
+      '[data-slot="catalogue-page"]',
+    );
     await router.push('/search?q=beta');
     await until(() => Boolean(fixture.textContent?.includes('beta影片29')));
     assert(!previousSearch?.isConnected, '切换搜索词不能沿用上一个结果页实例');
@@ -216,169 +276,64 @@ const run = async () => {
     await until(() => Boolean(fixture.textContent?.includes('概览影片29')));
     assert(requests.length === beforeLeave, '返回概览不能重复请求最近更新');
     assert(
-      fixture.querySelector('.page-content') === previousPage,
+      fixture.querySelector('[data-slot="catalogue-page"]') === previousPage,
       '返回概览应复用原页面实例',
     );
     report('概览页面缓存：复用原页面，不重复请求最近更新');
 
-    await router.push('/admin/users');
-    await until(() =>
-      Boolean(fixture.textContent?.includes('navigation_user_19')),
-    );
-    const previousAdminViewport = fixture.querySelector<HTMLElement>(
-      '[data-slot="sidebar-inset"] .overflow-auto',
-    );
-    if (!previousAdminViewport) {
-      throw new Error('后台滚动容器未就绪');
-    }
-    previousAdminViewport.scrollTop = 150;
-    assert(previousAdminViewport.scrollTop > 0, '测试必须先滚动后台列表');
-    const adminSidebar = fixture.querySelector('[data-slot="sidebar"]');
-    await router.push('/admin/invitations');
-    await until(() =>
-      Boolean(fixture.textContent?.includes('navigation_invitation_19')),
-    );
-    const nextAdminViewport = fixture.querySelector<HTMLElement>(
-      '[data-slot="sidebar-inset"] .overflow-auto',
-    );
-    assert(
-      nextAdminViewport?.scrollTop === 0,
-      '后台切页不能继承上一个表格的滚动位置',
-    );
-    assert(
-      adminSidebar === fixture.querySelector('[data-slot="sidebar"]'),
-      '后台切页应保留侧栏实例',
-    );
-    report('后台表格切换：独立滚动位置，侧栏保留');
-
-    document.getElementById('invitations-create')?.click();
-    await until(() => Boolean(document.getElementById('invitation-name')));
-    fill('invitation-name', '测试分享');
-    await nextTick();
-    document
-      .querySelector<HTMLFormElement>('[role="dialog"] form')
-      ?.requestSubmit();
-    await until(() => Boolean(document.getElementById('created-invitation')));
-    assert(
-      invitationCreates === 1 &&
-        document
-          .querySelector<HTMLInputElement>('#created-invitation')
-          ?.value.endsWith('/invite/created-token'),
-      '邀请由根弹窗生成并展示链接',
-    );
-    document.querySelector<HTMLElement>('[data-slot="dialog-close"]')?.click();
-    await until(() => !document.querySelector('[role="dialog"]'));
-    assert(
-      document.activeElement?.id === 'invitations-create',
-      '邀请弹窗关闭恢复新增入口',
-    );
-    report('根邀请弹窗生成链接并恢复焦点');
-
-    document
-      .querySelector<HTMLElement>('[aria-label="邀请链接的更多操作"]')
-      ?.click();
-    await until(() => Boolean(document.querySelector('[role="menu"]')));
-    [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')]
-      .find((item) => item.textContent?.includes('删除链接'))
-      ?.click();
-    await until(() => Boolean(document.querySelector('[role="alertdialog"]')));
-    document
-      .querySelector<HTMLElement>(
-        '[role="alertdialog"] [data-variant="destructive"]',
-      )
-      ?.click();
-    await until(() =>
-      Boolean(document.querySelector('[role="alertdialog"] [role="alert"]')),
-    );
-    assert(
-      document
-        .querySelector('[role="alertdialog"]')
-        ?.textContent?.includes('模拟删除失败'),
-      '后台删除失败保留确认框',
-    );
-    document
-      .querySelector<HTMLElement>(
-        '[role="alertdialog"] [data-variant="destructive"]',
-      )
-      ?.click();
-    await until(() => !document.querySelector('[role="alertdialog"]'));
-    assert(deleteAttempts === 2, '后台删除重试只提交当前目标');
-    report('后台删除接入统一确认框，支持失败反馈和重试');
-
-    await router.push('/admin/users');
-    await until(() => Boolean(document.getElementById('users-create')));
-    document.getElementById('users-create')?.click();
-    await until(() => Boolean(document.getElementById('new-username')));
-    eventBus.emit('account:show');
-    assert(
-      document.querySelectorAll('[role="dialog"]').length === 1,
-      '重复账号事件保持单例',
-    );
-    fill('new-username', 'test_user');
-    fill('new-email', 'test@example.com');
-    fill('new-password', 'test-password');
-    await nextTick();
-    document
-      .querySelector<HTMLFormElement>('[role="dialog"] form')
-      ?.requestSubmit();
-    await until(() => !document.querySelector('[role="dialog"]'));
-    assert(userCreates === 1, '账号弹窗只创建一次');
-    document.getElementById('users-create')?.click();
-    await until(() => Boolean(document.getElementById('new-username')));
-    assert(
-      document.querySelector<HTMLInputElement>('#new-password')?.value === '',
-      '重新打开不保留密码',
-    );
-    await router.push('/overview');
-    await until(() => !document.querySelector('[role="dialog"]'));
-    report('根账号弹窗保持单例，重开清空密码，切页关闭');
-
-    localStorage.setItem('ym-video:searches', JSON.stringify(['测试搜索记录']));
     document.getElementById('search-trigger')?.click();
     await until(() => Boolean(document.getElementById('search-keyword')));
 
-    [...document.querySelectorAll<HTMLElement>('[role="option"]')]
+    [...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]')]
       .find((item) => item.textContent?.includes('清空搜索历史'))
       ?.click();
-    await until(() => Boolean(document.querySelector('[role="alertdialog"]')));
+    await until(() =>
+      Boolean(document.querySelector('[data-slot="alert-dialog-content"]')),
+    );
     [
       ...document.querySelectorAll<HTMLButtonElement>(
-        '[role="alertdialog"] button',
+        '[data-slot="alert-dialog-content"] button',
       ),
     ]
       .find((button) => button.textContent === '取消')
       ?.click();
-    await until(() => !document.querySelector('[role="alertdialog"]'));
+    await until(
+      () => !document.querySelector('[data-slot="alert-dialog-content"]'),
+    );
     assert(
       document
-        .querySelector('[role="dialog"]')
+        .querySelector('[data-slot="dialog-content"]')
         ?.textContent?.includes('测试搜索记录'),
       '取消确认后保留搜索记录和弹窗',
     );
-    [...document.querySelectorAll<HTMLElement>('[role="option"]')]
+    [...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]')]
       .find((item) => item.textContent?.includes('清空搜索历史'))
       ?.click();
-    await until(() => Boolean(document.querySelector('[role="alertdialog"]')));
+    await until(() =>
+      Boolean(document.querySelector('[data-slot="alert-dialog-content"]')),
+    );
     document
       .querySelector<HTMLElement>(
-        '[role="alertdialog"] [data-variant="destructive"]',
+        '[data-slot="alert-dialog-content"] [data-variant="destructive"]',
       )
       ?.click();
-    await until(() => !document.querySelector('[role="alertdialog"]'));
+    await until(
+      () => !document.querySelector('[data-slot="alert-dialog-content"]'),
+    );
     assert(
       localStorage.getItem('ym-video:searches') === '[]' &&
-        Boolean(document.querySelector('[role="dialog"]')),
+        Boolean(document.querySelector('[data-slot="dialog-content"]')),
       '确认清空只删除记录，保留搜索弹窗',
     );
     fill('search-keyword', '测试片名');
     await nextTick();
-    [...document.querySelectorAll<HTMLElement>('[role="option"]')]
+    [...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]')]
       .find((item) => item.textContent?.includes('搜索“测试片名”'))
       ?.click();
     await until(
       () =>
         router.currentRoute.value.query.q === '测试片名' &&
-        !document.querySelector('[role="dialog"]'),
+        !document.querySelector('[data-slot="dialog-content"]'),
     );
     report('根搜索弹窗支持叠加确认、取消、清空和搜索跳转');
   } finally {
@@ -411,7 +366,7 @@ const until = async (ready: () => boolean) => {
   const deadline = Date.now() + 5000;
   while (!ready()) {
     if (Date.now() > deadline) {
-      throw new Error('等待页面超时');
+      throw new Error('等待页面超时：' + ready.toString());
     }
     await new Promise((resolve) => setTimeout(resolve, 10));
   }

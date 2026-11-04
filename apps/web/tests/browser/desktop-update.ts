@@ -3,8 +3,8 @@ import { createPinia, setActivePinia } from 'pinia';
 import { mockIPC, clearMocks } from '@tauri-apps/api/mocks';
 import type { Channel } from '@tauri-apps/api/core';
 import type { DownloadEvent } from '@tauri-apps/plugin-updater';
-import { useUpdateStore } from '../../src/stores/update';
-import UpdateSettings from '../../src/dialogs/settings/update-settings.vue';
+import { useUpdateStore } from '../../src/stores/update-store';
+import UpdateSettings from '../../src/components/dialogs/settings/update-settings.vue';
 
 // 断言当前场景是否满足预期。
 const assert = (condition: unknown, message: string) => {
@@ -150,8 +150,6 @@ const run = async () => {
 
   assert(installs === 1, '下载成功后安装');
 
-  update.installing = false;
-
   update.status = 'error';
 
   fail = true;
@@ -176,6 +174,9 @@ const run = async () => {
   await until(() => update.status === 'downloaded');
 
   stop();
+
+  // 原生资源释放完成后再移除 IPC 模拟。
+  await new Promise((resolve) => setTimeout(resolve, 0));
 
   clearMocks();
 

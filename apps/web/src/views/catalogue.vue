@@ -1,23 +1,22 @@
 <template>
   <ScrollArea class="h-full" @scroll.capture="handleScroll">
-    <div class="page-content">
+    <div
+      data-slot="catalogue-page"
+      class="mx-auto w-full max-w-[1400px] px-10 py-8"
+    >
       <h1
         v-if="isOverview"
         class="mb-10 py-6 text-center text-3xl font-semibold tracking-tight"
       >
-        {{ greeting }}，亲爱的用户<span class="ml-2" aria-hidden="true"
-          >😊</span
-        >
+        {{ greeting }}，亲爱的用户<span class="ml-2">😊</span>
       </h1>
-      <section
-        v-if="isOverview && history.entries.length"
-        class="mb-10"
-        aria-labelledby="continue-heading"
-      >
+      <section v-if="isOverview && history.entries.length" class="mb-10">
         <h2 id="continue-heading" class="mb-5 text-xl font-semibold">
           最近观看
         </h2>
-        <div class="movie-grid">
+        <div
+          class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-5 gap-y-7"
+        >
           <MovieCard
             v-for="item in history.entries.slice(0, 6)"
             :key="item.id"
@@ -26,7 +25,7 @@
           />
         </div>
       </section>
-      <section aria-labelledby="catalogue-heading">
+      <section>
         <h2
           v-if="isOverview"
           id="catalogue-heading"
@@ -41,43 +40,33 @@
         >
           {{ title }}
         </h1>
-        <div
-          v-if="hasFilters"
-          class="mb-6 flex gap-2 overflow-x-auto"
-          role="group"
-          aria-label="影视分类"
-        >
+        <div v-if="hasFilters" class="mb-6 flex gap-2 overflow-x-auto">
           <Button
             v-for="item in selection.children"
             :key="item.id"
-            type="button"
             size="sm"
             :variant="selection.selectedId === item.id ? 'default' : 'outline'"
-            :aria-pressed="selection.selectedId === item.id"
             @click="handleCategoryChange(item.id)"
           >
             {{ item.name }}
           </Button>
         </div>
         <div :key="selection.selectedId">
-          <MovieGridSkeleton
-            v-if="
-              (library.loading ||
-                library.categoryLoading ||
-                library.categoryError ||
-                loading ||
-                error) &&
-              !movies.length
-            "
-          />
-          <div v-else-if="!movies.length && !error" class="empty-state">
+          <MovieGridSkeleton v-if="showSkeleton" />
+          <div
+            v-else-if="!movies.length && !error"
+            class="min-h-80 flex flex-col items-center justify-center gap-4 text-sm text-muted-foreground"
+          >
             <SearchX class="size-10" />
-            <h2 class="text-base text-foreground">
+            <h2 class="text-base">
               {{ isSearch ? '没有找到相关影片' : '暂无影片' }}
             </h2>
             <p>试试其他关键词，或切换资源源</p>
           </div>
-          <div v-else class="movie-grid">
+          <div
+            v-else
+            class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-5 gap-y-7"
+          >
             <MovieCard v-for="movie in movies" :key="movie.id" :movie="movie" />
           </div>
           <MovieGridSkeleton v-if="error && movies.length" class="mt-10" />
@@ -86,11 +75,7 @@
             ref="loadMoreTarget"
             class="mt-10 flex min-h-9 justify-center"
           >
-            <Spinner
-              v-if="loading"
-              class="size-5"
-              aria-label="正在加载更多影片"
-            />
+            <Spinner v-if="status === 'loading'" class="size-5" />
             <Button
               v-else-if="page < pageCount"
               variant="outline"
@@ -106,17 +91,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onActivated, onDeactivated, ref } from 'vue';
+import {
+  computed,
+  onActivated,
+  onDeactivated,
+  ref,
+  useTemplateRef,
+} from 'vue';
 import { useIntersectionObserver, useNow } from '@vueuse/core';
 import { useRoute, useRouter } from 'vue-router';
 import { ArrowDown, SearchX } from 'lucide-vue-next';
-import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import MovieCard from '@/components/movie-card.vue';
+import { Button } from '@ym-video/ui/components/button';
+import { Spinner } from '@ym-video/ui/components/spinner';
+import { ScrollArea } from '@ym-video/ui/components/scroll-area';
+import MovieCard from '@/components/movie-card/index.vue';
 import MovieGridSkeleton from '@/components/movie-grid-skeleton.vue';
-import { useLibraryStore } from '@/stores/library';
-import { useHistoryStore } from '@/stores/history';
+import { useLibraryStore } from '@/stores/library-store';
+import { useHistoryStore } from '@/stores/history-store';
 import { useCatalogue } from '@/composables/use-catalogue';
 import { getCategorySelection } from '@/lib/category';
 
@@ -228,7 +219,7 @@ const handleCategoryChange = (id: number) => {
 };
 
 // 页面使用的业务状态和操作。
-const { movies, loading, error, page, pageCount, load } = useCatalogue(() => {
+const { movies, status, error, page, pageCount, load } = useCatalogue(() => {
   if (
     !library.source ||
     (isSearch.value && !keyword.value) ||
@@ -244,11 +235,27 @@ const { movies, loading, error, page, pageCount, load } = useCatalogue(() => {
   };
 });
 
+// 列表为空时的加载和请求错误使用同一占位区域。
+const showSkeleton = computed(
+  () =>
+    !movies.value.length &&
+    (library.status === 'loading' ||
+      library.categoryStatus === 'loading' ||
+      library.categoryStatus === 'error' ||
+      status.value === 'loading' ||
+      status.value === 'error'),
+);
+
 // 列表底部同时作为滚动加载观察点和手动加载入口。
-const loadMoreTarget = ref<HTMLElement | null>(null);
+const loadMoreTarget = useTemplateRef<HTMLElement>('loadMoreTarget');
 
 useIntersectionObserver(loadMoreTarget, ([entry]) => {
-  if (active && entry?.isIntersecting && !loading.value && !error.value) {
+  if (
+    active &&
+    entry?.isIntersecting &&
+    status.value !== 'loading' &&
+    !error.value
+  ) {
     return load();
   }
 });

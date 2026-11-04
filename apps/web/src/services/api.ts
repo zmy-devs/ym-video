@@ -2,7 +2,7 @@ import { apiFetch, isTauri, requestDesktopResource } from '@/lib/desktop';
 import type { Category, Source } from '@/types';
 import { parseMovie } from '@ym-video/catalog';
 import { proxySources } from '@ym-video/catalog/proxy';
-import { normalizeSourceUrl, parseCategories } from '@/lib/source';
+import { parseCategories } from '@/lib/source';
 
 // 收窄来自上游和本地存储的未知对象。
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -15,7 +15,7 @@ const text = (value: unknown) => (typeof value === 'string' ? value : '');
 const buildResourceURL = (source: Source, query: URLSearchParams) => {
   // 自定义源优先使用用户保存的地址。
   const baseUrl = source.url
-    ? normalizeSourceUrl(source.url)
+    ? source.url
     : proxySources.find((item) => item.id === source.id)?.url;
 
   if (!baseUrl) {
@@ -67,7 +67,7 @@ const requestResource = async (
   }
 
   // 浏览器自定义源直连时不携带会话，并保留现有跨域错误提示。
-  const url = new URL(normalizeSourceUrl(source.url));
+  const url = new URL(source.url);
 
   if (window.location.protocol === 'https:' && url.protocol === 'http:') {
     throw new Error('当前页面使用 HTTPS，请填写 HTTPS 接口地址');
@@ -93,15 +93,7 @@ const requestResource = async (
       throw new Error(`接口请求失败（${response.status}）`);
     }
 
-    try {
-      return await response.json();
-    } catch (cause) {
-      if (requestSignal.aborted) {
-        throw cause;
-      }
-
-      throw new Error('接口未返回有效的 JSON 数据');
-    }
+    return await response.json();
   } catch (cause) {
     if (signal?.aborted) {
       throw cause;
@@ -109,6 +101,10 @@ const requestResource = async (
 
     if (requestSignal.aborted) {
       throw new Error('接口请求超时，请稍后重试');
+    }
+
+    if (cause instanceof SyntaxError) {
+      throw new Error('接口未返回有效的 JSON 数据');
     }
 
     if (cause instanceof TypeError) {

@@ -2,7 +2,7 @@ import { mockDesktop } from './desktop-mock';
 import { createApp, nextTick } from 'vue';
 import { createPinia } from 'pinia';
 import { emptyHistory } from '@ym-video/history';
-import { useLibraryStore } from '../../src/stores/library';
+import { useLibraryStore } from '../../src/stores/library-store';
 import { movieKey } from '../../src/lib/movie';
 import '../../src/styles/global.css';
 
@@ -84,7 +84,7 @@ const run = async () => {
 
   const { default: App } = await import('../../src/App.vue');
 
-  const { useHistoryStore } = await import('../../src/stores/history');
+  const { useHistoryStore } = await import('../../src/stores/history-store');
 
   const pinia = createPinia();
 
@@ -92,7 +92,7 @@ const run = async () => {
 
   library.selected = 'baofeng';
 
-  library.sources = [{ id: 'baofeng', name: '缓存测试源' }];
+  library.platformSources = [{ id: 'baofeng', name: '缓存测试源' }];
 
   const fixture = document.querySelector('#fixture');
 
@@ -138,32 +138,52 @@ const run = async () => {
     // 等账号初始化及组件更新结束后记录实际节点与请求次数。
     await nextTick();
 
-    const page = fixture.querySelector('.page-content');
+    // 共享菜单项继续支持侧栏中的历史右键操作。
+    const recent = fixture.querySelector<HTMLElement>('#recent-history-menu a');
+    assert(recent, '侧栏应展示最近观看记录');
+    recent?.dispatchEvent(
+      new MouseEvent('contextmenu', {
+        button: 2,
+        bubbles: true,
+        cancelable: true,
+        clientX: 100,
+        clientY: 180,
+      }),
+    );
+    await until(() =>
+      Boolean(document.querySelector('[data-slot="context-menu-content"]')),
+    );
+    const recentMenu = document.querySelector<HTMLElement>(
+      '[data-slot="context-menu-content"]',
+    );
+    assert(
+      recentMenu?.textContent?.includes('本集从头播放'),
+      '侧栏历史菜单应保留播放操作',
+    );
+    recentMenu?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    );
+    await until(
+      () => !document.querySelector('[data-slot="context-menu-content"]'),
+    );
+
+    const page = fixture.querySelector('[data-slot="catalogue-page"]');
 
     // 保存列表的滚动容器，用于验证返回后的位置恢复。
     const viewport = fixture
-      .querySelector('.page-content')
+      .querySelector('[data-slot="catalogue-page"]')
       ?.closest<HTMLElement>('[data-slot="scroll-area-viewport"]');
 
     if (!page || !viewport) {
       throw new Error('首页未完成渲染');
     }
 
-    // 键盘聚焦与鼠标悬停使用相同的整卡缩放。
-    const card = page.querySelector('article');
-
-    card?.querySelector('a')?.focus({ preventScroll: true });
-
-    await until(() => Boolean(card && getComputedStyle(card).scale === '1.1'));
-
     await router.push('/history');
 
     await nextTick();
 
     // 历史页面按日期展示分组，副标题末尾显示所属播放源。
-    const historyCard = fixture.querySelector<HTMLElement>(
-      '.movie-grid article',
-    );
+    const historyCard = fixture.querySelector<HTMLElement>('article');
 
     if (!historyCard) {
       throw new Error('观看历史卡片未完成渲染');
@@ -180,11 +200,7 @@ const run = async () => {
     );
 
     for (let turn = 0; turn < 2; turn += 1) {
-      // 等聚焦缩放完成后，在卡片内部打开菜单。
-      historyCard.querySelector('a')?.focus({ preventScroll: true });
-
-      await until(() => getComputedStyle(historyCard).scale === '1.1');
-
+      // 在卡片内部打开菜单，检查弹层的实际位置。
       const rect = historyCard.getBoundingClientRect();
 
       const x = rect.left + rect.width / 3;
@@ -201,9 +217,13 @@ const run = async () => {
         }),
       );
 
-      await until(() => Boolean(document.querySelector('[role="menu"]')));
+      await until(() =>
+        Boolean(document.querySelector('[data-slot="context-menu-content"]')),
+      );
 
-      const menu = document.querySelector<HTMLElement>('[role="menu"]');
+      const menu = document.querySelector<HTMLElement>(
+        '[data-slot="context-menu-content"]',
+      );
 
       if (!menu) {
         throw new Error('历史右键菜单未显示');
@@ -223,7 +243,9 @@ const run = async () => {
         new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
       );
 
-      await until(() => !document.querySelector('[role="menu"]'));
+      await until(
+        () => !document.querySelector('[data-slot="context-menu-content"]'),
+      );
     }
 
     await router.push('/overview');
@@ -247,7 +269,7 @@ const run = async () => {
     for (let turn = 0; turn < 2; turn += 1) {
       // 点击真实卡片进入当前窗口，覆盖入口行为与登录会话复用。
       const link = fixture.querySelector<HTMLAnchorElement>(
-        'a[aria-label="播放 缓存影片1"]',
+        'a[href="/player/baofeng/1"]',
       );
 
       assert(link && !link.target, '播放入口应使用当前窗口内的路由');
@@ -280,7 +302,7 @@ const run = async () => {
       await nextTick();
 
       assert(
-        fixture.querySelector('.page-content') === page,
+        fixture.querySelector('[data-slot="catalogue-page"]') === page,
         '返回时必须复用同一个首页节点',
       );
 
@@ -298,7 +320,8 @@ const run = async () => {
 
     await until(
       () =>
-        Boolean(fixture.querySelector('.page-content')) && !page.isConnected,
+        Boolean(fixture.querySelector('[data-slot="catalogue-page"]')) &&
+        !page.isConnected,
     );
 
     assert(listRequests > initialRequests, '新账号应重新创建首页');

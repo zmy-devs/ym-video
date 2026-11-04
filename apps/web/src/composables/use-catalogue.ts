@@ -1,8 +1,9 @@
-import { onScopeDispose, ref, watch, type WatchSource } from 'vue';
+import { onScopeDispose, ref, type WatchSource } from 'vue';
+import { watchImmediate } from '@vueuse/core';
 import type { Movie, Source } from '@/types';
 import { getMovies } from '@/services/api';
-import { retryRequest } from '@/lib/request-retry';
-import { errorToast } from '@/utils/toast';
+import { retryRequest } from '@ym-video/account/request-retry';
+import { errorToast } from '@ym-video/ui/lib/toast';
 
 // 首页、分类与搜索共用分页和请求取消行为。
 export const useCatalogue = (
@@ -12,7 +13,7 @@ export const useCatalogue = (
   const movies = ref<Movie[]>([]);
 
   // 首次加载或刷新时的请求状态。
-  const loading = ref(false);
+  const status = ref<'idle' | 'loading' | 'ready' | 'error'>('idle');
 
   // 当前操作失败时的提示。
   const error = ref('');
@@ -40,11 +41,11 @@ export const useCatalogue = (
       movies.value = [];
       page.value = 0;
       pageCount.value = 0;
-      loading.value = false;
+      status.value = 'idle';
       error.value = '';
       return;
     }
-    if (!reset && loading.value) {
+    if (!reset && status.value === 'loading') {
       return;
     }
     if (!reset && page.value >= pageCount.value) {
@@ -66,7 +67,7 @@ export const useCatalogue = (
       page.value = 0;
       pageCount.value = 0;
     }
-    loading.value = true;
+    status.value = 'loading';
     error.value = '';
     try {
       // 本次异步操作返回结果。
@@ -91,30 +92,27 @@ export const useCatalogue = (
       ];
       page.value = targetPage;
       pageCount.value = result.pageCount;
+      status.value = 'ready';
     } catch (cause) {
       if (!signal.aborted) {
+        status.value = 'error';
         error.value =
           cause instanceof Error ? cause.message : '加载失败，请重试';
         errorToast('影片加载失败，请刷新后重试', {
           id: 'catalogue-load-error',
         });
       }
-    } finally {
-      if (!signal.aborted) {
-        loading.value = false;
-      }
     }
   };
 
   // 查询条件变化时旧页数据立即失效。
-  watch(
+  watchImmediate(
     input,
     (value) => {
       current = value;
       load(true);
     },
-    { immediate: true },
   );
   onScopeDispose(() => controller?.abort());
-  return { movies, loading, error, page, pageCount, load };
+  return { movies, status, error, page, pageCount, load };
 };

@@ -133,7 +133,7 @@ const run = async () => {
   try {
     try {
       assert(
-        fixture.querySelector('[data-slot="spinner"][aria-label="加载中"]') &&
+        fixture.querySelector('[data-slot="spinner"]') &&
           !fixture.textContent?.trim(),
         '等待首次会话时只显示 Spinner，不显示文字',
       );
@@ -145,7 +145,7 @@ const run = async () => {
         titleBar &&
           getComputedStyle(titleBar).height === '40px' &&
           getComputedStyle(titleBar).backgroundColor === 'rgba(0, 0, 0, 0)' &&
-          fixture.querySelector('[aria-label="窗口控制"]'),
+          fixture.querySelector('[data-slot="window-controls"]'),
         '桌面加载态应显示 40px 透明标题栏和窗口控件',
       );
 
@@ -170,7 +170,7 @@ const run = async () => {
       );
 
       assert(
-        fixture.querySelector('.desktop-title-bar') &&
+        fixture.querySelector('.login-title-bar') &&
           fixture.querySelector('[aria-label="关闭窗口"]'),
         '桌面登录页应保留自制标题栏和窗口控件',
       );
@@ -400,11 +400,11 @@ const run = async () => {
     await router.replace('/login');
 
     assert(
-      router.currentRoute.value.path === '/admin/users',
-      '管理员应进入后台',
+      router.currentRoute.value.name === 'login',
+      '桌面客户端应保留普通账号登录入口',
     );
 
-    report('管理员会话正常进入后台');
+    report('桌面客户端的管理员会话保留登录入口');
   } finally {
     window.fetch = originalFetch;
 

@@ -6,6 +6,14 @@ import {
   mergeHistorySnapshots,
 } from '@ym-video/history';
 import type { HistoryOperation, HistorySnapshot } from '@ym-video/history';
+import type { HistoryErrorType } from '@/map';
+
+// 保留 HTTP 错误类别，供历史状态映射统一处理。
+export class HistoryServiceError extends Error {
+  constructor(readonly type: HistoryErrorType) {
+    super(type);
+  }
+}
 
 // 云端确认快照按账号隔离。
 interface CachedHistory {
@@ -261,15 +269,13 @@ const requestHistory = async (
     },
   });
   if (!response.ok) {
-    const body: unknown = await response.json().catch(() => null);
-    const message =
-      typeof body === 'object' &&
-      body !== null &&
-      'message' in body &&
-      typeof body.message === 'string'
-        ? body.message
-        : `同步失败（${response.status}）`;
-    throw new Error(message);
+    const type =
+      response.status === 401 || response.status === 403
+        ? 'unauthorized'
+        : response.status >= 500
+          ? 'server'
+          : 'request';
+    throw new HistoryServiceError(type);
   }
   return response.json();
 };
@@ -278,7 +284,7 @@ const requestHistory = async (
 export const fetchHistory = async (ownerId: string, signal: AbortSignal) => {
   const value = await requestHistory('/api/v1/history', { signal });
   if (!isHistorySnapshot(value) || value.ownerId !== ownerId) {
-    throw new Error('云端观看历史格式错误');
+    throw new HistoryServiceError('invalid-response');
   }
   return value;
 };
@@ -295,7 +301,7 @@ export const syncHistory = async (
     body: JSON.stringify({ ownerId, operations }),
   });
   if (!isHistorySnapshot(value) || value.ownerId !== ownerId) {
-    throw new Error('云端观看历史格式错误');
+    throw new HistoryServiceError('invalid-response');
   }
   return value;
 };

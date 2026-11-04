@@ -18,19 +18,17 @@
     "@ym-video/catalog": "workspace:*",
     "@ym-video/history": "workspace:*",
     "@vueuse/core": "14.1.0",
-    "better-auth": "1.7.10",
     "hls.js": "1.6.12",
     "pinia": "2.1.7",
     "vue": "3.5.24",
     "vue-router": "4.4.5",
     "reka-ui": "^2.9.0",
     "lucide-vue-next": "^0.468.0",
-    "vue-sonner": "^2.0.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "tailwind-merge": "^3.0.0",
     "@tauri-apps/api": "2.12.4",
-    "@tauri-apps/plugin-updater": "2.14.1"
+    "@tauri-apps/plugin-updater": "2.14.1",
+    "zod": "^4.6.7",
+    "@ym-video/ui": "workspace:*",
+    "@ym-video/account": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.3",
@@ -39,7 +37,6 @@
     "tailwindcss": "4.3.3",
     "typescript": "5.9.2",
     "vue-tsc": "3.1.4",
-    "vite": "7.2.2",
-    "tw-animate-css": "^1.3.0"
+    "vite": "7.2.2"
   }
 }

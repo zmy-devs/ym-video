@@ -1,23 +1,22 @@
 <template>
   <DropdownMenu v-model:open="open">
     <DropdownMenuTrigger as-child>
-      <Button
-        id="source-switcher"
+      <button
+        ref="trigger"
         type="button"
-        variant="ghost"
-        size="icon-sm"
         aria-label="切换播放源"
-        title="切换播放源"
-        class="data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
+        :class="[
+          buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
+          'data-[state=open]:bg-accent data-[state=open]:text-accent-foreground',
+        ]"
       >
         <Server class="size-4" />
-      </Button>
+      </button>
     </DropdownMenuTrigger>
     <DropdownMenuContent
       side="right"
       align="end"
-      :side-offset="8"
-      class="w-60"
+      class="w-56"
       @close-auto-focus="handleMenuCloseFocus"
     >
       <DropdownMenuLabel
@@ -29,15 +28,11 @@
       <DropdownMenuItem
         v-for="source in library.platformSources"
         :key="source.id"
-        :aria-current="source.id === library.selected ? true : undefined"
         @select="handleSource(source.id)"
       >
-        <Server class="text-current" />
+        <Server />
         <span class="truncate">{{ source.name }}</span>
-        <Check
-          v-if="source.id === library.selected"
-          class="ml-auto shrink-0 text-current"
-        />
+        <Check v-if="source.id === library.selected" class="ml-auto shrink-0" />
       </DropdownMenuItem>
       <DropdownMenuSeparator
         v-if="library.platformSources.length && library.customSources.length"
@@ -48,9 +43,6 @@
       >
         我的播放源
       </DropdownMenuLabel>
-      <p id="source-actions-hint" class="sr-only">
-        按右方向键访问编辑和删除按钮。
-      </p>
       <div
         v-for="source in library.customSources"
         :key="source.id"
@@ -58,13 +50,11 @@
         class="group relative"
       >
         <DropdownMenuItem
-          :aria-current="source.id === library.selected ? true : undefined"
-          aria-describedby="source-actions-hint"
           class="pr-16"
           @select="handleSource(source.id)"
           @keydown.right.prevent.stop="handleActionFocus"
         >
-          <Server class="text-current" />
+          <Server />
           <span class="truncate">{{ source.name }}</span>
           <Check
             v-if="source.id === library.selected"
@@ -79,21 +69,17 @@
           @keydown.left.prevent.stop="handleRowFocus"
         >
           <Button
-            type="button"
             variant="ghost"
             size="icon-xs"
-            :aria-label="`编辑播放源：${source.name}`"
-            title="编辑播放源"
+            aria-label="编辑播放源"
             @click.stop="handleEdit(source.id)"
           >
             <Pencil class="size-[15px]" />
           </Button>
           <Button
-            type="button"
             variant="ghost"
             size="icon-xs"
-            :aria-label="`删除播放源：${source.name}`"
-            title="删除播放源"
+            aria-label="删除播放源"
             class="text-destructive hover:text-destructive"
             @click.stop="handleDelete(source)"
           >
@@ -111,10 +97,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onScopeDispose, ref, useTemplateRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Check, Pencil, Plus, Server, Trash2 } from 'lucide-vue-next';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@ym-video/ui/components/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -122,10 +108,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { useLibraryStore } from '@/stores/library';
+} from '@ym-video/ui/components/dropdown-menu';
+import { useLibraryStore } from '@/stores/library-store';
 import { eventBus } from '@/utils/event-bus';
-import { successToast } from '@/utils/toast';
+import { successToast } from '@ym-video/ui/lib/toast';
 import type { CustomSource } from '@/types';
 
 // 当前页面用于判断是否需要重置分类。
@@ -137,8 +123,16 @@ const router = useRouter();
 // 平台播放源、自定义源及当前选择。
 const library = useLibraryStore();
 
+// 弹层关闭时将焦点恢复到播放源入口。
+const trigger = useTemplateRef<HTMLButtonElement>('trigger');
+
 // 图标操作先关闭菜单，再交给根组件的弹窗。
 const open = ref(false);
+
+// 全局弹窗和确认框关闭后恢复到触发入口。
+onScopeDispose(
+  eventBus.on('source-switcher:focus', () => trigger.value?.focus()),
+);
 
 // 菜单关闭阶段允许弹窗接管焦点。
 let openingDialog = false;
@@ -166,7 +160,7 @@ const handleDelete = (source: CustomSource) => {
     title: '删除播放源？',
     description: `确定删除“${source.name}”吗？删除后可重新添加，观看历史会保留。`,
     pendingText: '正在删除…',
-    returnFocus: () => document.getElementById('source-switcher'),
+    returnFocus: () => trigger.value,
     onConfirm: async (signal) => {
       const wasSelected = library.selected === source.id;
 
@@ -209,7 +203,7 @@ const handleRowFocus = (event: KeyboardEvent) => {
   if (event.currentTarget instanceof HTMLElement) {
     event.currentTarget
       .closest('[data-source-row]')
-      ?.querySelector<HTMLElement>('[role="menuitem"]')
+      ?.querySelector<HTMLElement>('[data-slot="dropdown-menu-item"]')
       ?.focus();
   }
 };

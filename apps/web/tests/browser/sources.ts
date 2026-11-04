@@ -3,9 +3,9 @@ import { createApp, h, nextTick } from 'vue';
 import { createPinia } from 'pinia';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import SourceSwitcher from '../../src/components/source-switcher.vue';
-import AppDialogs from '../../src/dialogs/index.vue';
+import AppDialogs from '../../src/components/dialogs/index.vue';
 import { eventBus } from '../../src/utils/event-bus';
-import { useLibraryStore } from '../../src/stores/library';
+import { useLibraryStore } from '../../src/stores/library-store';
 import { getMovies } from '../../src/services/api';
 import '../../src/styles/global.css';
 
@@ -52,6 +52,10 @@ const run = async () => {
     const url = new URL(String(input), window.location.origin);
 
     requests.push({ url, credentials: options?.credentials });
+
+    if (url.pathname.startsWith('/api/auth/')) {
+      return Response.json(null);
+    }
 
     if (url.pathname === '/api/v1/proxy/sources') {
       return Response.json({
@@ -146,7 +150,7 @@ const run = async () => {
       await until(
         () =>
           !document.querySelector<HTMLButtonElement>(
-            '[role="dialog"] button[type="submit"]',
+            '[data-slot="dialog-content"] button[type="submit"]',
           )?.disabled,
       );
 
@@ -167,11 +171,11 @@ const run = async () => {
     await until(
       () =>
         library.customSources.length === 1 &&
-        !document.querySelector('[role="dialog"]'),
+        !document.querySelector('[data-slot="dialog-content"]'),
     );
 
     assert(
-      document.activeElement?.id === 'source-switcher',
+      document.activeElement?.getAttribute('aria-label') === '切换播放源',
       '关闭后焦点回到菜单按钮',
     );
 
@@ -181,7 +185,7 @@ const run = async () => {
 
     await openMenu();
 
-    const menu = document.querySelector('[role="menu"]');
+    const menu = document.querySelector('[data-slot="dropdown-menu-content"]');
 
     if (!menu) {
       throw new Error('播放源菜单未打开');
@@ -194,18 +198,20 @@ const run = async () => {
     );
 
     assert(
-      menu.querySelectorAll('[role="separator"]').length === 2,
+      menu.querySelectorAll('[data-slot="dropdown-menu-separator"]').length ===
+        2,
       '两类源之间及新增入口之前有分割线',
     );
 
     const item = [
-      ...menu.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+      ...menu.querySelectorAll<HTMLElement>('[data-slot="dropdown-menu-item"]'),
     ].find((entry) => entry.textContent?.includes(custom.name));
 
     item?.click();
 
     await until(
-      () => library.selected === custom.id && !library.categoryLoading,
+      () =>
+        library.selected === custom.id && library.categoryStatus !== 'loading',
     );
 
     assert(
@@ -310,14 +316,14 @@ const run = async () => {
 
     assert(
       document.querySelector<HTMLButtonElement>(
-        '[role="dialog"] button[type="submit"]',
+        '[data-slot="dialog-content"] button[type="submit"]',
       )?.disabled,
       '验证期间禁止重复提交',
     );
 
     document.querySelector<HTMLElement>('[data-slot="dialog-close"]')?.click();
 
-    await until(() => !document.querySelector('[role="dialog"]'));
+    await until(() => !document.querySelector('[data-slot="dialog-content"]'));
 
     mode = 'valid';
 
@@ -349,12 +355,13 @@ const run = async () => {
 
     await openMenu();
 
-    const editButton = document.querySelector<HTMLButtonElement>(
-      `[aria-label="编辑播放源：${custom.name}"]`,
-    );
+    const editButton =
+      document.querySelector<HTMLButtonElement>(
+        'button[aria-label="编辑播放源"]',
+      );
 
     assert(
-      editButton && !editButton.closest('[role="menuitem"]'),
+      editButton && !editButton.closest('[data-slot="dropdown-menu-item"]'),
       '编辑按钮不能嵌套在选源菜单项内',
     );
 
@@ -370,13 +377,15 @@ const run = async () => {
       '编辑和删除图标均为 15px',
     );
 
-    row?.querySelector<HTMLElement>('[role="menuitem"]')?.dispatchEvent(
-      new KeyboardEvent('keydown', {
-        key: 'ArrowRight',
-        bubbles: true,
-        cancelable: true,
-      }),
-    );
+    row
+      ?.querySelector<HTMLElement>('[data-slot="dropdown-menu-item"]')
+      ?.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'ArrowRight',
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
 
     assert(document.activeElement === editButton, '右方向键进入编辑按钮');
 
@@ -389,8 +398,7 @@ const run = async () => {
     );
 
     assert(
-      document.activeElement?.getAttribute('aria-label') ===
-        `删除播放源：${custom.name}`,
+      document.activeElement?.getAttribute('aria-label') === '删除播放源',
       '右方向键进入删除按钮',
     );
 
@@ -415,7 +423,7 @@ const run = async () => {
     await nextTick();
 
     assert(
-      document.querySelectorAll('[role="dialog"]').length === 1,
+      document.querySelectorAll('[data-slot="dialog-content"]').length === 1,
       '重复事件不能创建第二个弹窗',
     );
 
@@ -435,7 +443,7 @@ const run = async () => {
 
     await submit();
 
-    await until(() => !document.querySelector('[role="dialog"]'));
+    await until(() => !document.querySelector('[data-slot="dialog-content"]'));
 
     assert(
       library.customSources[0]?.id === custom.id &&
@@ -476,34 +484,38 @@ const run = async () => {
 
     await router.push('/overview');
 
-    await until(() => !document.querySelector('[role="dialog"]'));
+    await until(() => !document.querySelector('[data-slot="dialog-content"]'));
 
     report('编辑拒绝其他源的重复地址，切页关闭根弹窗');
 
     await openMenu();
 
     document
-      .querySelector<HTMLElement>(`[aria-label="删除播放源：修改后的源"]`)
+      .querySelector<HTMLElement>('button[aria-label="删除播放源"]')
       ?.click();
 
-    await until(() => Boolean(document.querySelector('[role="alertdialog"]')));
+    await until(() =>
+      Boolean(document.querySelector('[data-slot="alert-dialog-content"]')),
+    );
 
     assert(library.customSources.length === 2, '打开确认框不直接删除');
 
     [
       ...document.querySelectorAll<HTMLButtonElement>(
-        '[role="alertdialog"] button',
+        '[data-slot="alert-dialog-content"] button',
       ),
     ]
       .find((button) => button.textContent === '取消')
       ?.click();
 
-    await until(() => !document.querySelector('[role="alertdialog"]'));
+    await until(
+      () => !document.querySelector('[data-slot="alert-dialog-content"]'),
+    );
 
     assert(library.customSources.length === 2, '取消保留播放源');
 
     assert(
-      document.activeElement?.id === 'source-switcher',
+      document.activeElement?.getAttribute('aria-label') === '切换播放源',
       '取消删除后恢复菜单入口焦点',
     );
 
@@ -514,18 +526,22 @@ const run = async () => {
     await openMenu();
 
     document
-      .querySelector<HTMLElement>('[aria-label="删除播放源：修改后的源"]')
+      .querySelector<HTMLElement>('button[aria-label="删除播放源"]')
       ?.click();
 
-    await until(() => Boolean(document.querySelector('[role="alertdialog"]')));
+    await until(() =>
+      Boolean(document.querySelector('[data-slot="alert-dialog-content"]')),
+    );
 
     document
       .querySelector<HTMLElement>(
-        '[role="alertdialog"] [data-variant="destructive"]',
+        '[data-slot="alert-dialog-content"] [data-variant="destructive"]',
       )
       ?.click();
 
-    await until(() => !document.querySelector('[role="alertdialog"]'));
+    await until(
+      () => !document.querySelector('[data-slot="alert-dialog-content"]'),
+    );
 
     assert(
       !library.customSources.some((item) => item.id === custom.id),
@@ -563,7 +579,7 @@ const run = async () => {
 
     await router.push('/history');
 
-    await until(() => !document.querySelector('[role="dialog"]'));
+    await until(() => !document.querySelector('[data-slot="dialog-content"]'));
 
     mode = 'valid';
 
@@ -595,32 +611,40 @@ const run = async () => {
       },
     });
 
-    await until(() => Boolean(document.querySelector('[role="alertdialog"]')));
+    await until(() =>
+      Boolean(document.querySelector('[data-slot="alert-dialog-content"]')),
+    );
 
     document
       .querySelector<HTMLElement>(
-        '[role="alertdialog"] [data-variant="destructive"]',
+        '[data-slot="alert-dialog-content"] [data-variant="destructive"]',
       )
       ?.click();
 
     await until(() =>
-      Boolean(document.querySelector('[role="alertdialog"] [role="alert"]')),
+      Boolean(
+        document.querySelector(
+          '[data-slot="alert-dialog-content"] p.text-destructive',
+        ),
+      ),
     );
 
     assert(
       document
-        .querySelector('[role="alertdialog"]')
+        .querySelector('[data-slot="alert-dialog-content"]')
         ?.textContent?.includes('模拟失败'),
       '错误显示在确认框内',
     );
 
     document
       .querySelector<HTMLElement>(
-        '[role="alertdialog"] [data-variant="destructive"]',
+        '[data-slot="alert-dialog-content"] [data-variant="destructive"]',
       )
       ?.click();
 
-    await until(() => !document.querySelector('[role="alertdialog"]'));
+    await until(
+      () => !document.querySelector('[data-slot="alert-dialog-content"]'),
+    );
 
     assert(attempts === 2, '同一确认框可重试');
 
@@ -650,22 +674,30 @@ const run = async () => {
 
 // 通过真实键盘事件打开菜单，保持 Reka 的焦点行为。
 const openMenu = async () => {
-  document.querySelector<HTMLElement>('#source-switcher')?.dispatchEvent(
+  document
+    .querySelector<HTMLElement>('button[aria-label="切换播放源"]')
+    ?.dispatchEvent(
     new KeyboardEvent('keydown', {
       key: 'Enter',
       bubbles: true,
       cancelable: true,
     }),
-  );
+    );
 
-  await until(() => Boolean(document.querySelector('[role="menu"]')));
+  await until(() =>
+    Boolean(document.querySelector('[data-slot="dropdown-menu-content"]')),
+  );
 };
 
 // 从菜单入口打开真实新增弹窗。
 const openDialog = async () => {
   await openMenu();
 
-  [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+  [
+    ...document.querySelectorAll<HTMLElement>(
+      '[data-slot="dropdown-menu-item"]',
+    ),
+  ]
     .find((item) => item.textContent?.includes('添加播放源'))
     ?.click();
 
@@ -690,7 +722,7 @@ const submit = async () => {
   await nextTick();
 
   document
-    .querySelector<HTMLFormElement>('[role="dialog"] form')
+    .querySelector<HTMLFormElement>('[data-slot="dialog-content"] form')
     ?.requestSubmit();
 };
 

@@ -2,7 +2,7 @@ import { createApp, h, nextTick } from 'vue';
 import { createPinia } from 'pinia';
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router';
 import { eventBus } from '../../src/utils/event-bus';
-import { useThemeStore } from '../../src/stores/theme';
+import { useThemeStore } from '../../src/stores/theme-store';
 import '../../src/styles/global.css';
 
 // 所有写入均留在测试页面内存，不访问开发 API。
@@ -33,6 +33,7 @@ const mount = async () => {
   let hold = false;
   let release: (() => void) | undefined;
   let aborted = false;
+  let signedOut = false;
 
   window.fetch = async (input, options) => {
     const url = new URL(
@@ -40,6 +41,9 @@ const mount = async () => {
       location.origin,
     );
     if (url.pathname === '/api/auth/get-session') {
+      if (signedOut) {
+        return Response.json(null);
+      }
       return Response.json({
         user,
         session: {
@@ -92,25 +96,38 @@ const mount = async () => {
         }
         return Response.json({ token: 'fixture-new-session', user });
       }
+      if (url.pathname === '/api/auth/sign-out') {
+        signedOut = true;
+        return Response.json({ success: true });
+      }
     }
     throw new Error(`测试页禁止访问：${url.pathname}`);
   };
 
   // Better Auth 创建时固定 fetch，必须先安装模拟接口再加载真实组件。
-  const [{ default: AdminLayout }, { default: AppDialogs }, { authClient }] =
+  const [{ default: SideBar }, { default: AppDialogs }, { authClient }] =
     await Promise.all([
-      import('../../src/layout/admin-layout.vue'),
-      import('../../src/dialogs/index.vue'),
+      import('../../src/layout/side-bar.vue'),
+      import('../../src/components/dialogs/index.vue'),
       import('../../src/services/auth'),
     ]);
+
+  // 设置场景预置资源快照，页面内容使用占位组件。
+  const { useLibraryStore } = await import('../../src/stores/library-store');
+  const { useHistoryStore } = await import('../../src/stores/history-store');
+  const library = useLibraryStore(pinia);
+  library.selected = 'settings-preview';
+  library.platformSources = [{ id: 'settings-preview', name: '设置测试源' }];
 
   // 使用真实布局和用户菜单，内容页以占位组件隔离业务请求。
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
       {
-        path: '/admin',
-        component: AdminLayout,
+        path: '/',
+        component: {
+          render: () => h(SideBar, null, { default: () => h(RouterView) }),
+        },
         children: [
           {
             path: 'users',
@@ -120,14 +137,14 @@ const mount = async () => {
       },
     ],
   });
-  await router.push('/admin/users');
+  await router.push('/users');
   await router.isReady();
 
   const app = createApp({ render: () => [h(RouterView), h(AppDialogs)] });
   app.use(pinia);
   app.use(router);
   app.mount('#fixture');
-  await authClient.useSession().value.refetch();
+  await authClient.$store.atoms.session.get().refetch();
   await until(
     () =>
       document
@@ -138,6 +155,7 @@ const mount = async () => {
 
   return {
     requests,
+    history: useHistoryStore(pinia),
     theme,
     hold: () => {
       hold = true;
@@ -154,7 +172,7 @@ const mount = async () => {
         username: 'next_user',
         name: 'next_user',
       };
-      await authClient.useSession().value.refetch();
+      await authClient.$store.atoms.session.get().refetch();
     },
     cleanup: () => {
       release?.();
@@ -180,16 +198,20 @@ const mount = async () => {
 // 模拟真实菜单点击流程，检验菜单到弹窗的焦点交接。
 const openSettings = async () => {
   click('#account-menu-trigger');
-  await until(() => !!document.querySelector('[role="menuitem"]'));
+  await until(
+    () => !!document.querySelector('[data-slot="dropdown-menu-item"]'),
+  );
   const items = [
-    ...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+    ...document.querySelectorAll<HTMLElement>(
+      '[data-slot="dropdown-menu-item"]',
+    ),
   ];
   assert(
     items.map((item) => item.textContent?.trim()).join(',') === '设置,退出登录',
     '设置应位于退出登录上方',
   );
   items[0].click();
-  await until(() => !!document.querySelector('[role="dialog"]'));
+  await until(() => !!document.querySelector('[data-slot="dialog-content"]'));
   await nextTick();
 };
 
@@ -197,7 +219,9 @@ const openSettings = async () => {
 const submit = async (text: string) => {
   await nextTick();
   const button = [
-    ...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button'),
+    ...document.querySelectorAll<HTMLButtonElement>(
+      '[data-slot="dialog-content"] button',
+    ),
   ].find(
     (item) =>
       (item.getAttribute('aria-label') ?? item.textContent?.trim()) === text,
@@ -226,9 +250,9 @@ const click = (selector: string) => {
 
 // 通过可见分类名称操作，不依赖 Reka 生成的控件 ID。
 const selectTab = (label: string) => {
-  const tab = [...document.querySelectorAll<HTMLElement>('[role="tab"]')].find(
-    (item) => item.textContent?.trim() === label,
-  );
+  const tab = [
+    ...document.querySelectorAll<HTMLElement>('[data-slot="tabs-trigger"]'),
+  ].find((item) => item.textContent?.trim() === label);
   assert(tab, `缺少分类：${label}`);
   tab?.dispatchEvent(
     new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
@@ -270,13 +294,15 @@ const run = async () => {
     );
     await openSettings();
     assert(
-      document.querySelectorAll('[role="dialog"]').length === 1,
+      document.querySelectorAll('[data-slot="dialog-content"]').length === 1,
       '设置应只有一个实例',
     );
-    await until(() => !!document.activeElement?.closest('[role="dialog"]'));
+    await until(
+      () => !!document.activeElement?.closest('[data-slot="dialog-content"]'),
+    );
     assert(
       document
-        .querySelector('[role="tab"][data-state="active"]')
+        .querySelector('[data-slot="tabs-trigger"][data-state="active"]')
         ?.textContent?.trim() === '外观',
       '首次打开应展示外观',
     );
@@ -287,9 +313,9 @@ const run = async () => {
       ?.dispatchEvent(
         new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
       );
-    await until(() => !!document.querySelector('[role="option"]'));
+    await until(() => !!document.querySelector('[data-slot="select-item"]'));
     const dark = [
-      ...document.querySelectorAll<HTMLElement>('[role="option"]'),
+      ...document.querySelectorAll<HTMLElement>('[data-slot="select-item"]'),
     ].find((item) => item.textContent?.trim() === '深色');
     dark?.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
@@ -300,9 +326,9 @@ const run = async () => {
       ?.dispatchEvent(
         new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
       );
-    await until(() => !!document.querySelector('[role="option"]'));
+    await until(() => !!document.querySelector('[data-slot="select-item"]'));
     const blue = [
-      ...document.querySelectorAll<HTMLElement>('[role="option"]'),
+      ...document.querySelectorAll<HTMLElement>('[data-slot="select-item"]'),
     ].find((item) => item.textContent?.trim() === '蓝色');
     blue?.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
@@ -312,10 +338,13 @@ const run = async () => {
 
     selectTab('关于');
     await until(
-      () => !!document.querySelector('[role="tabpanel"] a[href$="/issues"]'),
+      () =>
+        !!document.querySelector(
+          '[data-slot="tabs-content"] a[href$="/issues"]',
+        ),
     );
     assert(
-      !document.querySelector('[role="tablist"] a'),
+      !document.querySelector('[data-slot="tabs-list"] a'),
       '反馈入口应位于关于内容中',
     );
     report('关于分类显示反馈入口，侧栏不再单独展示反馈');
@@ -344,7 +373,8 @@ const run = async () => {
     assert(
       document
         .getElementById('settings-username')
-        ?.getAttribute('aria-invalid') === 'true',
+        ?.closest('[data-slot="settings-field"]')
+        ?.getAttribute('data-invalid') === 'true',
       '非法用户名应显示字段错误',
     );
     assert(!fixture.requests.length, '校验失败不能写入');
@@ -380,7 +410,8 @@ const run = async () => {
     assert(
       document
         .getElementById('settings-confirmPassword')
-        ?.getAttribute('aria-invalid') === 'true',
+        ?.closest('[data-slot="settings-field"]')
+        ?.getAttribute('data-invalid') === 'true',
       '确认不一致应拦截',
     );
     fill('settings-currentPassword', 'wrong-password');
@@ -416,7 +447,7 @@ const run = async () => {
 
     fill('settings-currentPassword', 'draft');
     click('[data-slot="dialog-close"]');
-    await until(() => !document.querySelector('[role="dialog"]'));
+    await until(() => !document.querySelector('[data-slot="dialog-content"]'));
     await until(() => document.activeElement?.id === 'account-menu-trigger');
     await openSettings();
     selectTab('账号');
@@ -439,14 +470,16 @@ const run = async () => {
       '提交期间不能手动关闭',
     );
     assert(
-      [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')].every(
-        (item) => item.disabled,
-      ),
+      [
+        ...document.querySelectorAll<HTMLButtonElement>(
+          '[data-slot="tabs-trigger"]',
+        ),
+      ].every((item) => item.disabled),
       '提交期间不能切换分类',
     );
     const count = fixture.requests.length;
     eventBus.emit('dialogs:close');
-    await until(() => !document.querySelector('[role="dialog"]'));
+    await until(() => !document.querySelector('[data-slot="dialog-content"]'));
     await until(fixture.aborted);
     fixture.release();
     await openSettings();
@@ -454,8 +487,32 @@ const run = async () => {
     report('提交状态保护、切页关闭取消请求和禁止自动重试');
 
     await fixture.switchAccount();
-    await until(() => !document.querySelector('[role="dialog"]'));
+    await until(() => !document.querySelector('[data-slot="dialog-content"]'));
     report('切换账号自动关闭设置');
+
+    fixture.history.$patch({ ownerId: 'settings-next' });
+    click('#account-menu-trigger');
+    await until(
+      () => !!document.querySelector('[data-slot="dropdown-menu-item"]'),
+    );
+    const signOut = [
+      ...document.querySelectorAll<HTMLElement>(
+        '[data-slot="dropdown-menu-item"]',
+      ),
+    ].find((item) => item.textContent?.trim() === '退出登录');
+    signOut?.click();
+    await until(() => fixture.history.ownerId === null);
+    await until(
+      () =>
+        document
+          .getElementById('account-menu-trigger')
+          ?.getAttribute('aria-label') === '账号菜单：账号',
+    );
+    assert(
+      fixture.requests.at(-1)?.path === '/api/auth/sign-out',
+      '退出成功应立即释放账号历史',
+    );
+    report('共享账号菜单退出成功后释放影视历史状态');
   } finally {
     fixture.cleanup();
   }

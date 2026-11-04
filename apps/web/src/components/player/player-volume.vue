@@ -9,16 +9,14 @@
       :portal-container="container"
       side="top"
       class="w-60 flex items-center gap-3"
-      aria-label="调节音量"
     >
-      <component :is="volumeIcon" class="size-4 shrink-0" aria-hidden="true" />
+      <component :is="volumeIcon" class="size-4 shrink-0" />
       <Slider
         :model-value="[percentage]"
         :min="0"
         :max="100"
         :step="1"
         class="min-w-0 flex-1"
-        thumb-label="音量"
         @update:model-value="handleVolumeChange"
       />
       <span class="w-6 shrink-0 text-right text-xs tabular-nums">
@@ -35,8 +33,8 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
-import { Slider } from '@/components/ui/slider';
+} from '@ym-video/ui/components/popover';
+import { Slider } from '@ym-video/ui/components/slider';
 import PlayerButton from './player-button.vue';
 
 // 音量沿用播放器的零到一数值，浮窗挂载到播放器容器。

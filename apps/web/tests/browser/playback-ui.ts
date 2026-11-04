@@ -2,8 +2,8 @@ import { mockDesktop } from './desktop-mock';
 import { createApp, nextTick } from 'vue';
 import { createPinia } from 'pinia';
 import { emptyHistory } from '@ym-video/history';
-import { useLibraryStore } from '../../src/stores/library';
-import { useThemeStore } from '../../src/stores/theme';
+import { useLibraryStore } from '../../src/stores/library-store';
+import { useThemeStore } from '../../src/stores/theme-store';
 import '../../src/styles/global.css';
 
 // 断言失败后停止当前场景并显示原因。
@@ -20,7 +20,7 @@ const until = async (check: () => boolean) => {
 
   while (!check()) {
     if (Date.now() > deadline) {
-      throw new Error('等待页面状态超时');
+      throw new Error('等待页面状态超时：' + check.toString());
     }
 
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -43,6 +43,25 @@ const report = (message: string) => {
 const run = async () => {
   // 原始浏览器环境在测试结束后恢复。
   const originalFetch = window.fetch;
+
+  // 模拟原生媒体事件，验证界面状态时使用本机内存数据。
+  const originalPlay = HTMLMediaElement.prototype.play;
+  const originalPause = HTMLMediaElement.prototype.pause;
+  const originalLoad = HTMLMediaElement.prototype.load;
+
+  HTMLMediaElement.prototype.play = function () {
+    Object.defineProperty(this, 'paused', { configurable: true, value: false });
+    this.dispatchEvent(new Event('play'));
+    this.dispatchEvent(new Event('playing'));
+    return Promise.resolve();
+  };
+  HTMLMediaElement.prototype.pause = function () {
+    Object.defineProperty(this, 'paused', { configurable: true, value: true });
+    this.dispatchEvent(new Event('pause'));
+  };
+  HTMLMediaElement.prototype.load = function () {
+    this.preload = 'none';
+  };
 
   let restoreDesktop: (() => void) | undefined;
 
@@ -159,7 +178,7 @@ const run = async () => {
 
   const { default: App } = await import('../../src/App.vue');
 
-  const { useHistoryStore } = await import('../../src/stores/history');
+  const { useHistoryStore } = await import('../../src/stores/history-store');
 
   const pinia = createPinia();
 
@@ -169,19 +188,21 @@ const run = async () => {
 
   library.selected = 'baofeng';
 
-  library.sources = [
+  library.platformSources = [
     { id: 'baofeng', name: '初始源' },
     { id: 'recovery', name: '恢复源', url: 'https://recovery.example/api' },
   ];
 
-  // 测试挂载点不使用生产 #app，单独提供相同的标题栏预留。
+  // 使用与生产窗口一致的完整视口，验证固定弹层与标题栏的相对位置。
   const fixture = document.querySelector<HTMLElement>('#fixture');
 
   if (!fixture) {
     throw new Error('缺少测试容器');
   }
 
-  fixture.style.paddingTop = 'var(--title-bar-height)';
+  const originalFixtureStyle = fixture.getAttribute('style');
+
+  fixture.style.cssText = 'position: fixed; inset: 0; height: 100dvh';
 
   const app = createApp(App).use(pinia).use(router);
 
@@ -193,7 +214,7 @@ const run = async () => {
     await until(() => calls.has('initial:detail'));
 
     assert(
-      fixture.querySelector('.movie-grid[role="status"]'),
+      fixture.querySelector('[data-slot="movie-grid-skeleton"]'),
       '首次请求与重试期间保持影片骨架屏',
     );
 
@@ -223,7 +244,7 @@ const run = async () => {
     );
 
     assert(
-      fixture.querySelector('.movie-grid[role="status"]'),
+      fixture.querySelector('[data-slot="movie-grid-skeleton"]'),
       '重试耗尽后仍保持影片骨架屏',
     );
 
@@ -245,7 +266,9 @@ const run = async () => {
     );
 
     // 标题栏中的侧栏开关位于内容区左端。
-    const homeTitleBar = fixture.querySelector('.desktop-title-bar');
+    const homeTitleBar = fixture.querySelector(
+      '[data-slot="sidebar-inset"] > .desktop-title-bar',
+    );
 
     assert(
       homeTitleBar &&
@@ -367,6 +390,14 @@ const run = async () => {
 
     const video = fixture.querySelector('video');
 
+    if (video) {
+      Object.defineProperty(video, 'duration', {
+        configurable: true,
+        value: 100,
+      });
+      video.dispatchEvent(new Event('loadedmetadata'));
+    }
+
     const controls =
       fixture.querySelector('.player-label')?.parentElement?.parentElement;
 
@@ -452,7 +483,7 @@ const run = async () => {
 
     assert(
       miniProgress?.isConnected &&
-        !surface?.querySelector(':scope > [role="status"]') &&
+        !surface?.querySelector('[data-slot="player-loading"]') &&
         video &&
         video.getBoundingClientRect().bottom <=
           miniProgress.getBoundingClientRect().top,
@@ -484,16 +515,16 @@ const run = async () => {
     report('全屏细进度持续显示，音量与长按倍速有提示，松开恢复原倍速');
 
     const episodes = fixture.querySelector<HTMLButtonElement>(
-      '[aria-controls="player-episodes-sheet"], [aria-haspopup="dialog"][aria-label="选集"]',
+      'button[aria-label="选集"]',
     );
 
     episodes?.click();
 
     await until(() =>
-      Boolean(document.querySelector('#player-episodes-sheet')),
+      Boolean(document.querySelector('[data-slot="sheet-content"]')),
     );
 
-    const sheet = document.querySelector('#player-episodes-sheet');
+    const sheet = document.querySelector('[data-slot="sheet-content"]');
 
     const titleBar = fixture.querySelector('.desktop-title-bar');
 
@@ -506,7 +537,7 @@ const run = async () => {
     );
 
     assert(
-      sheet && getComputedStyle(sheet).colorScheme === 'dark',
+      sheet && fixture.querySelector('.player-page.dark'),
       '选集面板保持暗色',
     );
 
@@ -536,7 +567,7 @@ const run = async () => {
 
     document
       .querySelector<HTMLButtonElement>(
-        '#player-episodes-sheet button:last-child',
+        '[data-slot="sheet-content"] button:last-child',
       )
       ?.click();
 
@@ -593,6 +624,8 @@ const run = async () => {
   } finally {
     app.unmount();
 
+    fixture.setAttribute('style', originalFixtureStyle ?? '');
+
     useHistoryStore(pinia).$dispose();
 
     library.$dispose();
@@ -604,6 +637,10 @@ const run = async () => {
     );
 
     window.fetch = originalFetch;
+
+    HTMLMediaElement.prototype.play = originalPlay;
+    HTMLMediaElement.prototype.pause = originalPause;
+    HTMLMediaElement.prototype.load = originalLoad;
 
     restoreDesktop?.();
 

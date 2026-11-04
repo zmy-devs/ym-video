@@ -1,126 +1,47 @@
-import { computed, onScopeDispose, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onScopeDispose, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
-import { useEventListener } from '@vueuse/core';
-import Hls from 'hls.js';
+import { useEventListener, watchImmediate } from '@vueuse/core';
 import type { HistoryEntry, Movie } from '@/types';
 import type { HistoryToken } from '@ym-video/history';
 import { getMovies } from '@/services/api';
-import { FilteredPlaylistLoader } from '@/services/hls';
-import { useHistoryStore } from '@/stores/history';
-import { useLibraryStore } from '@/stores/library';
+import { useHistoryStore } from '@/stores/history-store';
+import { useLibraryStore } from '@/stores/library-store';
 import { isMovieComplete, movieKey } from '@/lib/movie';
-import { readLocal, writeLocal } from '@/lib/storage';
-import { errorToast, infoToast } from '@/utils/toast';
+import { useMedia } from './player/use-media';
 
-// PC 浏览器播放器状态与生命周期，不依赖窗口消息。
+// 编排当前影片、选集和账号历史，媒体及快捷键分别管理自己的生命周期。
 export const usePlayer = () => {
-  // 当前页面路径和查询参数。
   const route = useRoute();
-
-  // 页面导航与返回操作。
   const router = useRouter();
-
-  // 当前登录账号的观看历史与本机待同步队列。
   const history = useHistoryStore();
-
-  // 直接打开播放页时也能恢复本机自定义源地址。
   const library = useLibraryStore();
+  const media = useMedia();
 
-  // 浏览器原生视频元素。
-  const video = ref<HTMLVideoElement | null>(null);
-
-  // 播放器全屏及弹层挂载容器。
-  const container = ref<HTMLElement | null>(null);
-
-  // 当前影片、选集和播放进度。
+  // 当前影片和历史写入凭据随路由一起更换。
   const entry = ref<HistoryEntry | null>(null);
-
-  // 播放页打开时捕获账号、清空版本和影片删除版本。
-  const playbackToken = ref<HistoryToken | null>(null);
-
-  // 首次加载或刷新时的请求状态。
-  const loading = ref(true);
-
-  // 媒体缓冲状态。
-  const buffering = ref(false);
-
-  // 当前操作失败时的提示。
-  const error = ref('');
-
-  // 媒体实际播放状态。
-  const playing = ref(false);
-
-  // 当前播放秒数。
-  const currentTime = ref(0);
-
-  // 当前媒体的有效总时长。
-  const duration = ref(0);
-
-  // 用户选择的播放倍速。
-  const rate = ref(1);
-
-  // 从本地设置恢复的音量。
-  const volume = ref(
-    readLocal(
-      'volume',
-      1,
-      (value): value is number =>
-        typeof value === 'number' && value >= 0 && value <= 1,
-    ),
-  );
-
-  // 浏览器当前全屏状态。
-  const fullscreen = ref(false);
-
-  // 长按右方向键期间向界面显示临时倍速提示。
-  const holdingRate = ref(false);
-
-  // 浏览器是否支持画中画。
-  const pipAvailable =
-    'pictureInPictureEnabled' in document && document.pictureInPictureEnabled;
-
-  // 当前选中的媒体地址。
   const episode = computed(() => entry.value?.episodes[entry.value.episode]);
-
-  // 当前媒体的 HLS 加载实例。
-  let hls: Hls | undefined;
-
-  // 用于取消已失效请求。
+  let playbackToken: HistoryToken | null = null;
   let controller: AbortController | undefined;
-
-  // 元数据就绪后才允许保存真实进度。
-  let mediaReady = false;
-
-  // 阻止卸载后的异步回调更新页面。
   let disposed = false;
-
-  // 长按方向键的判定计时器。
-  let pressTimer: ReturnType<typeof setTimeout> | undefined;
-
-  // 长按前的播放倍速，用于松开后恢复。
-  let heldRate: number | undefined;
-
-  // 最后一次切集操作序号。
   let episodeRequest = 0;
 
-  // 记录实际播放或操作的时间，暂停后的重复保存沿用原时间。
+  // 只有真实播放或用户操作才推进观看时间。
   const markWatched = (value: HistoryEntry) => {
     value.watchedAt = Math.max(Date.now(), value.watchedAt + 1);
   };
 
-  // 只有媒体进度确实变化时才推进观看时间。
+  // 捕获当前媒体进度，元数据就绪前保留历史中的播放位置。
   const captureProgress = () => {
     const value = entry.value;
-    const element = video.value;
-    if (!value || !element || !mediaReady) {
+    const progress = media.getProgress();
+
+    if (!value || !progress) {
       return;
     }
+
     const key = String(value.episode);
-    const progress = {
-      currentTime: element.currentTime,
-      duration: Number.isFinite(element.duration) ? element.duration : 0,
-    };
     const previous = value.progress[key];
+
     if (
       previous?.currentTime !== progress.currentTime ||
       previous.duration !== progress.duration
@@ -130,191 +51,89 @@ export const usePlayer = () => {
     }
   };
 
-  // 只保存当前媒体的真实进度，写入本地队列后后台同步。
+  // 保存当前账号的影片进度，后台同步由历史数据层负责。
   const save = () => {
-    // 本次操作读取的数据。
-    const value = entry.value;
-    if (!value) {
-      return Promise.resolve();
-    }
-    if (!value.episodes[value.episode]) {
-      return Promise.resolve();
-    }
     captureProgress();
-    return history.save(value, playbackToken.value);
+    return entry.value
+      ? history.save(entry.value, playbackToken)
+      : Promise.resolve();
   };
 
-  // 清理旧媒体后才能进入新影片或新集数。
-  const stopMedia = () => {
-    mediaReady = false;
-    hls?.destroy();
-    hls = undefined;
-    video.value?.pause();
-    video.value?.removeAttribute('src');
-    video.value?.load();
-    playing.value = false;
-    currentTime.value = 0;
-    duration.value = 0;
-    buffering.value = false;
-  };
-
-  // 自动播放可能被浏览器拒绝，此时保留手动播放入口。
-  const play = async () => {
-    if (!video.value) {
-      return;
-    }
-    try {
-      await video.value.play();
-    } catch (cause) {
-      if (cause instanceof DOMException && cause.name === 'AbortError') {
-        return;
-      }
-      playing.value = false;
-      if (cause instanceof DOMException && cause.name === 'NotAllowedError') {
-        return;
-      }
-      if (!error.value) {
-        error.value = '播放失败，请重试或更换资源源';
-      }
-    }
-  };
-
-  // 使用原始 URL 加载，HLS 自行解析所有相对地址。
+  // 使用当前集及其已保存位置启动媒体。
   const startMedia = () => {
-    stopMedia();
+    const value = entry.value;
 
-    // 当前仍挂载的视频元素。
-    const element = video.value;
-
-    // 经过协议验证的媒体地址。
-    const url = episode.value?.url;
-    if (!element || !url) {
-      error.value = '当前影片暂无可播放集数';
-      return;
-    }
-    if (location.protocol === 'https:' && new URL(url).protocol !== 'https:') {
-      error.value = '该播放地址使用 HTTP，浏览器无法安全播放，请切换资源源';
-      return;
-    }
-    error.value = '';
-    buffering.value = true;
-    element.volume = volume.value;
-    element.playbackRate = rate.value;
-    if (/\.m3u8(?:[?#]|$)/i.test(url) && Hls.isSupported()) {
-      hls = new Hls({
-        pLoader: FilteredPlaylistLoader,
-        maxBufferLength: 60,
-        maxBufferSize: 60 * 1024 * 1024,
-      });
-      hls.on(Hls.Events.ERROR, (_, data) => {
-        if (!data.fatal) {
-          return;
-        }
-        buffering.value = false;
-        error.value =
-          data.type === Hls.ErrorTypes.NETWORK_ERROR
-            ? '媒体加载失败，可能是网络或跨域限制。请重试或切换资源源。'
-            : '该视频格式无法播放，请重试或切换资源源';
-      });
-      hls.attachMedia(element);
-      hls.loadSource(url);
-    } else if (
-      !/\.m3u8(?:[?#]|$)/i.test(url) ||
-      element.canPlayType('application/vnd.apple.mpegurl')
-    ) {
-      element.src = url;
-    } else {
-      buffering.value = false;
-      error.value = '当前浏览器不支持此视频，请使用新版 Chrome 或 Edge';
+    if (value && episode.value) {
+      media.load(
+        episode.value.url,
+        value.progress[String(value.episode)]?.currentTime ?? 0,
+      );
     }
   };
 
-  // 已完结影片优先复用历史，手动重载仍刷新集数和播放地址。
+  // 已完结影片使用本机历史，主动重载和连载影片获取最新详情。
   const loadMovie = async (forceRefresh = false) => {
     episodeRequest++;
     controller?.abort();
     controller = new AbortController();
 
-    // 捕获本次请求的取消信号。
     const signal = controller.signal;
+
     await save();
-    if (signal.aborted || disposed) {
+
+    if (signal.aborted) {
       return;
     }
-    stopMedia();
+
+    media.reset();
     entry.value = null;
-    playbackToken.value = null;
-    loading.value = true;
-    error.value = '';
+    playbackToken = null;
 
-    // 当前影片所属的服务端源 ID。
     const sourceId = String(route.params.sourceId);
-
-    // 上游影片 ID，与源 ID 共同标识影片。
     const vodId = String(route.params.vodId);
-
-    // 是否明确要求从头播放当前集。
+    const id = movieKey(sourceId, vodId);
     const restart = route.query.restart === '1';
+
     try {
-      await history.init(movieKey(sourceId, vodId));
-      if (signal.aborted || disposed) {
-        return;
-      }
-      playbackToken.value = history.token(movieKey(sourceId, vodId));
-      // 当前浏览器中已有的同源影片记录。
-      const old = history.entries.find(
-        (item) => item.id === movieKey(sourceId, vodId),
-      );
+      await history.init(id);
+      signal.throwIfAborted();
+      playbackToken = history.token(id);
 
-      // 已完结影片不重复检查集数，其他影片与强制重载获取最新详情。
+      const old = history.entries.find((item) => item.id === id);
       let movie: Movie | undefined = old;
-      try {
-        if (forceRefresh || !old || !isMovieComplete(old)) {
-          // 自定义源需使用当前浏览器保存的接口地址。
-          const source = library.customSources.find(
-            (item) => item.id === sourceId,
-          );
 
-          if (!source && sourceId.startsWith('custom:')) {
-            throw new Error('此浏览器未添加该播放源，请先添加对应接口');
-          }
+      if (forceRefresh || !old || !isMovieComplete(old)) {
+        const source = library.customSources.find(
+          (item) => item.id === sourceId,
+        );
 
-          // 平台源只需 ID，自定义源携带已验证的直连接口地址。
-          const result = await getMovies(
-            source ?? { id: sourceId, name: '' },
-            { ids: vodId },
-            signal,
-          );
-
-          movie = result.movies.find((item) => item.vodId === vodId);
+        if (!source && sourceId.startsWith('custom:')) {
+          throw new Error('此浏览器未添加该播放源，请先添加对应接口');
         }
-      } catch (cause) {
-        if (signal.aborted || disposed) {
-          return;
-        }
-        if (!old) {
-          throw cause;
-        }
-        infoToast('无法更新影片信息，暂用上次的播放信息');
-      }
-      if (signal.aborted || disposed) {
-        return;
-      }
-      if (!movie) {
-        throw new Error('影片不存在或已下架，请返回选择其他影片');
-      }
-      if (!movie.episodes.length) {
-        throw new Error('当前影片暂无可播放集数');
+
+        const result = await getMovies(
+          source ?? { id: sourceId, name: '' },
+          { ids: vodId },
+          signal,
+        );
+
+        movie = result.movies.find((item) => item.vodId === vodId);
       }
 
-      // 复制历史中的可变进度，仅保留仍在最新集数范围内的记录。
+      signal.throwIfAborted();
+
+      if (!movie?.episodes.length) {
+        throw new Error(
+          movie
+            ? '当前影片暂无可播放集数'
+            : '影片不存在或已下架，请返回选择其他影片',
+        );
+      }
+
+      // 新详情保留有效集数范围内的历史进度。
       const value: HistoryEntry = {
         ...movie,
-        episodes: movie.episodes.map((item) => ({ ...item })),
-        episode: Math.max(
-          0,
-          Math.min(old?.episode ?? 0, movie.episodes.length - 1),
-        ),
+        episode: Math.min(old?.episode ?? 0, movie.episodes.length - 1),
         progress: Object.fromEntries(
           Object.entries(old?.progress ?? {})
             .filter(([key]) => Number(key) < movie.episodes.length)
@@ -322,324 +141,109 @@ export const usePlayer = () => {
         ),
         watchedAt: old?.watchedAt ?? Date.now(),
       };
+
       if (restart) {
         value.progress[String(value.episode)] = { currentTime: 0, duration: 0 };
       }
+
       markWatched(value);
       entry.value = value;
       await save();
-      if (signal.aborted || disposed) {
-        return;
-      }
-      loading.value = false;
+      signal.throwIfAborted();
+
       if (restart) {
         await router.replace({ path: route.path, query: {} });
+        signal.throwIfAborted();
       }
-      if (!signal.aborted && !disposed) {
-        startMedia();
-      }
+
+      startMedia();
     } catch (cause) {
-      if (!signal.aborted && !disposed) {
-        loading.value = false;
-        error.value = cause instanceof Error ? cause.message : '影片加载失败';
+      if (!signal.aborted) {
+        media.fail(cause instanceof Error ? cause.message : '影片加载失败');
       }
     }
   };
 
-  // 切集前保存上一集，取消旧 HLS 请求并从目标集恢复进度。
+  // 切集前提交上一集进度，连续操作只启动最后选中的一集。
   const selectEpisode = async (index: number) => {
-    if (
-      !entry.value ||
-      !entry.value.episodes[index] ||
-      index === entry.value.episode
-    ) {
+    const target = entry.value;
+
+    if (!target?.episodes[index] || index === target.episode) {
       return;
     }
-    // 当前请求或操作的唯一标识。
+
     const request = ++episodeRequest;
 
-    // 异步操作开始时的目标影片。
-    const target = entry.value;
     await save();
+
     if (entry.value !== target || disposed || request !== episodeRequest) {
       return;
     }
-    stopMedia();
-    entry.value.episode = index;
-    markWatched(entry.value);
+
+    media.reset();
+    target.episode = index;
+    markWatched(target);
     await save();
+
     if (!disposed && entry.value === target && request === episodeRequest) {
       startMedia();
     }
   };
 
-  // 元数据就绪后恢复本集进度，然后尝试播放。
-  const handleMetadata = () => {
-    if (!video.value || !entry.value) {
-      return;
-    }
-    // 浏览器返回的媒体时长。
-    const seconds = video.value.duration;
-    duration.value = Number.isFinite(seconds) ? seconds : 0;
+  // 结束时先保存末尾进度，再自动播放下一集。
+  const handleEnded = async () => {
+    await save();
 
-    // 当前集上次保存的播放位置。
-    const saved =
-      entry.value.progress[String(entry.value.episode)]?.currentTime ?? 0;
-    video.value.currentTime = Math.max(
-      0,
-      Math.min(saved, Math.max(0, duration.value - 1)),
-    );
-    video.value.playbackRate = rate.value;
-    mediaReady = true;
-    play();
-  };
-
-  // 手动播放与暂停共用按钮及空格快捷键。
-  const togglePlay = () => {
-    if (video.value?.paused) {
-      return play();
-    }
-    video.value?.pause();
-  };
-
-  // 暂停时同步状态并保存进度。
-  const handlePause = () => {
-    playing.value = false;
-    if (mediaReady) {
-      save();
+    if (entry.value) {
+      await selectEpisode(entry.value.episode + 1);
     }
   };
 
-  // 拖动后媒体落到目标时间时立即保存。
-  const handleSeeked = () => {
-    if (mediaReady && video.value) {
-      currentTime.value = video.value.currentTime;
-      captureProgress();
-      save();
-    }
-  };
-
-  // 媒体时间变化时更新控制栏。
-  const handleTime = () => {
-    if (mediaReady && video.value && !video.value.seeking) {
-      captureProgress();
-      currentTime.value = video.value.currentTime;
-    }
-  };
-
-  // 把目标进度限制在有效媒体范围内。
-  const seek = (seconds: number) => {
-    if (video.value && mediaReady) {
-      const target = Math.max(0, Math.min(seconds, duration.value));
-
-      currentTime.value = target;
-      video.value.currentTime = target;
-    }
-  };
-
-  // 同步界面倍速与媒体播放速率。
-  const setRate = (value: number) => {
-    rate.value = value;
-    if (video.value) {
-      video.value.playbackRate = value;
-    }
-  };
-
-  // 调整媒体音量并保存本地设置。
-  const setVolume = (value: number) => {
-    volume.value = Math.max(0, Math.min(1, value));
-    if (video.value) {
-      video.value.volume = volume.value;
-    }
-    writeLocal('volume', volume.value);
-  };
-
-  // 浏览器能力失败时给出明确反馈。
-  const toggleFullscreen = async () => {
-    try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-      } else if (
-        document.fullscreenEnabled &&
-        container.value?.requestFullscreen
-      ) {
-        await container.value.requestFullscreen();
-        // 进入全屏后把焦点交还画面，避免按钮吞掉方向键快捷操作。
-        container.value.focus({ preventScroll: true });
-      } else {
-        infoToast('当前浏览器不支持全屏');
+  watch(media.currentTime, captureProgress);
+  watchImmediate(
+    [() => route.params.sourceId, () => route.params.vodId],
+    () => loadMovie(),
+  );
+  watch(media.video, startMedia);
+  watch(
+    () => history.ownerId,
+    (ownerId) => {
+      if (playbackToken && playbackToken.ownerId !== ownerId) {
+        controller?.abort();
+        media.reset();
+        entry.value = null;
+        playbackToken = null;
+        media.fail('账号已切换，请重新打开影片');
       }
-    } catch {
-      errorToast('浏览器未允许全屏');
-    }
-  };
+    },
+    { flush: 'sync' },
+  );
 
-  // 切换画中画并提示浏览器能力失败。
-  const togglePip = async () => {
-    if (!pipAvailable || !video.value || !mediaReady) {
-      return;
-    }
-    try {
-      if (document.pictureInPictureElement) {
-        await document.exitPictureInPicture();
-      } else {
-        await video.value.requestPictureInPicture();
-      }
-    } catch {
-      errorToast('当前无法开启画中画，请先播放视频');
-    }
-  };
-
-  // 长按右键临时三倍速，松开还原；短按快进五秒。
-  const releaseRate = () => {
-    clearTimeout(pressTimer);
-    pressTimer = undefined;
-    holdingRate.value = false;
-    if (heldRate !== undefined) {
-      setRate(heldRate);
-      heldRate = undefined;
-      return true;
-    }
-    return false;
-  };
-
-  // 操作表单、菜单或选集面板时，不触发播放器快捷键。
-  useEventListener(window, 'keydown', (event) => {
-    if (
-      (event.target instanceof HTMLElement &&
-        event.target.closest(
-          'input,textarea,button,select,a,[role="slider"],[role="combobox"],[role="option"],[role="listbox"],[role="menu"],[role="dialog"],[contenteditable="true"]',
-        )) ||
-      event.ctrlKey ||
-      event.metaKey ||
-      event.altKey
-    ) {
-      return;
-    }
-    if (
-      ![' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'f'].includes(
-        event.key,
-      )
-    ) {
-      return;
-    }
-    event.preventDefault();
-    if (event.repeat) {
-      return;
-    }
-    if (event.key === ' ') {
-      togglePlay();
-    }
-    if (event.key === 'ArrowLeft') {
-      seek(currentTime.value - 5);
-    }
-    if (event.key === 'ArrowUp') {
-      setVolume(volume.value + 0.05);
-    }
-    if (event.key === 'ArrowDown') {
-      setVolume(volume.value - 0.05);
-    }
-    if (event.key === 'f') {
-      toggleFullscreen();
-    }
-    if (event.key === 'ArrowRight') {
-      pressTimer = setTimeout(() => {
-        heldRate = rate.value;
-        holdingRate.value = true;
-        setRate(rate.value * 3);
-      }, 300);
-    }
-  });
-  useEventListener(window, 'keyup', (event) => {
-    if (event.key === 'ArrowRight' && pressTimer) {
-      if (!releaseRate()) {
-        seek(currentTime.value + 5);
-      }
-    }
-  });
-  useEventListener(window, 'blur', releaseRate);
-  useEventListener(document, 'fullscreenchange', () => {
-    fullscreen.value = Boolean(document.fullscreenElement);
-  });
+  useEventListener(media.video, ['pause', 'seeked'], save);
+  useEventListener(media.video, 'ended', handleEnded);
   useEventListener(document, 'visibilitychange', () => {
     if (document.hidden) {
-      releaseRate();
       save();
     }
   });
   useEventListener(window, 'pagehide', save);
 
-  // 播放期间每十秒保存一次进度。
+  // 播放期间定期写入本地队列，离开路由时等待最后一次保存。
   const interval = setInterval(() => {
-    if (mediaReady && playing.value) {
+    if (media.status.value === 'playing') {
       save();
     }
   }, 10_000);
+
   onBeforeRouteLeave(async () => {
     await save();
   });
-  watch(
-    [() => route.params.sourceId, () => route.params.vodId],
-    () => loadMovie(),
-    { immediate: true },
-  );
-  // 会话切换立即释放旧账号的影片，路由守卫完成前也不会继续播放。
-  watch(
-    () => history.ownerId,
-    (nextOwnerId) => {
-      if (playbackToken.value && playbackToken.value.ownerId !== nextOwnerId) {
-        controller?.abort();
-        stopMedia();
-        entry.value = null;
-        playbackToken.value = null;
-        loading.value = false;
-        error.value = '账号已切换，请重新打开影片';
-      }
-    },
-    { flush: 'sync' },
-  );
-  watch(video, (value) => {
-    if (value && entry.value && !loading.value) {
-      startMedia();
-    }
-  });
+  onBeforeUnmount(save);
   onScopeDispose(() => {
     disposed = true;
     controller?.abort();
-    releaseRate();
     clearInterval(interval);
-    save();
-    stopMedia();
   });
 
-  return {
-    video,
-    container,
-    entry,
-    episode,
-    loading,
-    buffering,
-    error,
-    playing,
-    currentTime,
-    duration,
-    rate,
-    volume,
-    fullscreen,
-    holdingRate,
-    pipAvailable,
-    loadMovie,
-    selectEpisode,
-    handleMetadata,
-    handlePause,
-    handleSeeked,
-    handleTime,
-    togglePlay,
-    seek,
-    setRate,
-    setVolume,
-    toggleFullscreen,
-    togglePip,
-    save,
-  };
+  return { ...media, media, entry, episode, loadMovie, selectEpisode };
 };

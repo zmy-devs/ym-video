@@ -1,6 +1,5 @@
-@import './theme.css';
-@import 'vue-sonner/style.css';
-@import './catalogue.css';
+@import '@ym-video/ui/styles.css';
+@import '@ym-video/account/styles.css';
 
 /* 桌面标题栏统一使用 40px 高度。 */
 :root {
@@ -8,7 +7,7 @@
   --desktop-title-bar-height: 0px;
 }
 
-:root:has(.desktop-title-bar) {
+:root:has(.desktop-title-bar, .login-title-bar) {
   --title-bar-height: 40px;
   --desktop-title-bar-height: var(--title-bar-height);
 }
@@ -19,30 +18,6 @@
   touch-action: none;
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50 font-normal select-none;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  /* 登录页沿用页面背景。 */
-  body:has(.login-page) {
-    @apply bg-muted dark:bg-background;
-  }
-  #app {
-    height: 100dvh;
-  }
-  #app:has(.desktop-title-bar-standalone) {
-    padding-top: var(--title-bar-height);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+#app:has(.desktop-title-bar-standalone) {
+  padding-top: var(--title-bar-height);
 }

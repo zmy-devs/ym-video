@@ -1,42 +1,43 @@
 <template>
   <div
-    class="player-page dark h-full flex flex-col overflow-hidden bg-background text-foreground"
+    class="player-page dark h-full flex flex-col overflow-hidden bg-background"
     :data-theme-color="theme.color"
   >
-    <header
-      v-if="isDesktop"
-      class="desktop-title-bar shrink-0 flex items-center gap-2.5 border-b pl-[calc((var(--title-bar-height)-1.75rem)/2)] pr-36 text-foreground"
-    >
-      <CommonTooltip label="返回" side="bottom">
+    <TitleBar class="gap-2.5 pl-[calc((var(--title-bar-height)-1.75rem)/2)]">
+      <Tooltip label="返回" side="bottom">
         <Button
-          type="button"
           variant="ghost"
           size="icon"
           class="size-7 shrink-0"
-          aria-label="返回"
           @click="handleBack"
         >
-          <ArrowLeft class="size-4" aria-hidden="true" />
+          <ArrowLeft class="size-4" />
         </Button>
-      </CommonTooltip>
+      </Tooltip>
       <MoviePoster
         v-if="entry"
         :src="entry.pic"
         alt=""
-        aria-hidden="true"
         class="size-5 shrink-0 rounded-full"
       />
-      <span v-if="entry" class="min-w-0 truncate text-sm" :title="entry.name">
+      <Skeleton
+        v-else-if="status === 'loading'"
+        class="size-5 shrink-0 rounded-full"
+      />
+      <span v-if="entry" class="min-w-0 truncate text-sm">
         {{ entry.name }}
       </span>
-    </header>
+      <Skeleton
+        v-else-if="status === 'loading'"
+        class="h-4 w-32 rounded-sm"
+      />
+    </TitleBar>
     <div class="min-h-0 flex flex-1">
       <main
         ref="container"
         class="player-surface min-w-0 relative isolate flex flex-1 flex-col items-center justify-center overflow-hidden outline-none bg-black text-white"
         :class="{ 'cursor-none': fullscreen && !controlsVisible && playing }"
         tabindex="-1"
-        aria-label="视频播放器"
         @pointermove="handleShowControls"
         @pointerleave="handleScheduleHide"
       >
@@ -45,26 +46,15 @@
           class="min-h-0 w-full relative z-0 flex-1 object-contain"
           playsinline
           @click="togglePlay"
-          @loadedmetadata="handleMetadata"
-          @timeupdate="handleTime"
-          @seeked="handleSeeked"
-          @play="playing = true"
-          @pause="handlePause"
-          @waiting="buffering = true"
-          @playing="buffering = false"
-          @canplay="buffering = false"
-          @ended="handleEnded"
-          @error="handleMediaError"
         />
 
         <Empty
-          v-if="error"
-          role="alert"
+          v-if="status === 'error'"
           class="absolute inset-0 rounded-none bg-black/90"
         >
           <EmptyHeader class="max-w-full">
             <EmptyMedia variant="icon">
-              <CircleAlert aria-hidden="true" />
+              <CircleAlert />
             </EmptyMedia>
             <EmptyTitle>播放失败</EmptyTitle>
             <EmptyDescription class="max-w-full truncate">
@@ -72,33 +62,23 @@
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button type="button" @click="loadMovie(true)">
-              <RotateCw aria-hidden="true" />重新加载
-            </Button>
+            <Button @click="loadMovie(true)"> <RotateCw />重新加载 </Button>
           </EmptyContent>
         </Empty>
         <div
-          v-else-if="loading || buffering"
-          role="status"
+          v-else-if="status === 'loading' || status === 'buffering'"
+          data-slot="player-loading"
           class="pointer-events-none absolute inset-0 flex items-center justify-center"
         >
           <LoaderCircle class="size-10 animate-spin drop-shadow-md" />
-          <span class="sr-only">正在加载视频</span>
         </div>
         <button
-          v-else-if="!playing"
-          type="button"
+          v-else-if="status === 'paused'"
           class="absolute flex items-center justify-center text-white drop-shadow-md"
-          aria-label="开始播放"
           @click="togglePlay"
         >
           <!-- 与桌面端一致的 Fluent Play 20 Filled 圆角轮廓。 -->
-          <svg
-            class="size-20"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            aria-hidden="true"
-          >
+          <svg class="size-20" viewBox="0 0 20 20" fill="currentColor">
             <path
               d="M17.222 8.685a1.5 1.5 0 0 1 0 2.628l-10 5.498A1.5 1.5 0 0 1 5 15.496V4.502a1.5 1.5 0 0 1 2.223-1.314l10 5.497Z"
             />
@@ -110,7 +90,6 @@
         >
           <p
             v-if="volumeVisible || holdingRate"
-            role="status"
             class="absolute top-4 z-20 rounded-xl bg-popover px-4 py-2 text-sm text-popover-foreground"
           >
             <template v-if="holdingRate">{{ rate }} 倍速播放中…</template>
@@ -131,7 +110,6 @@
               :name="entry?.name ?? ''"
               :episode-label="episode?.label ?? ''"
               :has-episodes="!!entry && entry.episodes.length > 1"
-              :episodes-open="episodesOpen"
               :current-time="currentTime"
               :duration="duration"
               :rate="rate"
@@ -156,10 +134,9 @@
         <div
           v-if="!showControls"
           class="player-mini-progress w-full h-[3px] relative z-10 shrink-0 bg-[var(--player-control)]"
-          aria-hidden="true"
         >
           <div
-            class="h-full bg-white/80"
+            class="h-full bg-primary"
             :style="{ width: `${progressPercent}%` }"
           />
         </div>
@@ -177,17 +154,17 @@
 </template>
 
 <script setup lang="ts">
-import { isTauri } from '@/lib/desktop';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { useEventListener, useTitle } from '@vueuse/core';
+import { useTitle } from '@vueuse/core';
 import {
   ArrowLeft,
   LoaderCircle,
   CircleAlert,
   RotateCw,
 } from 'lucide-vue-next';
-import { Button } from '@/components/ui/button';
+import { Button } from '@ym-video/ui/components/button';
+import { Skeleton } from '@ym-video/ui/components/skeleton';
 import {
   Empty,
   EmptyContent,
@@ -195,16 +172,16 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from '@/components/ui/empty';
-import CommonTooltip from '@/components/common/tooltip.vue';
-import MoviePoster from '@/components/movie-poster.vue';
+} from '@ym-video/ui/components/empty';
+import Tooltip from '@ym-video/ui/common/tooltip.vue';
+import MoviePoster from '@/components/movie-card/poster.vue';
 import PlayerControls from '@/components/player/player-controls.vue';
 import PlayerEpisodesSheet from '@/components/player/player-episodes-sheet.vue';
 import { usePlayer } from '@/composables/use-player';
-import { useThemeStore } from '@/stores/theme';
-
-// 桌面播放器标题栏显示影片信息和返回按钮。
-const isDesktop = isTauri();
+import { useShortcuts } from '@/composables/player/use-shortcuts';
+import { useThemeStore } from '@/stores/theme-store';
+import TitleBar from '@/layout/title-bar/index.vue';
+import { getProgress } from '@/utils/progress';
 
 // 播放器使用公共暗色主题，并沿用用户选择的强调色。
 const theme = useThemeStore();
@@ -224,36 +201,35 @@ const handleBack = () => {
 };
 
 // 媒体加载、播放状态与浏览器能力。
+const player = usePlayer();
+
 const {
   video,
   container,
   entry,
   episode,
-  loading,
-  buffering,
+  status,
   error,
-  playing,
   currentTime,
   duration,
   rate,
   volume,
   fullscreen,
-  holdingRate,
   pipAvailable,
   loadMovie,
   selectEpisode,
-  handleMetadata,
-  handlePause,
-  handleSeeked,
-  handleTime,
   togglePlay,
   seek,
   setRate,
   setVolume,
   toggleFullscreen,
   togglePip,
-  save,
-} = usePlayer();
+} = player;
+
+// 控制栏从统一媒体状态派生播放标记。
+const playing = computed(
+  () => status.value === 'playing' || status.value === 'buffering',
+);
 
 // 标签页只更新片名，图标沿用应用入口中的 ym-video 图标。
 useTitle(() => entry.value?.name || 'ym-video');
@@ -280,9 +256,7 @@ const showControls = computed(
 
 // 完整控件收起后在画面底边显示已播放比例。
 const progressPercent = computed(() =>
-  duration.value
-    ? Math.min(100, Math.max(0, (currentTime.value / duration.value) * 100))
-    : 0,
+  getProgress(currentTime.value, duration.value),
 );
 
 // 控制栏的关闭计时器。
@@ -311,6 +285,9 @@ const handleShowControls = () => {
   controlsVisible.value = true;
   handleScheduleHide();
 };
+
+// 播放器快捷键统一注册，并在 Tab 导航时唤出控制栏。
+const holdingRate = useShortcuts(player.media, handleShowControls);
 
 // 鼠标和键盘操作控制栏期间保持可见。
 const handleKeepControls = () => {
@@ -349,29 +326,7 @@ const handleNext = () => {
   }
 };
 
-// 本集结束后自动播放下一集。
-const handleEnded = async () => {
-  playing.value = false;
-  await save();
-  await handleNext();
-};
-
-// 浏览器解码失败时提供恢复入口。
-const handleMediaError = () => {
-  if (!loading.value && episode.value && video.value?.error) {
-    buffering.value = false;
-    error.value = '视频无法加载或解码，请重试或切换资源源';
-  }
-};
-
 watch([fullscreen, playing], handleShowControls);
-
-// 全屏控件收起后，Tab 仍可唤出并进入键盘操作。
-useEventListener(document, 'keydown', (event) => {
-  if (event.key === 'Tab') {
-    handleShowControls();
-  }
-});
 
 watch(volume, () => {
   clearTimeout(volumeTimer);

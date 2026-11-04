@@ -1,3 +1,4 @@
+import { getProgress } from '../src/utils/progress.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { movieKey, parseEpisodes, parseMovie } from '@ym-video/catalog';
@@ -146,4 +147,13 @@ test('过滤原有 adjump 分片，同时保留密钥、正常分片与地址上
     ),
     '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=800000\nhttps://media.example.com/show/2000k/hls/index.m3u8',
   );
+});
+
+test('进度统一限制在有效百分比范围内', () => {
+  assert.equal(getProgress(30, 120), 25);
+  assert.equal(getProgress(-1, 120), 0);
+  assert.equal(getProgress(130, 120), 100);
+  assert.equal(getProgress(30, 0), 0);
+  assert.equal(getProgress(Number.NaN, 120), 0);
+  assert.equal(getProgress(30, Number.POSITIVE_INFINITY), 0);
 });

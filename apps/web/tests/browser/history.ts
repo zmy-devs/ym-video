@@ -7,7 +7,7 @@ import type {
   HistoryOperation,
   HistorySnapshot,
 } from '@ym-video/history';
-import { useHistoryStore } from '../../src/stores/history';
+import { useHistoryStore } from '../../src/stores/history-store';
 import { readLocalHistory } from '../../src/services/history';
 import { usePlayer } from '../../src/composables/use-player';
 
@@ -104,7 +104,7 @@ const until = async (check: () => boolean) => {
   const deadline = Date.now() + 5_000;
   while (!check()) {
     if (Date.now() > deadline) {
-      throw new Error('等待条件超时');
+      throw new Error('等待条件超时：' + check.toString());
     }
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
@@ -300,7 +300,7 @@ const run = async () => {
       IDBDatabase.prototype.transaction = original;
     }
   });
-  await test('实际播放器刷新详情、重载、续播、缩减集数、离线回退与账号切换', async () => {
+  await test('实际播放器刷新详情、重载、续播、缩减集数、请求失败与账号切换', async () => {
     online = false;
     const pinia = createPinia();
     const playerHistory = useHistoryStore(pinia);
@@ -312,6 +312,7 @@ const run = async () => {
       label: '第 2 集',
       url: 'http://localhost:5180/test-video.mp4',
     });
+    movie.remarks = '全2集';
     movie.episode = 1;
     movie.progress = { '1': { currentTime: 44, duration: 100 } };
     movie.watchedAt += 1;
@@ -326,7 +327,10 @@ const run = async () => {
     });
     const router = createRouter({
       history: createMemoryHistory(),
-      routes: [{ path: '/player/:sourceId/:vodId', component }],
+      routes: [
+        { path: '/player/:sourceId/:vodId', component },
+        { path: '/after-player', component: { render: () => null } },
+      ],
     });
     await router.push('/player/source/movie?restart=1');
     await router.isReady();
@@ -345,7 +349,7 @@ const run = async () => {
       await until(() =>
         Boolean(
           player?.entry.value &&
-            !player.loading.value &&
+            player.status.value !== 'loading' &&
             !router.currentRoute.value.query.restart,
         ),
       );
@@ -362,14 +366,20 @@ const run = async () => {
         configurable: true,
         value: 100,
       });
-      active.handleMetadata();
+      active.video.value.dispatchEvent(new Event('loadedmetadata'));
       active.video.value.currentTime = 12;
-      active.handleTime();
-      active.handlePause();
-      await active.save();
+      active.video.value.dispatchEvent(new Event('timeupdate'));
+      active.video.value.dispatchEvent(new Event('pause'));
+      active.video.value.dispatchEvent(new Event('pause'));
+      await until(
+        () => playerHistory.entries[0]?.progress['1']?.currentTime === 12,
+      );
       const watchedAt = active.entry.value.watchedAt;
       await new Promise((resolve) => setTimeout(resolve, 30));
-      await active.save();
+      active.video.value.dispatchEvent(new Event('pause'));
+      await until(
+        () => playerHistory.entries[0]?.progress['1']?.currentTime === 12,
+      );
       assert(
         active.entry.value.watchedAt === watchedAt,
         '重复保存不得刷新实际观看时间',
@@ -435,7 +445,7 @@ const run = async () => {
         });
       };
 
-      await active.loadMovie();
+      await active.loadMovie(true);
       assert(detailRequests === 1, '状态不明的历史影片仍应查询最新详情');
       assert(active.entry.value?.episodes.length === 3, '应显示新增的第 3 集');
       assert(active.entry.value?.name === '已更新的影片', '影片信息应同步更新');
@@ -449,7 +459,7 @@ const run = async () => {
         active.video.value.src.endsWith('?v=1-1'),
         '实际媒体元素应使用最新地址',
       );
-      active.handleMetadata();
+      active.video.value.dispatchEvent(new Event('loadedmetadata'));
       assert(active.video.value.currentTime === 12, '应从原进度续播');
 
       // 选集只使用已加载的媒体地址，不再次查询账号或刷新集数。
@@ -487,12 +497,11 @@ const run = async () => {
       detailFailure = true;
       await active.loadMovie();
       assert(
-        active.entry.value?.episodes.length === 3 &&
-          active.video.value.src.endsWith('?v=4-1'),
-        '详情请求失败应回退到最近一次可用信息',
+        active.status.value === 'error' && !active.entry.value,
+        '详情请求失败应进入可重试的错误状态',
       );
       assert(
-        active.entry.value?.progress['1'].currentTime === 12,
+        playerHistory.entries[0]?.progress['1'].currentTime === 12,
         '请求失败不得清除续播进度',
       );
       detailFailure = false;
@@ -583,6 +592,19 @@ const run = async () => {
       await pendingLoad;
       assert(active.entry.value === null, '切账号应立即清理旧播放器');
       assert(playerHistory.entries.length === 0, '迟到详情不得写入新账号');
+
+      // 删除历史会让旧播放凭据失效，保存结果不能阻止用户离开页面。
+      await active.loadMovie();
+      await playerHistory.remove('source:movie');
+      await router.push('/after-player');
+      assert(
+        router.currentRoute.value.path === '/after-player',
+        '历史凭据失效后仍可离开播放器',
+      );
+      assert(
+        playerHistory.entries.length === 0,
+        '离开播放器时不能恢复已删除的历史',
+      );
     } finally {
       app.unmount();
       mount.remove();

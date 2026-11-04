@@ -4,13 +4,13 @@
 
 ## 技术栈
 
-Vue 3、TypeScript、Vite、Vue Router、Pinia、shadcn-vue（Reka UI）、Tailwind CSS 4、hls.js。
+Vue 3、TypeScript、Vite、Vue Router、Pinia、Tailwind CSS 4、hls.js。基础组件来自 `@ym-video/ui`，账号组件与校验来自 `@ym-video/account`。
 
 ## 启动
 
 在仓库根目录安装依赖，并按 [API 说明](../api/README.md) 配置本地环境、应用数据库迁移。
 
-在两个终端分别运行：
+分别启动以下服务：
 
 ```sh
 pnpm dev:api
@@ -20,13 +20,13 @@ pnpm dev:api
 pnpm dev:web
 ```
 
-访问 <http://localhost:3000>。Web 的 `/api` 请求会转发到 <http://localhost:8787>。
+管理页面开发时同时启动 `pnpm dev:admin`。访问 <http://localhost:3000>。Web 的 `/api` 请求会转发到 <http://localhost:8787>。
 
 默认端口被占用时可运行 `pnpm dev:web --port 3000`。使用其他端口时，需要在 `apps/api/wrangler.jsonc` 的 `WEB_ORIGINS` 中添加对应来源。
 
 ## 使用
 
-- 使用邮箱和密码登录；新用户通过管理员提供的邀请链接注册。管理员登录后进入账号后台，可创建、停用、删除账号及生成邀请。
+- 使用邮箱和密码登录；新用户通过管理员提供的邀请链接注册。管理员在浏览器登录后进入独立管理应用。
 - 在概览或分类页浏览影片，通过搜索查找内容；侧栏底部的播放源菜单可切换或添加播放源。
 - 播放器支持选集、续播、上一集／下一集、倍速、音量、全屏和画中画。头像菜单中的设置可修改外观、用户名和密码。
 
@@ -38,8 +38,8 @@ pnpm dev:web
 
 | 快捷键       | 操作            |
 | ------------ | --------------- |
-| Ctrl/Cmd + K | 打开搜索        |
-| Ctrl/Cmd + B | 展开／收起侧栏  |
+| Ctrl + K     | 打开搜索        |
+| Ctrl + B     | 展开／收起侧栏  |
 | 空格         | 播放／暂停      |
 | 左右方向键   | 后退／前进 5 秒 |
 | 长按右方向键 | 临时三倍速      |

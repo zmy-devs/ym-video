@@ -564,7 +564,7 @@ return !!document.querySelector('#login-heading');
       4444,
       nativeSession,
       `
-return document.querySelectorAll('[aria-label=关闭窗口]').length;
+return document.querySelectorAll('[aria-label="关闭窗口"]').length;
 `,
     ),
     1,
@@ -683,7 +683,7 @@ setTimeout(() => {
     4444,
     nativeSession,
     `
-document.querySelector('[aria-label=最大化]').click();
+document.querySelector('[aria-label="最大化"]').click();
 `,
   );
 
@@ -692,7 +692,7 @@ document.querySelector('[aria-label=最大化]').click();
       4444,
       nativeSession,
       `
-return !!document.querySelector('[aria-label=还原窗口]');
+return !!document.querySelector('[aria-label="还原窗口"]');
 `,
     ),
   );
@@ -888,7 +888,7 @@ return document.querySelector('video').playbackRate;
     4444,
     nativeSession,
     `
-document.querySelector('[aria-label=下一集]').click();
+document.querySelector('[aria-label="下一集"]').click();
 `,
   );
 
@@ -906,7 +906,7 @@ return document.querySelector('.player-label')?.textContent.includes('第二集'
     4444,
     nativeSession,
     `
-document.querySelector('button[aria-label=返回]').click();
+document.querySelector('button[aria-label="返回"]').click();
 `,
   );
 
@@ -916,7 +916,7 @@ document.querySelector('button[aria-label=返回]').click();
       nativeSession,
       `
 return (
-  location.pathname === '/overview' && !!document.querySelector('.page-content')
+  location.pathname === '/overview' && !!document.querySelector('[data-slot="catalogue-page"]')
 );
 `,
     ),
