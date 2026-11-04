@@ -19,6 +19,13 @@
 7. 架构决策往长了做。不接受"先这样以后再换" 的临时方案。
 8. 先看成熟产品怎么解决同一个问题，用已验证的模式，别从零发明。
 
+## 预防过度防御
+
+1. **防过度防御**：几乎不会发生的边界/并发问题，讲清概率并经用户确认后再加，严禁为“理论上更稳”私自膨胀代码。
+2. **入口单次校验**：外部数据只在边界校验一次，内部靠类型系统流转，禁止层层重复判断。
+3. **拒绝提前抽象**：单次使用的逻辑就近内联，不随意提前拆分无意义的 helper。
+4. **控制复杂度**：非必要不用 try/catch，能单函数清晰搞定的别硬拆。
+
 <!-- CODEGRAPH_START -->
 
 ## CodeGraph
@@ -44,10 +51,11 @@
 
 ## 架构边界
 
-- Web 界面与交互按 PC 浏览器设计，使用 Vue 3、shadcn-vue 和 Tailwind CSS 4。
+- Web 与 Admin 界面按 PC 浏览器设计，使用 Vue 3、shadcn-vue 和 Tailwind CSS 4。影视页面归 `apps/web`，管理页面归独立的 `apps/admin`；Admin 面向浏览器。
 - 桌面端技术目标为 Tauri 2 最新稳定版与 Rust，仅面向 Windows；开发复用本地 Web，生产内置 Web 产物，窗口、系统能力、资源请求与更新由桌面应用负责。
 - 移动端使用 Expo／React Native，原生页面、播放器和设备能力归移动应用。
-- API 使用 Fastify、Better Auth、Drizzle 和 D1，与 Web 静态资源一同部署在 Cloudflare Workers。
+- API 使用 Fastify、Better Auth、Drizzle 和 D1，与 Web、Admin 的独立构建产物一同部署在 Cloudflare Workers，管理入口为 `/admin/`。
+- `packages/ui` 维护 Vue 基础组件、通用封装和主题；`packages/account` 维护 Web 与 Admin 共用的账号组件和校验。管理业务、影视业务与桌面能力分别归所属应用。
 - 应用各自维护平台配置、资源和发布脚本。跨端契约与纯业务逻辑有真实共享调用方时才提取到 `packages/`，UI、播放器和系统能力按平台组织。
 - 应用之间通过 `@ym-video/*` 共享包与 `workspace:*` 依赖协作，不通过相对路径引用其他应用源码。
 
