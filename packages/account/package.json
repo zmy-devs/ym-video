@@ -1,0 +1,35 @@
+{
+  "name": "@ym-video/account",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./client": "./src/client.ts",
+    "./navigation": "./src/navigation.ts",
+    "./request-retry": "./src/request-retry.ts",
+    "./schema": "./src/schema.ts",
+    "./login.vue": "./src/components/login.vue",
+    "./menu.vue": "./src/components/menu.vue",
+    "./settings.vue": "./src/components/settings.vue",
+    "./styles.css": "./src/styles.css"
+  },
+  "scripts": {
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.24",
+    "vue-router": "^4.4.5"
+  },
+  "dependencies": {
+    "@ym-video/ui": "workspace:*",
+    "better-auth": "1.7.10",
+    "lucide-vue-next": "^0.468.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "vue": "3.5.24",
+    "vue-router": "4.4.5",
+    "typescript": "5.9.2",
+    "vue-tsc": "3.1.4"
+  }
+}

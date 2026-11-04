@@ -1,0 +1,19 @@
+{
+  "$schema": "https://shadcn-vue.com/schema.json",
+  "style": "new-york",
+  "typescript": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/styles.css",
+    "baseColor": "neutral",
+    "cssVariables": true
+  },
+  "aliases": {
+    "components": "@ym-video/ui/components",
+    "ui": "@ym-video/ui/components",
+    "utils": "@ym-video/ui/lib/utils",
+    "lib": "@ym-video/ui/lib",
+    "composables": "@ym-video/ui/composables"
+  },
+  "iconLibrary": "lucide"
+}
