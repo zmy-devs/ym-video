@@ -11,7 +11,7 @@
     "node": "22.21.1"
   },
   "scripts": {
-    "dev": "pnpm dev:web && pnpm dev:api",
+    "dev": "pnpm --parallel --filter @ym-video/web --filter @ym-video/admin --filter @ym-video/api run dev",
     "dev:web": "pnpm --filter @ym-video/web run dev",
     "typecheck:web": "pnpm --filter @ym-video/web run typecheck",
     "build:web": "pnpm --filter @ym-video/web run build",
@@ -40,6 +40,11 @@
     "android": "pnpm --filter @ym-video/mobile run android",
     "ios": "pnpm --filter @ym-video/mobile run ios",
     "release:desktop": "pnpm --filter @ym-video/desktop run release",
-    "release:mobile": "pnpm --filter @ym-video/mobile run release"
+    "release:mobile": "pnpm --filter @ym-video/mobile run release",
+    "dev:admin": "pnpm --filter @ym-video/admin run dev",
+    "typecheck:admin": "pnpm --filter @ym-video/admin run typecheck",
+    "build:admin": "pnpm --filter @ym-video/admin run build",
+    "preview:admin": "pnpm --filter @ym-video/admin run preview",
+    "test:admin": "pnpm --filter @ym-video/admin run test"
   }
 }

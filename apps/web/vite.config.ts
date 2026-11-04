@@ -11,7 +11,15 @@ export default defineConfig({
   server: {
     port: 3000,
     strictPort: true,
-    proxy: { '/api': 'http://localhost:8787' },
+    proxy: {
+      '/api': 'http://localhost:8787',
+      '/admin': { target: 'http://localhost:3001', ws: true },
+    },
   },
-  preview: { proxy: { '/api': 'http://localhost:8787' } },
+  preview: {
+    proxy: {
+      '/api': 'http://localhost:8787',
+      '/admin': 'http://localhost:4174',
+    },
+  },
 });

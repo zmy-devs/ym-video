@@ -1,0 +1,37 @@
+{
+  "name": "@ym-video/admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "volta": {
+    "extends": "../../package.json"
+  },
+  "scripts": {
+    "dev": "vite --host localhost",
+    "typecheck": "vue-tsc --noEmit && tsc --noEmit -p tsconfig.node.json && vue-tsc --noEmit -p tests/tsconfig.browser.json",
+    "build": "pnpm run typecheck && vite build",
+    "preview": "vite preview --host localhost --port 4174 --strictPort",
+    "test:browser": "vite --host localhost --port 5181 --strictPort",
+    "test": "node --experimental-strip-types --test tests/*.test.ts"
+  },
+  "dependencies": {
+    "@vueuse/core": "14.1.0",
+    "pinia": "2.1.7",
+    "vue": "3.5.24",
+    "vue-router": "4.4.5",
+    "reka-ui": "^2.9.0",
+    "lucide-vue-next": "^0.468.0",
+    "zod": "^4.6.7",
+    "@ym-video/ui": "workspace:*",
+    "@ym-video/account": "workspace:*"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@types/node": "22.18.6",
+    "@vitejs/plugin-vue": "6.0.1",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.2",
+    "vue-tsc": "3.1.4",
+    "vite": "7.2.2"
+  }
+}
