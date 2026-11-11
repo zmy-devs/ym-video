@@ -1,6 +1,6 @@
 # @ym-video/account
 
-Web 与 Admin 共用的账号业务，提供 Better Auth 客户端工厂、登录页、账号菜单、账号设置和 Zod 字段校验。
+各应用共用的账号业务，提供 Better Auth 客户端工厂、账号路由、请求重试和 Zod 字段校验。账号界面组件统一由 `@ym-video/ui` 提供。
 
 ## 使用
 
@@ -8,17 +8,7 @@ Web 与 Admin 共用的账号业务，提供 Better Auth 客户端工厂、登�
 
 ```ts
 import { createAccountClient } from '@ym-video/account/client';
-import AccountLogin from '@ym-video/account/login.vue';
-import AccountSettings from '@ym-video/account/settings.vue';
 import { accountSchema } from '@ym-video/account/schema';
 ```
 
-登录页通过 `client`、`role`、`homeRoute` 和 `icon` 接收所属应用的认证客户端、目标角色、默认路由和品牌图标。应用可使用 `footer` 插槽保留各自的注册或返回链接。
-
-在应用样式中导入账号组件的 Tailwind 扫描声明。
-
-```css
-@import '@ym-video/account/styles.css';
-```
-
-浏览器应用提供浏览器 fetch，桌面 Web 提供自身的原生请求适配器。账号列表和邀请管理归 Admin 应用维护。
+统一客户端的账号请求由 Tauri 原生网络核心适配，Admin 维护账号列表和一次性邀请码。注册页面提交邀请码后创建普通用户账号。
