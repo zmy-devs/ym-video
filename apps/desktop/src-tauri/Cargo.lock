@@ -33,6 +33,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "android-native-keyring-store"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48c6349ddff23194f8fdce2ea8849380f5a4868c1648965b70e801e104cba9b3"
+dependencies = [
+ "base64 0.22.1",
+ "jni 0.21.1",
+ "keyring-core",
+ "log",
+ "ndk-context",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tracing",
+]
+
+[[package]]
 name = "android_system_properties"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2060,6 +2078,15 @@ checksum = "0fbe853b403ae61a04233030ae8a79d94975281ed9770a1f9e246732b534b28d"
 dependencies = [
  "bitflags 2.13.2",
  "serde",
+]
+
+[[package]]
+name = "keyring-core"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29fbf4b551298c67925f38cf341a1ada797a75f1837bdf8ae1fc8e2ebc6efb59"
+dependencies = [
+ "log",
 ]
 
 [[package]]
@@ -5395,16 +5422,27 @@ dependencies = [
 name = "ym-video"
 version = "6.1.6"
 dependencies = [
- "cookie_store",
- "reqwest 0.12.28",
- "reqwest_cookie_store",
- "serde",
  "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-opener",
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
+ "ym-video-native-core",
+]
+
+[[package]]
+name = "ym-video-native-core"
+version = "6.1.6"
+dependencies = [
+ "android-native-keyring-store",
+ "cookie_store",
+ "keyring-core",
+ "reqwest 0.12.28",
+ "reqwest_cookie_store",
+ "serde",
+ "serde_json",
+ "tauri",
  "thiserror 2.0.21",
  "tokio",
  "tokio-util",

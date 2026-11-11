@@ -155,7 +155,7 @@ const testConfig = {
   plugins: {
     updater: {
       pubkey: readFileSync(testKey + '.pub', 'utf8').trim(),
-      endpoints: ['http://localhost:8787/latest.json'],
+      endpoints: ['http://127.0.0.1:8788/latest.json'],
       dangerousInsecureTransportProtocol: true,
     },
   },
@@ -296,7 +296,7 @@ const server = createServer(async (request, response) => {
         version: '999.0.0',
         platforms: {
           'windows-x86_64': {
-            url: 'http://localhost:8787/update.exe',
+            url: 'http://127.0.0.1:8788/update.exe',
             signature,
           },
         },
@@ -341,7 +341,7 @@ const server = createServer(async (request, response) => {
 
   if (path.startsWith('/catalog')) {
     // 用于验证来源和读取查询条件的请求地址。
-    const url = new URL(path, 'http://localhost:8787');
+    const url = new URL(path, 'http://127.0.0.1:8788');
 
     return response.end(
       JSON.stringify(
@@ -353,7 +353,7 @@ const server = createServer(async (request, response) => {
                   vod_id: 'movie',
                   vod_name: '本机 HLS 测试',
                   vod_play_url:
-                    '第一集$http://localhost:8787/media/sample.m3u8#第二集$http://localhost:8787/media/sample.m3u8?episode=2',
+                    '第一集$http://127.0.0.1:8788/media/sample.m3u8#第二集$http://127.0.0.1:8788/media/sample.m3u8?episode=2',
                 },
               ],
               pagecount: 1,
@@ -364,7 +364,7 @@ const server = createServer(async (request, response) => {
 
   if (path.startsWith('/media/')) {
     // 包含版本与平台信息的安装包名称。
-    const filename = basename(new URL(path, 'http://localhost:8787').pathname);
+    const filename = basename(new URL(path, 'http://127.0.0.1:8788').pathname);
 
     response.setHeader('access-control-allow-origin', '*');
 
@@ -409,7 +409,9 @@ const server = createServer(async (request, response) => {
   );
 });
 
-await new Promise<void>((resolve) => server.listen(8787, 'localhost', resolve));
+await new Promise<void>((resolve) =>
+  server.listen(8788, '127.0.0.1', resolve),
+);
 
 // 承载浏览器回归页面的 Edge 驱动进程。
 const edge = spawn(driver, ['--port=9515'], { stdio: 'ignore' });
@@ -593,16 +595,16 @@ return document.querySelectorAll('[aria-label="关闭窗口"]').length;
     cookie: string;
   }>(nativeSession, 'request_resource', {
     id: crypto.randomUUID(),
-    url: 'http://localhost:8787/resource',
+    url: 'http://127.0.0.1:8788/resource',
   });
 
   assert.equal(resource.cookie, '');
 
   for (const address of [
     'file:///private',
-    'http://user:secret@localhost:8787/resource',
-    'http://localhost:8787/redirect',
-    'http://localhost:8787/invalid-json',
+    'http://user:secret@127.0.0.1:8788/resource',
+    'http://127.0.0.1:8788/redirect',
+    'http://127.0.0.1:8788/invalid-json',
   ]) {
     await assert.rejects(
       invoke(nativeSession, 'request_resource', {
@@ -627,7 +629,7 @@ const id = crypto.randomUUID();
 window.__TAURI_INTERNALS__
   .invoke('request_resource', {
     id,
-    url: 'http://localhost:8787/slow',
+    url: 'http://127.0.0.1:8788/slow',
   })
   .then(
     () => done({ cancelled: false }),
@@ -754,7 +756,7 @@ return window.__TAURI_INTERNALS__.transformCallback(() => {});
     records.some(
       (record) =>
         record.body === '{"test":true}' &&
-        record.origin === 'http://localhost:8787',
+        record.origin === 'http://127.0.0.1:8788',
     ),
   );
 
@@ -772,7 +774,7 @@ localStorage.setItem(
     {
       id: 'custom:native',
       name: '本机测试源',
-      url: 'http://localhost:8787/catalog',
+      url: 'http://127.0.0.1:8788/catalog',
     },
   ]),
 );

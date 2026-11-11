@@ -42,8 +42,9 @@ pub struct ApiResponse {
 
 impl Network {
     pub fn new(session: Arc<SessionStore>) -> Result<Self, AppError> {
+        // Android 开发通过 adb reverse 将本机 API 映射到设备回环地址。
         let base = if cfg!(debug_assertions) {
-            "http://localhost:8787"
+            "http://127.0.0.1:8788"
         } else {
             WEB_ORIGIN
         };

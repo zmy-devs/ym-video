@@ -4,9 +4,9 @@
   "version": "../package.json",
   "identifier": "com.2514765066.ym-video",
   "build": {
-    "beforeDevCommand": "pnpm --filter @ym-video/web dev",
+    "beforeDevCommand": "pnpm --filter @ym-video/web run dev:desktop",
     "devUrl": "http://localhost:3000",
-    "beforeBuildCommand": "pnpm --filter @ym-video/web build",
+    "beforeBuildCommand": "pnpm --filter @ym-video/web run build:desktop",
     "frontendDist": "../../web/dist"
   },
   "app": {
