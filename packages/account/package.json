@@ -7,11 +7,7 @@
     "./client": "./src/client.ts",
     "./navigation": "./src/navigation.ts",
     "./request-retry": "./src/request-retry.ts",
-    "./schema": "./src/schema.ts",
-    "./login.vue": "./src/components/login.vue",
-    "./menu.vue": "./src/components/menu.vue",
-    "./settings.vue": "./src/components/settings.vue",
-    "./styles.css": "./src/styles.css"
+    "./schema": "./src/schema.ts"
   },
   "scripts": {
     "typecheck": "vue-tsc --noEmit"
@@ -21,9 +17,7 @@
     "vue-router": "^4.4.5"
   },
   "dependencies": {
-    "@ym-video/ui": "workspace:*",
     "better-auth": "1.7.10",
-    "lucide-vue-next": "^0.468.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

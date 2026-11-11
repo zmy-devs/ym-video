@@ -17,13 +17,11 @@
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:init:local": "node scripts/initialize-accounts.mjs",
     "deploy": "pnpm run build:assets && wrangler deploy --env production",
-    "build:assets": "pnpm --filter @ym-video/web run build && pnpm --filter @ym-video/admin run build && node scripts/assemble-assets.mjs"
+    "build:assets": "pnpm --filter @ym-video/admin run build && node scripts/assemble-assets.mjs"
   },
   "dependencies": {
-    "@ym-video/catalog": "workspace:*",
     "@ym-video/history": "workspace:*",
     "@better-auth/drizzle-adapter": "1.7.10",
-    "@better-auth/expo": "1.7.10",
     "better-auth": "1.7.10",
     "drizzle-orm": "0.45.4",
     "fastify": "5.12.7"

@@ -7,15 +7,16 @@
     "extends": "../../package.json"
   },
   "scripts": {
-    "dev": "vite --host localhost",
-    "typecheck": "vue-tsc --noEmit && tsc --noEmit -p tsconfig.node.json && vue-tsc --noEmit -p tests/tsconfig.browser.json",
-    "build": "pnpm run typecheck && vite build",
-    "preview": "vite preview --host localhost --port 4173 --strictPort",
-    "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "test:browser": "vite --host localhost --port 5180 --strictPort"
+    "dev": "pnpm run dev:desktop",
+    "dev:desktop": "vite --mode desktop --host localhost",
+    "dev:mobile": "vite --mode mobile --host 0.0.0.0",
+    "typecheck": "vue-tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
+    "build": "pnpm run build:desktop",
+    "build:desktop": "pnpm run typecheck && vite build --mode desktop",
+    "build:mobile": "pnpm run typecheck && vite build --mode mobile",
+    "test": "node --experimental-strip-types --test tests/*.test.ts"
   },
   "dependencies": {
-    "@ym-video/catalog": "workspace:*",
     "@ym-video/history": "workspace:*",
     "@vueuse/core": "14.1.0",
     "hls.js": "1.6.12",
@@ -27,6 +28,7 @@
     "@tauri-apps/api": "2.12.4",
     "@tauri-apps/plugin-updater": "2.14.1",
     "zod": "^4.6.7",
+    "vue3-touch-events": "5.0.15",
     "@ym-video/ui": "workspace:*",
     "@ym-video/account": "workspace:*"
   },

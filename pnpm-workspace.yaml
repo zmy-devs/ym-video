@@ -15,6 +15,3 @@ allowBuilds:
   vue-demi: true
   better-sqlite3: false
   '@parcel/watcher': false
-  # 移动原生模块随 Expo 原生工程构建，使用包中已有的 JavaScript 产物。
-  react-native-mmkv: false
-  react-native-nitro-modules: false

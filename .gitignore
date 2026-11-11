@@ -18,15 +18,20 @@ coverage/
 .env.*
 !.env.example
 !**/.env.example
+!/apps/web/.env.desktop
+!/apps/web/.env.mobile
 !/apps/desktop/.env.development.example
+!/apps/mobile/.env.example
 .wrangler/
 /apps/api/worker-configuration.d.ts
-/apps/mobile/android/
-/apps/mobile/ios/
-/apps/mobile/release/
-
 # Rust 与 Tauri 构建产物
 /apps/desktop/src-tauri/target/
+/packages/native-core/target/
+/packages/mobile-controls/target/
+/packages/mobile-controls/android/.tauri/
+/apps/mobile/src-tauri/target/
+/apps/mobile/src-tauri/gen/
+/apps/mobile/build/generated/
 /apps/desktop/src-tauri/gen/
 /apps/desktop/build/generated/
 
