@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Ym Video",
+  "version": "../../desktop/package.json",
+  "identifier": "com.zhangmingyang.ymvideo",
+  "build": {
+    "beforeDevCommand": "pnpm --filter @ym-video/web run dev:mobile",
+    "devUrl": "http://localhost:3002",
+    "beforeBuildCommand": "pnpm --filter @ym-video/web run build:mobile",
+    "frontendDist": "../../web/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Ym Video",
+        "create": false,
+        "width": 390,
+        "height": 844,
+        "decorations": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http: https:; media-src 'self' blob: http: https:; connect-src 'self' ipc: http: https:; worker-src 'self' blob:; frame-src 'none'; object-src 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "icon": ["../build/generated/icon.ico", "../build/generated/icon.png"],
+    "android": { "minSdkVersion": 24 }
+  }
+}

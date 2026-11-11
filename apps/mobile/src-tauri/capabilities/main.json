@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "android-main",
+  "windows": ["main"],
+  "platforms": ["android"],
+  "permissions": [
+    "core:default",
+    "opener:allow-open-url",
+    "mobile-controls:allow-set-status-bar-style",
+    "mobile-controls:allow-set-brightness",
+    "mobile-controls:allow-get-brightness",
+    "mobile-controls:allow-reset-brightness",
+    "mobile-controls:allow-set-landscape",
+    "mobile-controls:allow-set-immersive",
+    "mobile-controls:allow-set-keep-screen-on"
+  ]
+}

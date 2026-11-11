@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-set-landscape"
+description = "Enables the set_landscape command without any pre-configured scope."
+commands.allow = ["set_landscape"]
+
+[[permission]]
+identifier = "deny-set-landscape"
+description = "Denies the set_landscape command without any pre-configured scope."
+commands.deny = ["set_landscape"]

@@ -22,6 +22,135 @@ const github = 'https://api.github.com/repos/' + repository;
 // Gitee Release API 的仓库地址。
 const gitee = 'https://gitee.com/api/v5/repos/' + repository;
 
+// Android shares the desktop repository and versioned release tag.
+const publishAndroid = async () => {
+  const pkg: { version: string } = JSON.parse(
+    await readFile(join(directory, 'package.json'), 'utf8'),
+  );
+  const filename = `ym-video-${pkg.version}-android-arm64.apk`;
+  const bytes = await readFile(join(directory, '../mobile/dist', filename));
+  if (!bytes.length) {
+    throw new Error('Android APK 为空');
+  }
+  const digest = (value: Uint8Array) =>
+    createHash('sha256').update(value).digest('hex');
+  const notes = await readFile(join(directory, 'docs/release-note.md'), 'utf8');
+  const heading = `## ${pkg.version}`;
+  const body = notes.includes(heading)
+    ? notes.split(heading)[1].split('\n## ')[0].trim()
+    : `发布 ${pkg.version}`;
+  const tag = `v${pkg.version}`;
+  const githubHeaders = {
+    Authorization: `Bearer ${process.env.GH_TOKEN}`,
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+  const lookup = await fetch(`${github}/releases/tags/${tag}`, {
+    headers: githubHeaders,
+  });
+  let release: GithubRelease;
+  if (lookup.status === 404) {
+    release = await requestJson<GithubRelease>(`${github}/releases`, {
+      method: 'POST',
+      headers: { ...githubHeaders, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        tag_name: tag,
+        name: pkg.version,
+        body,
+        draft: true,
+      }),
+    });
+  } else {
+    if (!lookup.ok) {
+      throw new Error('无法查询 GitHub Release');
+    }
+    release = (await lookup.json()) as GithubRelease;
+  }
+
+  const githubAssets = await requestJson<GithubAsset[]>(
+    `${github}/releases/${release.id}/assets`,
+    { headers: githubHeaders },
+  );
+  const githubAsset = githubAssets.find((asset) => asset.name === filename);
+  if (githubAsset) {
+    const remote = await request(
+      `${github}/releases/assets/${githubAsset.id}`,
+      {
+        headers: { ...githubHeaders, Accept: 'application/octet-stream' },
+      },
+    );
+    if (digest(Buffer.from(await remote.arrayBuffer())) !== digest(bytes)) {
+      throw new Error('同版本 Android APK 内容不同，请更新应用版本后发布');
+    }
+  } else {
+    await request(
+      `${release.upload_url.replace('{?name,label}', '')}?name=${encodeURIComponent(filename)}`,
+      {
+        method: 'POST',
+        headers: {
+          ...githubHeaders,
+          'content-type': 'application/vnd.android.package-archive',
+        },
+        body: Uint8Array.from(bytes),
+      },
+    );
+  }
+  await request(`${github}/releases/${release.id}`, {
+    method: 'PATCH',
+    headers: { ...githubHeaders, 'content-type': 'application/json' },
+    body: JSON.stringify({ draft: false, make_latest: 'true' }),
+  });
+
+  const token = process.env.GITEE_TOKEN;
+  if (!token) {
+    throw new Error('缺少 Gitee 发布令牌');
+  }
+  const listGiteeReleases = () =>
+    requestJson<GiteeRelease[]>(
+      `${gitee}/releases?per_page=100&access_token=${encodeURIComponent(token)}`,
+    );
+  const known = (await listGiteeReleases()).find(
+    (item) => item.tag_name === tag,
+  );
+  const giteeRelease =
+    known ??
+    (await requestJson<GiteeRelease>(`${gitee}/releases`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        access_token: token,
+        tag_name: tag,
+        name: pkg.version,
+        body,
+        target_commitish: 'main',
+      }),
+    }));
+  const current = await requestJson<GiteeRelease>(
+    `${gitee}/releases/${giteeRelease.id}?access_token=${encodeURIComponent(token)}`,
+  );
+  const giteeAsset = current.assets?.find((asset) => asset.name === filename);
+  if (giteeAsset) {
+    const remote = await request(giteeAsset.browser_download_url);
+    if (digest(Buffer.from(await remote.arrayBuffer())) !== digest(bytes)) {
+      throw new Error('同版本 Android APK 内容不同，请更新应用版本后发布');
+    }
+  } else {
+    const form = new FormData();
+    form.set('access_token', token);
+    form.set(
+      'file',
+      new Blob([Uint8Array.from(bytes)], {
+        type: 'application/vnd.android.package-archive',
+      }),
+      filename,
+    );
+    await request(`${gitee}/releases/${giteeRelease.id}/attach_files`, {
+      method: 'POST',
+      body: form,
+    });
+  }
+};
+
 // 调用发布接口，统一处理超时与 HTTP 错误。
 const request = async (
   url: string,
@@ -297,6 +426,12 @@ const publishGitee = async (manifest: UpdateManifest, files: ReleaseFile[]) => {
 const main = async () => {
   if (!process.env.GH_TOKEN || !process.env.GITEE_TOKEN) {
     throw new Error('请配置 GH_TOKEN 和 GITEE_TOKEN');
+  }
+
+  if (process.argv[2] === 'android') {
+    await publishAndroid();
+    console.log('Android APK 已发布到主仓库 GitHub 与 Gitee Release');
+    return;
   }
 
   // 桌面 package.json 声明的版本信息。

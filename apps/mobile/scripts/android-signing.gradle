@@ -1,0 +1,15 @@
+allprojects {
+  afterEvaluate { project ->
+    if (project.name == 'app') {
+      def android = project.extensions.findByName('android')
+      if (android) {
+        def signing = android.signingConfigs.create('releaseEnvironment')
+        signing.storeFile = project.file(System.getenv('ANDROID_KEYSTORE_PATH'))
+        signing.storePassword = System.getenv('ANDROID_KEYSTORE_PASSWORD')
+        signing.keyAlias = System.getenv('ANDROID_KEY_ALIAS')
+        signing.keyPassword = System.getenv('ANDROID_KEY_PASSWORD')
+        android.buildTypes.getByName('release').signingConfig = signing
+      }
+    }
+  }
+}
