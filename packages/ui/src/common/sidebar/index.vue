@@ -1,5 +1,5 @@
 <template>
-  <SidebarProvider v-model:open="open" class="h-full min-h-0">
+  <SidebarProvider v-model:open="open" :mobile="mobile" class="h-full min-h-0">
     <Sidebar collapsible="icon">
       <SidebarHeader
         :class="[headerClass, hasScrollbar && 'border-b border-sidebar-border']"
@@ -31,7 +31,7 @@
       <SidebarContent class="overflow-hidden">
         <div ref="scrollArea" class="min-h-0 flex-1">
           <ScrollArea class="h-full">
-            <div ref="scrollContent" class="flex flex-col gap-2">
+            <div ref="scrollContent" class="flex flex-col">
               <slot />
             </div>
           </ScrollArea>
@@ -71,6 +71,7 @@ withDefaults(
     title: string;
     image?: string;
     showTrigger?: boolean;
+    mobile?: boolean;
     headerClass?: HTMLAttributes['class'];
   }>(),
   { showTrigger: true },

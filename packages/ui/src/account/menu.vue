@@ -6,9 +6,14 @@
           <Button
             id="account-menu-trigger"
             :aria-label="`账号菜单：${userName}`"
-            variant="ghost"
+            :variant="props.mobile ? 'outline' : 'ghost'"
             size="icon-lg"
-            class="-mx-1 rounded-xl data-[state=open]:bg-accent"
+            :class="[
+              props.mobile ? 'size-11 rounded-full' : '-mx-1 rounded-xl',
+              props.mobile &&
+                '!border-input border-border !bg-white/60 backdrop-blur-xl dark:!border-input dark:!bg-background/60',
+              'data-[state=open]:bg-accent',
+            ]"
           >
             <span
               class="size-8 flex shrink-0 items-center justify-center rounded-full bg-primary font-medium leading-none text-primary-foreground"
@@ -18,8 +23,8 @@
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          side="right"
-          align="end"
+          :side="props.side"
+          :align="props.align"
           class="w-60"
           @close-auto-focus="handleMenuCloseFocus"
         >
@@ -67,11 +72,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@ym-video/ui/components/dropdown-menu';
-import type { AccountClient } from '../client';
+import type { AccountClient } from '@ym-video/account/client';
 import { errorToast, successToast } from '@ym-video/ui/lib/toast';
 
 // 菜单使用所属应用的账号会话。
-const props = defineProps<{ client: AccountClient }>();
+const props = withDefaults(
+  defineProps<{
+    client: AccountClient;
+    mobile?: boolean;
+    side?: 'top' | 'right' | 'bottom' | 'left';
+    align?: 'start' | 'center' | 'end';
+  }>(),
+  { mobile: false, side: 'right', align: 'end' },
+);
 const emit = defineEmits<{ settings: []; signedOut: [] }>();
 
 // 打开设置时先关闭用户菜单，再让弹窗接管焦点。

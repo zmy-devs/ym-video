@@ -1,5 +1,5 @@
 <template>
-  <Tooltip :disabled="!label" :delay-duration="delayDuration">
+  <Tooltip :disabled="!label || undefined" :delay-duration="delayDuration">
     <TooltipTrigger as-child>
       <slot />
     </TooltipTrigger>

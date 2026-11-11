@@ -37,7 +37,7 @@ export const useThemePreferences = () => {
     'auto',
     undefined,
     {
-      onError: () => storageError('浏览器设置'),
+      onError: () => storageError('本地设置'),
       serializer: {
         read: (raw) => {
           const value: unknown = JSON.parse(raw);
@@ -54,7 +54,7 @@ export const useThemePreferences = () => {
     'default',
     undefined,
     {
-      onError: () => storageError('浏览器设置'),
+      onError: () => storageError('本地设置'),
       serializer: {
         read: (raw) => {
           const value: unknown = JSON.parse(raw);

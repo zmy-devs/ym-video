@@ -19,5 +19,5 @@ export const infoToast = (message: string, options?: ToastOptions) =>
 export const storageError = (kind: string) =>
   errorToast(`${kind}保存不可用`, {
     id: 'storage-error',
-    description: '请检查浏览器存储权限或可用空间后重试。',
+    description: '请检查本地存储权限或可用空间后重试。',
   });

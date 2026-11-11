@@ -90,10 +90,10 @@ import { Button } from '@ym-video/ui/components/button';
 import { Card } from '@ym-video/ui/components/card';
 import { Input } from '@ym-video/ui/components/input';
 import Field from '@ym-video/ui/common/field.vue';
-import type { AccountClient } from '../client';
-import { getLoginRedirect } from '../navigation';
-import { emailSchema } from '../schema';
-import { retryRequest } from '../request-retry';
+import type { AccountClient } from '@ym-video/account/client';
+import { getLoginRedirect } from '@ym-video/account/navigation';
+import { emailSchema } from '@ym-video/account/schema';
+import { retryRequest } from '@ym-video/account/request-retry';
 
 // 两个应用共用表单与认证流程，应用只声明目标角色和首页。
 const props = defineProps<{

@@ -22,6 +22,7 @@ const props = withDefaults(
   defineProps<{
     defaultOpen?: boolean;
     open?: boolean;
+    mobile?: boolean;
     class?: HTMLAttributes['class'];
   }>(),
   {
@@ -37,6 +38,7 @@ const emits = defineEmits<{
 }>();
 
 const isMobile = useMediaQuery('(max-width: 768px)');
+const platformMobile = computed(() => props.mobile ?? isMobile.value);
 const openMobile = ref(false);
 
 const open = useVModel(props, 'open', emits, {
@@ -57,7 +59,7 @@ function setOpenMobile(value: boolean) {
 
 // Helper to toggle the sidebar.
 function toggleSidebar() {
-  return isMobile.value
+  return platformMobile.value
     ? setOpenMobile(!openMobile.value)
     : setOpen(!open.value);
 }
@@ -77,7 +79,7 @@ provideSidebarContext({
   state,
   open,
   setOpen,
-  isMobile,
+  isMobile: platformMobile,
   openMobile,
   setOpenMobile,
   toggleSidebar,

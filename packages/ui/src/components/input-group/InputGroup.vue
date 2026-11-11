@@ -2,9 +2,13 @@
 import type { HTMLAttributes } from 'vue';
 import { cn } from '@ym-video/ui/lib/utils';
 
-const props = defineProps<{
-  class?: HTMLAttributes['class'];
-}>();
+const props = withDefaults(
+  defineProps<{
+    class?: HTMLAttributes['class'];
+    focusRing?: boolean;
+  }>(),
+  { focusRing: true },
+);
 </script>
 
 <template>
@@ -22,7 +26,8 @@ const props = defineProps<{
         'has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-end]]:[&>input]:pt-3',
 
         // Focus state.
-        'has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:ring-ring/50 has-[[data-slot=input-group-control]:focus-visible]:ring-3',
+        props.focusRing &&
+          'has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:ring-ring/50 has-[[data-slot=input-group-control]:focus-visible]:ring-3',
 
         props.class,
       )

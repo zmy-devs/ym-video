@@ -6,17 +6,20 @@ import { reactiveOmit } from '@vueuse/core';
 import { cn } from '@ym-video/ui/lib/utils';
 import { SelectIcon, SelectTrigger, useForwardProps } from 'reka-ui';
 
+// 选择器触发按钮可按场景控制尾部图标。
 const props = withDefaults(
   defineProps<
     SelectTriggerProps & {
       class?: HTMLAttributes['class'];
       size?: 'sm' | 'default';
+      showIcon?: boolean;
     }
   >(),
-  { size: 'default' },
+  { size: 'default', showIcon: true },
 );
 
-const delegatedProps = reactiveOmit(props, 'class', 'size');
+// 展示配置只由本组件使用，其余属性交给 Select primitive。
+const delegatedProps = reactiveOmit(props, 'class', 'size', 'showIcon');
 const forwardedProps = useForwardProps(delegatedProps);
 </script>
 
@@ -33,7 +36,7 @@ const forwardedProps = useForwardProps(delegatedProps);
     "
   >
     <slot />
-    <SelectIcon as-child>
+    <SelectIcon v-if="showIcon" as-child>
       <ChevronDown class="size-4 opacity-50" />
     </SelectIcon>
   </SelectTrigger>

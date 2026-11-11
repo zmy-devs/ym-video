@@ -30,6 +30,7 @@ export const accountSchema = z.object({
 export const registrationSchema = accountSchema
   .extend({
     confirmPassword: z.string(),
+    code: z.string().trim().min(1, '请输入邀请码').max(128, '邀请码无效'),
   })
   .refine((value) => value.password === value.confirmPassword, {
     path: ['confirmPassword'],
