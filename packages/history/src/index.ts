@@ -1,6 +1,36 @@
-import type { Movie } from '@ym-video/catalog';
+// 历史记录中的单集播放信息。
+export interface Episode {
+  label: string;
+  url: string;
+}
 
-export type { Episode, Movie } from '@ym-video/catalog';
+// 客户端与 API 历史同步使用的影片信息。
+export interface Movie {
+  id: string;
+  vodId: string;
+  sourceId: string;
+  name: string;
+  pic: string;
+  year: string;
+  area: string;
+  lang: string;
+  category: string;
+  remarks: string;
+  episodes: Episode[];
+}
+
+export type HistoryErrorType =
+  | 'offline'
+  | 'network'
+  | 'timeout'
+  | 'unauthorized'
+  | 'server'
+  | 'request'
+  | 'storage'
+  | 'invalid-entry'
+  | 'oversized-entry'
+  | 'invalid-response'
+  | 'unknown';
 
 // 每集独立进度，允许主动回看和从头播放。
 export interface Progress {
