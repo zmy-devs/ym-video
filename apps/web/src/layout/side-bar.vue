@@ -1,6 +1,7 @@
 <template>
   <Sidebar
     v-model:open="open"
+    :mobile="false"
     title="Ym Video"
     :image="icon"
     :show-trigger="!isDesktop"
@@ -108,12 +109,12 @@ import {
 import Sidebar from '@ym-video/ui/common/sidebar/index.vue';
 import SidebarGroup from '@ym-video/ui/common/sidebar/group.vue';
 import SidebarItem from '@ym-video/ui/common/sidebar/item.vue';
-import AccountMenu from '@ym-video/account/menu.vue';
+import AccountMenu from '@ym-video/ui/account/menu.vue';
 import SourceSwitcher from '@/components/source-switcher.vue';
 import TitleBar from './title-bar/index.vue';
 import { authClient } from '@/services/auth';
 import { eventBus } from '@/utils/event-bus';
-import { isTauri } from '@/lib/desktop';
+import { isDesktop } from '@/platform';
 import icon from '../../../../assets/icon.png';
 import {
   ContextMenu,
@@ -127,15 +128,13 @@ import { useLibraryStore } from '@/stores/library-store';
 import { useHistoryStore } from '@/stores/history-store';
 import { playerPath } from '@/lib/movie';
 import { getCategorySelection } from '@/lib/category';
-import { getProgress } from '@/utils/progress';
+import { getProgress } from '../utils/player.ts';
 import type { HistoryEntry } from '@/types';
 
 // 影视侧栏在进入播放器时缓存，返回后恢复导航与滚动状态。
 defineOptions({ name: 'SideBar' });
 
 // 桌面品牌区域用于拖动窗口，收缩按钮放在内容标题栏。
-const isDesktop = isTauri();
-
 // 当前页面决定导航选中态。
 const route = useRoute();
 
@@ -145,7 +144,7 @@ const open = ref(true);
 // 播放源分类与加载状态。
 const library = useLibraryStore();
 
-// 当前浏览器中最近观看的影片。
+// 当前设备中最近观看的影片。
 const history = useHistoryStore();
 
 // 首次进入影视页面时加载资源与分类。

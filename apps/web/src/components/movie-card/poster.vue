@@ -1,5 +1,5 @@
 <template>
-  <div class="relative overflow-hidden bg-muted">
+  <div :class="cn('relative overflow-hidden bg-muted', props.class)">
     <img
       v-if="!loaded || failed || !src"
       :src="placeholder"
@@ -22,18 +22,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import placeholder from '@/assets/default.avif';
+import { ref, watch, type HTMLAttributes } from 'vue';
+import { cn } from '@ym-video/ui/lib/utils';
+const placeholder = new URL('../../assets/default.avif', import.meta.url).href;
 
-// 影片海报统一管理图片加载和占位状态。
-const props = defineProps<{ src: string; alt: string }>();
+// 统一管理影片海报的加载状态和占位图。
+const props = defineProps<{
+  src: string;
+  alt: string;
+  class?: HTMLAttributes['class'];
+}>();
 
-// 图片完成加载前显示本地默认海报，避免显示破图或空白。
 const loaded = ref(false);
-
-// 图片失败后保留默认海报，等待地址变化后再尝试加载。
 const failed = ref(false);
-
 watch(
   () => props.src,
   () => {

@@ -36,7 +36,7 @@
             size="icon-xs"
             class="absolute top-1/2 right-1 -translate-y-1/2 opacity-0 transition-none group-hover:opacity-100 group-focus-within:opacity-100"
             @pointerdown.prevent
-            @click.stop="handleRemove(item)"
+            @click.stop="remove(item)"
             @keydown.enter.stop
             @keydown.space.stop
           >
@@ -64,11 +64,10 @@
 </template>
 
 <script setup lang="ts">
-import { storageError } from '@ym-video/ui/lib/toast';
 import { onScopeDispose, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { Search, History, Trash2, X } from 'lucide-vue-next';
-import Command from '@ym-video/ui/common/command.vue';
+import Command from './search-command.vue';
 import { Button } from '@ym-video/ui/components/button';
 import {
   CommandInput,
@@ -77,10 +76,10 @@ import {
   CommandItem,
   CommandSeparator,
 } from '@ym-video/ui/components/command';
-import { useStorage } from '@vueuse/core';
 import { eventBus } from '@/utils/event-bus';
+import { useSearchHistory } from '@/composables/use-search-history';
 
-// 搜索结果通过路由展示，弹窗保留最近搜索入口。
+// 桌面搜索弹窗提交后进入结果页。
 const router = useRouter();
 
 // 搜索弹窗打开状态。
@@ -92,20 +91,8 @@ const clearOpen = ref(false);
 // 当前输入的搜索关键词。
 const keyword = ref('');
 
-// 当前浏览器的最近搜索记录。
-const recent = useStorage<string[]>('ym-video:searches', [], undefined, {
-  onError: () => storageError('浏览器设置'),
-  serializer: {
-    read: (raw) => {
-      const value: unknown = JSON.parse(raw);
-      return Array.isArray(value) &&
-        value.every((item) => typeof item === 'string')
-        ? value
-        : [];
-    },
-    write: JSON.stringify,
-  },
-});
+// 桌面和移动端使用相同的本地搜索历史。
+const { recent, remember, remove, clear } = useSearchHistory();
 
 watch(open, (value) => {
   if (value) {
@@ -127,18 +114,10 @@ const handleSearch = async (value: string) => {
   if (!query) {
     return;
   }
-  recent.value = [
-    query,
-    ...recent.value.filter((item) => item !== query),
-  ].slice(0, 20);
+  remember(query);
 
   await router.push({ path: '/search', query: { q: query } });
   open.value = false;
-};
-
-// 只删除指定搜索记录，保留弹窗和当前输入。
-const handleRemove = (value: string) => {
-  recent.value = recent.value.filter((item) => item !== value);
 };
 
 // 全局确认框叠加在搜索上，取消后仍保留搜索内容。
@@ -146,19 +125,17 @@ const handleClear = () => {
   clearOpen.value = true;
   eventBus.emit('confirm:show', {
     title: '清空搜索历史？',
-    description: '将删除此浏览器中的全部搜索记录，此操作无法撤销。',
+    description: '将删除此设备中的全部搜索记录，此操作无法撤销。',
     confirmText: '清空',
     returnFocus: () => document.getElementById('search-keyword'),
-    onConfirm: () => {
-      recent.value = [];
-    },
+    onConfirm: clear,
     onClose: () => {
       clearOpen.value = false;
     },
   });
 };
 
-// 根弹窗没有 DialogTrigger，关闭后恢复侧栏入口焦点。
+// 关闭搜索弹窗后恢复当前页面入口焦点。
 const handleCloseFocus = (event: Event) => {
   event.preventDefault();
   document.getElementById('search-trigger')?.focus();

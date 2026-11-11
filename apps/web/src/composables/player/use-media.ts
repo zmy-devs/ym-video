@@ -1,7 +1,7 @@
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useEventListener, useStorage } from '@vueuse/core';
 import Hls from 'hls.js';
-import { FilteredPlaylistLoader } from '@/services/hls';
+import { FilteredPlaylistLoader } from '../../services/hls.ts';
 import { errorToast, infoToast, storageError } from '@ym-video/ui/lib/toast';
 
 // 播放阶段互斥，失败消息只属于错误阶段。
@@ -27,7 +27,7 @@ export const useMedia = () => {
   const duration = ref(0);
   const rate = ref(1);
   const volume = useStorage('ym-video:volume', 1, undefined, {
-    onError: () => storageError('浏览器设置'),
+    onError: () => storageError('本地设置'),
     serializer: {
       read: (raw) => {
         const value = Number(raw);

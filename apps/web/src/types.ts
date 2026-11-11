@@ -1,18 +1,18 @@
-// 平台源按 ID 查询，自定义源携带地址；桌面统一使用本地代理。
+export type { Episode, Movie, HistoryEntry } from '@ym-video/history';
+
+// 客户端播放源的名称、标识和接口地址。
 export interface Source {
   id: string;
   name: string;
   url?: string;
 }
 
-// 用户自行添加并保存在当前浏览器的播放源。
+// 自定义播放源在当前设备保存完整接口地址。
 export interface CustomSource extends Source {
   url: string;
 }
 
-export type { Episode, HistoryEntry, Movie } from '@ym-video/history';
-
-// 分类父子关系来自资源接口。
+// 采集站返回的父子分类关系。
 export interface Category {
   id: number;
   parentId: number;

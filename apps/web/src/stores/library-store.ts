@@ -13,7 +13,7 @@ export const useLibraryStore = defineStore('library', () => {
   const selected = useStorage<string>('ym-video:source', 'baofeng', undefined, {
     listenToStorageChanges: false,
     serializer: StorageSerializers.object,
-    onError: () => storageError('浏览器设置'),
+    onError: () => storageError('本地设置'),
   });
 
   // 自定义源在存储边界校验一次，界面和请求层使用已确认的数据。
@@ -23,7 +23,7 @@ export const useLibraryStore = defineStore('library', () => {
     undefined,
     {
       listenToStorageChanges: false,
-      onError: () => storageError('浏览器设置'),
+      onError: () => storageError('本地设置'),
       serializer: {
         read: (raw) => {
           const value: unknown = JSON.parse(raw);

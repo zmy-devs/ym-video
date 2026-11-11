@@ -1,6 +1,6 @@
 import { onScopeDispose, ref } from 'vue';
 import { useEventListener } from '@vueuse/core';
-import type { useMedia } from './use-media';
+import type { useMedia } from './use-media.ts';
 
 // 播放器快捷键与长按倍速独立于影片请求和历史保存。
 export const useShortcuts = (
@@ -54,7 +54,7 @@ export const useShortcuts = (
 
     event.preventDefault();
 
-    if (event.repeat) {
+    if (event.repeat && !['ArrowUp', 'ArrowDown'].includes(event.key)) {
       return;
     }
 

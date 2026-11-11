@@ -1,10 +1,21 @@
 @import '@ym-video/ui/styles.css';
-@import '@ym-video/account/styles.css';
 
-/* 桌面标题栏统一使用 40px 高度。 */
 :root {
   --title-bar-height: 0px;
   --desktop-title-bar-height: 0px;
+  --mobile-safe-top: env(safe-area-inset-top, 0px);
+  --mobile-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --mobile-header-height: calc(56px + var(--mobile-safe-top));
+  color-scheme: light dark;
+}
+
+:root:not(.dark) {
+  --background: #fff;
+}
+
+/* 移动端使用暖白背景，桌面端保持纯白。 */
+:root:not(.dark):has(.mobile-shell) {
+  --background: #f9f8f6;
 }
 
 :root:has(.desktop-title-bar, .login-title-bar) {
@@ -20,4 +31,62 @@
 
 #app:has(.desktop-title-bar-standalone) {
   padding-top: var(--title-bar-height);
+}
+
+.mobile-safe-top {
+  padding-top: var(--mobile-safe-top);
+}
+
+.mobile-safe-bottom {
+  padding-bottom: var(--mobile-safe-bottom);
+}
+
+.mobile-navigation-space {
+  padding-top: var(--mobile-header-height);
+  padding-bottom: calc(5.625rem + var(--mobile-safe-bottom));
+}
+
+.mobile-navigation {
+  padding-bottom: calc(8px + var(--mobile-safe-bottom));
+  background: linear-gradient(to top, var(--background), transparent);
+}
+
+/* 暗色底栏让海报直接透过磨砂控件，保留内容本身的颜色。 */
+.dark .mobile-navigation {
+  background: none;
+}
+
+/* 移动端保留滚动能力，只隐藏滚动条轨道与滑块。 */
+.mobile-shell,
+.mobile-shell * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.mobile-shell::-webkit-scrollbar,
+.mobile-shell *::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.mobile-shell [data-slot='scroll-area-scrollbar'] {
+  display: none;
+}
+
+.mobile-page-enter-active,
+.mobile-page-leave-active {
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.mobile-page-enter-from {
+  opacity: 0;
+  transform: translateX(16px);
+}
+
+.mobile-page-leave-to {
+  opacity: 0;
+  transform: translateX(-16px);
 }

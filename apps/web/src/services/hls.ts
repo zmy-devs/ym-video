@@ -4,7 +4,7 @@ import Hls, {
   type LoaderConfiguration,
   type LoaderCallbacks,
 } from 'hls.js';
-import { filterManifest } from '@/lib/m3u8';
+import { filterManifest } from '../lib/m3u8.ts';
 
 // 继承官方加载器，保留响应 URL、取消、重试和统计信息。
 const PlaylistLoader = Hls.DefaultConfig.loader as new (

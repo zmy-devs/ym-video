@@ -22,12 +22,14 @@
 </template>
 
 <script setup lang="ts">
-import AccountLogin from '@ym-video/account/login.vue';
+import AccountLogin from '@ym-video/ui/account/login.vue';
 import { Button } from '@ym-video/ui/components/button';
-import { infoToast } from '@ym-video/ui/lib/toast';
+import { useRouter } from 'vue-router';
 import { authClient } from '@/services/auth';
 import icon from '../../../../assets/icon.png';
 
-// 自助注册保持邀请制。
-const handleInvitationRegistration = () => infoToast('仅支持邀请注册');
+const router = useRouter();
+
+// 注册入口改为客户端内的邀请码表单。
+const handleInvitationRegistration = () => router.push('/register');
 </script>

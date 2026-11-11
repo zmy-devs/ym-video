@@ -2,12 +2,14 @@
   <Sheet v-model:open="open">
     <SheetContent
       :portal-container="container"
+      :show-close-button="!mobile"
       class="w-80 gap-0 data-[state=open]:duration-300"
+      :aria-describedby="undefined"
       @open-auto-focus="handleOpenAutoFocus"
       @close-auto-focus="handleCloseAutoFocus"
     >
       <SheetHeader class="shrink-0 gap-4">
-        <SheetTitle>选集</SheetTitle>
+        <SheetTitle :class="{ 'sr-only': mobile }">选集</SheetTitle>
         <Select v-model="page">
           <SelectTrigger class="w-full">
             <SelectValue />
@@ -44,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onScopeDispose, ref, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { watchImmediate } from '@vueuse/core';
 import { Button } from '@ym-video/ui/components/button';
 import {
@@ -61,15 +63,14 @@ import {
   SelectValue,
 } from '@ym-video/ui/components/select';
 import { ScrollArea } from '@ym-video/ui/components/scroll-area';
-import { formatRemarks } from '@/lib/movie';
-import { eventBus } from '@/utils/event-bus';
-import type { Episode } from '@/types';
+import { formatRemarks, type Episode } from '../../lib/movie.ts';
 
 // 选集数据与当前播放集数来自页面，弹层挂在播放器内以兼容全屏。
 const props = defineProps<{
   episodes: Episode[];
   selected: number;
   container: HTMLElement | null;
+  mobile?: boolean;
 }>();
 
 // 传递原始集数索引，避免分页后切错集。
@@ -114,18 +115,15 @@ const visibleEpisodes = computed(() =>
     })),
 );
 
-// 监听打开事件，沿用当前播放集所在的分页。
-const handleShow = () => {
-  if (!props.episodes.length) {
-    return;
+// 面板打开时记录触发控件，关闭后恢复焦点。
+watch(open, (value) => {
+  if (value) {
+    returnFocus.value =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
   }
-
-  returnFocus.value =
-    document.activeElement instanceof HTMLElement
-      ? document.activeElement
-      : null;
-  open.value = true;
-};
+});
 
 // 选集后收起面板，继续观看视频。
 const handleSelect = (index: number) => {
@@ -147,7 +145,7 @@ const handleOpenAutoFocus = (event: Event) => {
   }
 };
 
-// 事件总线触发的面板没有 SheetTrigger，手动恢复关闭后的焦点。
+// 关闭面板后把焦点恢复到选集按钮。
 const handleCloseAutoFocus = (event: Event) => {
   if (returnFocus.value?.isConnected) {
     event.preventDefault();
@@ -155,13 +153,7 @@ const handleCloseAutoFocus = (event: Event) => {
   }
 };
 
-watchImmediate(
-  [() => props.selected, () => props.episodes, open],
-  () => {
-    page.value = String(Math.floor(props.selected / pageSize));
-  },
-);
-
-// 离开播放页时注销监听，避免重复打开旧面板。
-onScopeDispose(eventBus.on('player-episodes:show', handleShow));
+watchImmediate([() => props.selected, () => props.episodes, open], () => {
+  page.value = String(Math.floor(props.selected / pageSize));
+});
 </script>

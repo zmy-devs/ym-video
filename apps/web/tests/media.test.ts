@@ -1,7 +1,7 @@
-import { getProgress } from '../src/utils/progress.ts';
+import { getProgress } from '../src/utils/player.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { movieKey, parseEpisodes, parseMovie } from '@ym-video/catalog';
+import { movieKey, parseEpisodes, parseMovie } from '../src/lib/movie.ts';
 import { filterManifest, resolveMediaUrl } from '../src/lib/m3u8.ts';
 import { isMovieComplete } from '../src/lib/movie.ts';
 

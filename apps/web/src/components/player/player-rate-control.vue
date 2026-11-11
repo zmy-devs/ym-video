@@ -1,5 +1,38 @@
 <template>
-  <DropdownMenu v-model:open="open">
+  <Sheet v-if="mobile" v-model:open="open">
+    <SheetTrigger as-child>
+      <PlayerButton
+        :label="`播放速度：${formatRate(rate)}x`"
+        :container="container"
+      >
+        <Gauge />
+      </PlayerButton>
+    </SheetTrigger>
+    <SheetContent
+      :portal-container="container"
+      :show-close-button="false"
+      class="w-44 gap-0 data-[state=open]:duration-300"
+      :aria-describedby="undefined"
+    >
+      <SheetTitle class="sr-only">倍速</SheetTitle>
+      <ScrollArea class="min-h-0 flex-1">
+        <ul class="flex flex-col gap-2 p-4">
+          <li v-for="speed in speeds" :key="speed">
+            <Button
+              class="h-11 w-full justify-between"
+              :variant="speed === rate ? 'default' : 'outline'"
+              :aria-pressed="speed === rate"
+              @click="handleSelect(speed)"
+            >
+              <span>{{ formatRate(speed) }}x</span>
+              <Check v-if="speed === rate" class="size-4" />
+            </Button>
+          </li>
+        </ul>
+      </ScrollArea>
+    </SheetContent>
+  </Sheet>
+  <DropdownMenu v-else v-model:open="open">
     <DropdownMenuTrigger as-child>
       <PlayerButton
         :label="`播放速度：${formatRate(props.rate)}x`"
@@ -30,8 +63,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
 import { Check, Gauge } from 'lucide-vue-next';
+import { Button } from '@ym-video/ui/components/button';
+import { ScrollArea } from '@ym-video/ui/components/scroll-area';
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from '@ym-video/ui/components/sheet';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,10 +88,20 @@ const speeds = [4, 3, 2, 1, 0.75, 0.5, 0.25];
 const open = defineModel<boolean>('open', { required: true });
 
 // 当前倍速与播放器内部弹层挂载位置。
-const props = defineProps<{ rate: number; container: HTMLElement | null }>();
+const props = defineProps<{
+  rate: number;
+  container: HTMLElement | null;
+  mobile?: boolean;
+}>();
 
 // 用户选择的新倍速。
 const emit = defineEmits<{ rate: [speed: number] }>();
+
+// 选择倍速后关闭移动端面板，继续观看视频。
+const handleSelect = (speed: number) => {
+  emit('rate', speed);
+  open.value = false;
+};
 
 // 整数倍速补一位小数，其余选项保留原有精度。
 const formatRate = (speed: number) =>

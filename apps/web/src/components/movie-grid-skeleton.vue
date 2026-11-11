@@ -1,7 +1,7 @@
 <template>
   <div
     data-slot="movie-grid-skeleton"
-    class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-5 gap-y-7"
+    class="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] sm:gap-x-5 sm:gap-y-7"
   >
     <div v-for="i in 12" :key="i" class="grid gap-2">
       <Skeleton class="aspect-3/4 rounded-lg" />

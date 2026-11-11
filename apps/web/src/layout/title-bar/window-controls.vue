@@ -4,37 +4,31 @@
     data-slot="window-controls"
     class="h-(--title-bar-height) fixed top-0 right-0 z-70 flex"
   >
-    <Tooltip label="最小化" side="bottom">
-      <button
-        type="button"
-        aria-label="最小化"
-        class="w-12 flex items-center justify-center hover:bg-foreground/10 focus-visible:outline-2 focus-visible:-outline-offset-2"
-        @click="handleMinimize"
-      >
-        <Minus class="size-4" />
-      </button>
-    </Tooltip>
-    <Tooltip :label="maximized ? '还原窗口' : '最大化'" side="bottom">
-      <button
-        type="button"
-        :aria-label="maximized ? '还原窗口' : '最大化'"
-        class="w-12 flex items-center justify-center hover:bg-foreground/10 focus-visible:outline-2 focus-visible:-outline-offset-2"
-        @click="handleMaximize"
-      >
-        <Copy v-if="maximized" class="size-3 rotate-90" />
-        <Square v-else class="size-3" />
-      </button>
-    </Tooltip>
-    <Tooltip label="关闭窗口" side="bottom">
-      <button
-        type="button"
-        aria-label="关闭窗口"
-        class="w-12 flex items-center justify-center hover:bg-[#e81123] hover:text-white focus-visible:outline-2 focus-visible:-outline-offset-2"
-        @click="handleClose"
-      >
-        <X class="size-4" />
-      </button>
-    </Tooltip>
+    <button
+      type="button"
+      aria-label="最小化"
+      class="w-12 flex items-center justify-center hover:bg-foreground/10 focus-visible:outline-2 focus-visible:-outline-offset-2"
+      @click="handleMinimize"
+    >
+      <Minus class="size-4" />
+    </button>
+    <button
+      type="button"
+      :aria-label="maximized ? '还原窗口' : '最大化'"
+      class="w-12 flex items-center justify-center hover:bg-foreground/10 focus-visible:outline-2 focus-visible:-outline-offset-2"
+      @click="handleMaximize"
+    >
+      <Copy v-if="maximized" class="size-3 rotate-90" />
+      <Square v-else class="size-3" />
+    </button>
+    <button
+      type="button"
+      aria-label="关闭窗口"
+      class="w-12 flex items-center justify-center hover:bg-[#e81123] hover:text-white focus-visible:outline-2 focus-visible:-outline-offset-2"
+      @click="handleClose"
+    >
+      <X class="size-4" />
+    </button>
   </div>
 </template>
 
@@ -44,7 +38,6 @@ import { useEventListener } from '@vueuse/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Copy, Minus, Square, X } from 'lucide-vue-next';
 import { errorToast } from '@ym-video/ui/lib/toast';
-import Tooltip from '@ym-video/ui/common/tooltip.vue';
 
 // 自制控件操作当前桌面窗口。
 const appWindow = getCurrentWindow();

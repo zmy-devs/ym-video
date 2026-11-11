@@ -1,22 +1,18 @@
-import { apiFetch, isTauri, requestDesktopResource } from '@/lib/desktop';
-import type { Category, Source } from '@/types';
-import { parseMovie } from '@ym-video/catalog';
-import { proxySources } from '@ym-video/catalog/proxy';
-import { parseCategories } from '@/lib/source';
+import { isTauri, requestDesktopResource } from '@/lib/desktop';
+import type { Source } from '../types.ts';
+import { createCatalogClient } from './catalog-client.ts';
+import { builtInSources } from '../lib/built-in-sources.ts';
 
 // 收窄来自上游和本地存储的未知对象。
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-// 将上游字符串字段统一转为安全文本。
-const text = (value: unknown) => (typeof value === 'string' ? value : '');
-
-// 桌面从内置配置或自定义源构造完整请求地址。
+// 统一客户端从内置配置或自定义源构造完整请求地址。
 const buildResourceURL = (source: Source, query: URLSearchParams) => {
   // 自定义源优先使用用户保存的地址。
   const baseUrl = source.url
     ? source.url
-    : proxySources.find((item) => item.id === source.id)?.url;
+    : builtInSources.find((item) => item.id === source.id)?.url;
 
   if (!baseUrl) {
     throw new Error('资源源不存在');
@@ -30,25 +26,7 @@ const buildResourceURL = (source: Source, query: URLSearchParams) => {
   return url.href;
 };
 
-// 平台业务请求通过同源受限 API。
-const request = async (
-  path: string,
-  signal?: AbortSignal,
-): Promise<unknown> => {
-  // 同源 API 返回的 HTTP 响应。
-  const response = await apiFetch(path, { credentials: 'include', signal });
-  if (!response.ok) {
-    // 尚未信任的接口响应数据。
-    const body: unknown = await response.json().catch(() => null);
-
-    // 服务端返回的错误说明。
-    const message = isRecord(body) ? text(body.message) : '';
-    throw new Error(message || `请求失败（${response.status}），请稍后重试`);
-  }
-  return response.json();
-};
-
-// 桌面资源优先走本地能力，浏览器保留平台代理与自定义源直连。
+// 资源源始终由客户端直接访问，不再经过 API Worker 代理。
 const requestResource = async (
   source: Source,
   query: URLSearchParams,
@@ -58,22 +36,20 @@ const requestResource = async (
     return requestDesktopResource(buildResourceURL(source, query), signal);
   }
 
-  // 普通浏览器的内置源继续走现有服务端代理。
-  if (!source.url) {
-    return request(
-      `/api/v1/proxy/${encodeURIComponent(source.id)}?${query}`,
-      signal,
-    );
-  }
-
-  // 浏览器自定义源直连时不携带会话，并保留现有跨域错误提示。
-  const url = new URL(source.url);
+  // 原生请求使用完整上游地址，浏览器开发页使用本地转发地址。
+  let url = new URL(buildResourceURL(source, query));
 
   if (window.location.protocol === 'https:' && url.protocol === 'http:') {
     throw new Error('当前页面使用 HTTPS，请填写 HTTPS 接口地址');
   }
 
-  query.forEach((value, key) => url.searchParams.set(key, value));
+  // 浏览器开发页通过 Vite 本地转发访问不返回 CORS 头的资源源。
+  if (import.meta.env.DEV) {
+    const target = url.href;
+
+    url = new URL('/__ym_resource_proxy', window.location.origin);
+    url.searchParams.set('url', target);
+  }
 
   // 超时同样覆盖响应体读取，关闭弹窗或切源可主动取消。
   const requestSignal = AbortSignal.any([
@@ -115,71 +91,11 @@ const requestResource = async (
   }
 };
 
-// 桌面从本地读取共用配置，浏览器从服务端获取可用源。
-export const getSources = async (): Promise<Source[]> => {
-  if (isTauri()) {
-    return proxySources.map(({ id, name }) => ({ id, name }));
-  }
+// 两个平台共用目录解析，资源传输由原生壳处理。
+const catalog = createCatalogClient({
+  requestResource,
+});
 
-  // 尚未信任的接口响应数据。
-  const body = await request('/api/v1/proxy/sources');
-  if (!isRecord(body) || !Array.isArray(body.sources)) {
-    throw new Error('资源源列表格式错误');
-  }
-  return body.sources.flatMap((item: unknown) =>
-    isRecord(item) &&
-    typeof item.id === 'string' &&
-    typeof item.name === 'string'
-      ? [{ id: item.id, name: item.name }]
-      : [],
-  );
-};
-
-// 查询最新、分类、关键词或指定影片，空参数不进入 URL。
-export const getMovies = async (
-  source: Source,
-  query: Record<string, string | number | undefined> = {},
-  signal?: AbortSignal,
-) => {
-  // 受限资源接口的查询参数。
-  const params = new URLSearchParams({ ac: 'detail' });
-  Object.entries(query).forEach(([key, value]) => {
-    if (value !== undefined && value !== '') {
-      params.set(key, String(value));
-    }
-  });
-
-  // 尚未信任的接口响应数据。
-  const body = await requestResource(source, params, signal);
-  if (!isRecord(body) || !Array.isArray(body.list)) {
-    throw new Error('影片列表格式错误，请切换资源源');
-  }
-  // 当前查询已加载的影片列表。
-  const movies = body.list.flatMap((item: unknown) => {
-    // 接口转换后的有效影片。
-    const movie = parseMovie(item, source.id);
-    return movie ? [movie] : [];
-  });
-
-  // 可用数据的总页数。
-  const pageCount = Number(body.pagecount);
-  return {
-    movies,
-    pageCount: Number.isFinite(pageCount) ? Math.max(0, pageCount) : 0,
-  };
-};
-
-// 查询分类，父 ID 为零的分类用于侧边栏。
-export const getCategories = async (
-  source: Source,
-  signal?: AbortSignal,
-): Promise<Category[]> => {
-  // 尚未信任的接口响应数据。
-  const body = await requestResource(
-    source,
-    new URLSearchParams({ ac: 'list' }),
-    signal,
-  );
-
-  return parseCategories(body);
-};
+export const getSources = catalog.getSources;
+export const getMovies = catalog.getMovies;
+export const getCategories = catalog.getCategories;

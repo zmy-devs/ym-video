@@ -36,18 +36,8 @@ export const HISTORY_STATUS_MESSAGE_MAP: Record<HistoryStatus, string> = {
 };
 
 // 历史同步错误集中映射为用户提示。
-export type HistoryErrorType =
-  | 'offline'
-  | 'network'
-  | 'timeout'
-  | 'unauthorized'
-  | 'server'
-  | 'request'
-  | 'storage'
-  | 'invalid-entry'
-  | 'oversized-entry'
-  | 'invalid-response'
-  | 'unknown';
+import type { HistoryErrorType } from '@ym-video/history';
+export type { HistoryErrorType } from '@ym-video/history';
 
 export const HISTORY_ERROR_MESSAGE_MAP: Record<HistoryErrorType, string> = {
   offline: '网络已断开，显示此设备缓存',

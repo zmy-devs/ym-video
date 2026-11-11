@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { isTauri } from '@/lib/desktop';
+import { isDesktop } from '@/platform';
 import { onScopeDispose, ref, watch } from 'vue';
 import {
   CircleAlert,
@@ -30,7 +30,7 @@ import {
 } from 'lucide-vue-next';
 import SettingsDialog from '@ym-video/ui/common/settings-dialog.vue';
 import AppearanceSettings from '@ym-video/ui/common/appearance-settings.vue';
-import AccountSettings from '@ym-video/account/settings.vue';
+import AccountSettings from '@ym-video/ui/account/settings.vue';
 import { useThemeStore } from '@/stores/theme-store';
 import AboutSettings from './settings/about-settings.vue';
 import UpdateSettings from './settings/update-settings.vue';
@@ -50,8 +50,6 @@ const theme = useThemeStore();
 const pending = ref<'username' | 'password' | null>(null);
 
 // 通过 Tauri 运行环境识别桌面客户端。
-const isDesktop = isTauri();
-
 // 更新入口只向桌面客户端提供。
 const navigation = [
   { value: 'appearance', label: '外观', icon: Palette },

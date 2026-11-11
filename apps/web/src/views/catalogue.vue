@@ -2,19 +2,43 @@
   <ScrollArea class="h-full" @scroll.capture="handleScroll">
     <div
       data-slot="catalogue-page"
-      class="mx-auto w-full max-w-[1400px] px-10 py-8"
+      :class="[
+        'mx-auto w-full max-w-[1400px]',
+        isMobile && 'mobile-navigation-space px-4',
+        isMobile && !isOverview && 'mt-4',
+        !isMobile && 'px-10 py-8',
+      ]"
     >
-      <h1
-        v-if="isOverview"
+      <WelcomeGreeting
+        v-if="isOverview && !isMobile"
         class="mb-10 py-6 text-center text-3xl font-semibold tracking-tight"
-      >
-        {{ greeting }}，亲爱的用户<span class="ml-2">😊</span>
-      </h1>
+      />
+      <WelcomeGreeting
+        v-else-if="isMobile && isOverview"
+        prefix="Hi"
+        name=""
+        class="mb-6 text-3xl leading-10 font-semibold"
+      />
+      <MobileCategoryNavigation v-if="isMobile && isCategory" />
       <section v-if="isOverview && history.entries.length" class="mb-10">
-        <h2 id="continue-heading" class="mb-5 text-xl font-semibold">
+        <h2 id="continue-heading" class="mb-5 text-lg font-semibold sm:text-xl">
           最近观看
         </h2>
+        <div v-if="isMobile" class="-mx-4 w-[calc(100%+2rem)] overflow-x-auto">
+          <div
+            class="flex w-max min-w-full snap-x snap-mandatory gap-3 px-4 pb-2"
+          >
+            <div
+              v-for="item in history.entries.slice(0, 6)"
+              :key="item.id"
+              class="w-[40vw] shrink-0 snap-start"
+            >
+              <MovieCard :movie="item" :entry="item" />
+            </div>
+          </div>
+        </div>
         <div
+          v-else
           class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-5 gap-y-7"
         >
           <MovieCard
@@ -29,18 +53,21 @@
         <h2
           v-if="isOverview"
           id="catalogue-heading"
-          class="mb-5 text-xl font-semibold"
+          class="mb-5 text-lg font-semibold sm:text-xl"
         >
           {{ title }}
         </h2>
         <h1
-          v-else
+          v-else-if="!isMobile"
           id="catalogue-heading"
-          class="mb-6 text-2xl font-semibold tracking-tight"
+          class="mb-6 text-xl font-semibold tracking-tight sm:text-2xl"
         >
           {{ title }}
         </h1>
-        <div v-if="hasFilters" class="mb-6 flex gap-2 overflow-x-auto">
+        <div
+          v-if="hasFilters && !isMobile"
+          class="mb-6 flex gap-2 overflow-x-auto"
+        >
           <Button
             v-for="item in selection.children"
             :key="item.id"
@@ -51,97 +78,41 @@
             {{ item.name }}
           </Button>
         </div>
-        <div :key="selection.selectedId">
-          <MovieGridSkeleton v-if="showSkeleton" />
-          <div
-            v-else-if="!movies.length && !error"
-            class="min-h-80 flex flex-col items-center justify-center gap-4 text-sm text-muted-foreground"
-          >
-            <SearchX class="size-10" />
-            <h2 class="text-base">
-              {{ isSearch ? '没有找到相关影片' : '暂无影片' }}
-            </h2>
-            <p>试试其他关键词，或切换资源源</p>
-          </div>
-          <div
-            v-else
-            class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-5 gap-y-7"
-          >
-            <MovieCard v-for="movie in movies" :key="movie.id" :movie="movie" />
-          </div>
-          <MovieGridSkeleton v-if="error && movies.length" class="mt-10" />
-          <div
-            v-else-if="movies.length"
-            ref="loadMoreTarget"
-            class="mt-10 flex min-h-9 justify-center"
-          >
-            <Spinner v-if="status === 'loading'" class="size-5" />
-            <Button
-              v-else-if="page < pageCount"
-              variant="outline"
-              @click="load()"
-              ><ArrowDown class="size-4" />加载更多</Button
-            >
-            <p v-else class="text-xs text-muted-foreground">已经到底了</p>
-          </div>
-        </div>
+        <CatalogueResults
+          :source="query.source"
+          :category="query.category"
+          :keyword="query.keyword"
+          :active="active"
+          :loading="
+            library.status === 'loading' || library.categoryStatus === 'loading'
+          "
+          :empty-label="isSearch ? '没有找到相关影片' : '暂无影片'"
+        />
       </section>
     </div>
   </ScrollArea>
 </template>
 
 <script setup lang="ts">
-import {
-  computed,
-  onActivated,
-  onDeactivated,
-  ref,
-  useTemplateRef,
-} from 'vue';
-import { useIntersectionObserver, useNow } from '@vueuse/core';
+import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowDown, SearchX } from 'lucide-vue-next';
 import { Button } from '@ym-video/ui/components/button';
-import { Spinner } from '@ym-video/ui/components/spinner';
 import { ScrollArea } from '@ym-video/ui/components/scroll-area';
 import MovieCard from '@/components/movie-card/index.vue';
-import MovieGridSkeleton from '@/components/movie-grid-skeleton.vue';
+import WelcomeGreeting from '../components/greeting.vue';
+import CatalogueResults from '@/components/catalogue-results.vue';
+import MobileCategoryNavigation from '@/components/mobile-category-navigation.vue';
 import { useLibraryStore } from '@/stores/library-store';
 import { useHistoryStore } from '@/stores/history-store';
-import { useCatalogue } from '@/composables/use-catalogue';
+import { useCachedScroll } from '@/composables/use-cached-scroll';
 import { getCategorySelection } from '@/lib/category';
+import { isMobile } from '@/platform';
 
 // 每页沿用创建时的路由信息，缓存的概览不会跟随其他页面变成分类或搜索。
 const route = { ...useRoute() };
 
-// 暂存页面在 DOM 中重新挂载时恢复原来的滚动位置。
-let scrollViewport: HTMLElement | undefined;
-let scrollTop = 0;
-let active = true;
-
-// 只记录当前列表的滚动，忽略隐藏页面和横向分类滚动。
-const handleScroll = (event: Event) => {
-  if (
-    active &&
-    event.target instanceof HTMLElement &&
-    event.target.dataset.slot === 'scroll-area-viewport'
-  ) {
-    scrollViewport = event.target;
-    scrollTop = event.target.scrollTop;
-  }
-};
-
-onDeactivated(() => {
-  active = false;
-});
-
-onActivated(() => {
-  active = true;
-
-  if (scrollViewport) {
-    scrollViewport.scrollTop = scrollTop;
-  }
-});
+// 页面重新激活时保留列表滚动位置，隐藏页面暂停自动加载。
+const { active, handleScroll } = useCachedScroll();
 
 // 页面导航与返回操作。
 const router = useRouter();
@@ -149,34 +120,11 @@ const router = useRouter();
 // 可用资源源及分类状态。
 const library = useLibraryStore();
 
-// 当前浏览器的观看历史。
+// 当前设备的观看历史。
 const history = useHistoryStore();
 
 // 当前是否展示概览。
 const isOverview = computed(() => route.path === '/overview');
-
-// 每分钟更新本地时间，页面保持打开时也会切换问候。
-const now = useNow({ interval: 60_000 });
-
-// 根据用户所在时区区分早上、中午、下午和晚上。
-const greeting = computed(() => {
-  // 当前本地小时。
-  const hour = now.value.getHours();
-
-  if (hour < 5 || hour >= 18) {
-    return '晚上好';
-  }
-
-  if (hour < 11) {
-    return '早上好';
-  }
-
-  if (hour < 14) {
-    return '中午好';
-  }
-
-  return '下午好';
-});
 
 // 当前是否展示关键词搜索结果。
 const isSearch = computed(() => route.path === '/search');
@@ -218,8 +166,8 @@ const handleCategoryChange = (id: number) => {
   return router.push(`/category/${id}`);
 };
 
-// 页面使用的业务状态和操作。
-const { movies, status, error, page, pageCount, load } = useCatalogue(() => {
+// 当前页面为共享结果列表提供查询条件。
+const query = computed(() => {
   if (
     !library.source ||
     (isSearch.value && !keyword.value) ||
@@ -233,30 +181,5 @@ const { movies, status, error, page, pageCount, load } = useCatalogue(() => {
     category: isCategory.value ? String(selection.value.selectedId) : undefined,
     keyword: isSearch.value ? keyword.value : undefined,
   };
-});
-
-// 列表为空时的加载和请求错误使用同一占位区域。
-const showSkeleton = computed(
-  () =>
-    !movies.value.length &&
-    (library.status === 'loading' ||
-      library.categoryStatus === 'loading' ||
-      library.categoryStatus === 'error' ||
-      status.value === 'loading' ||
-      status.value === 'error'),
-);
-
-// 列表底部同时作为滚动加载观察点和手动加载入口。
-const loadMoreTarget = useTemplateRef<HTMLElement>('loadMoreTarget');
-
-useIntersectionObserver(loadMoreTarget, ([entry]) => {
-  if (
-    active &&
-    entry?.isIntersecting &&
-    status.value !== 'loading' &&
-    !error.value
-  ) {
-    return load();
-  }
 });
 </script>

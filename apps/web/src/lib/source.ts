@@ -1,8 +1,7 @@
 import type { Category, CustomSource } from '../types.ts';
 
-// 统一接口地址，拒绝非 HTTP 协议和内嵌账号密码。
+// 在用户输入边界规范化资源接口地址。
 export const normalizeSourceUrl = (value: string) => {
-  // URL 解析失败时与不支持的协议使用相同字段提示。
   let url: URL;
 
   try {
@@ -21,23 +20,18 @@ export const normalizeSourceUrl = (value: string) => {
   }
 
   url.hash = '';
-
-  // 翻页和筛选参数由实际查询设置，其他接口参数保持原样。
   ['ac', 'pg', 't', 'ids', 'wd'].forEach((key) => url.searchParams.delete(key));
 
   return url.href;
 };
 
-// 本地播放源也需验证，损坏数据不进入请求层。
+// 本机存储中的自定义源列表在读取时校验。
 export const isCustomSourceList = (value: unknown): value is CustomSource[] => {
   if (!Array.isArray(value)) {
     return false;
   }
 
-  // ID 和接口地址不能重复，避免选源结果不确定。
   const ids = new Set<string>();
-
-  // 同一接口不能保存为多个自定义源。
   const urls = new Set<string>();
 
   return value.every((item: unknown) => {
@@ -71,12 +65,11 @@ export const isCustomSourceList = (value: unknown): value is CustomSource[] => {
 
     ids.add(item.id);
     urls.add(item.url);
-
     return true;
   });
 };
 
-// 严格检查分类字段与层级，避免把空列表或损坏分类误判为可用源。
+// 解析采集站分类，保留原始父子关系。
 export const parseCategories = (body: unknown): Category[] => {
   if (
     typeof body !== 'object' ||
@@ -88,14 +81,11 @@ export const parseCategories = (body: unknown): Category[] => {
     throw new Error('接口未返回可用的分类列表');
   }
 
-  // 分类 ID 只接受整数或整数字符串，不将空值转换成零。
   const isId = (value: unknown) =>
     (typeof value === 'number' ||
       (typeof value === 'string' && /^\d+$/.test(value))) &&
     Number.isSafeInteger(Number(value)) &&
     Number(value) >= 0;
-
-  // 同一个分类 ID 只能出现一次。
   const ids = new Set<number>();
 
   const categories = body.class.map((item: unknown) => {
@@ -116,15 +106,12 @@ export const parseCategories = (body: unknown): Category[] => {
     }
 
     ids.add(Number(item.type_id));
-
     return {
       id: Number(item.type_id),
       parentId: Number(item.type_pid),
       name: item.type_name.trim(),
     };
   });
-
-  // 当前分类界面支持顶层与子分类，父分类必须为可展示的顶层项。
   const parents = new Set(
     categories.filter((item) => item.parentId === 0).map((item) => item.id),
   );

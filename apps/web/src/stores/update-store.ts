@@ -2,9 +2,9 @@ import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { getVersion } from '@tauri-apps/api/app';
 import { check as checkUpdate, type Update } from '@tauri-apps/plugin-updater';
-import { isTauri } from '@/lib/desktop';
+import { isDesktop } from '@/platform';
 import { useStorage } from '@vueuse/core';
-import { getProgress } from '@/utils/progress';
+import { getProgress } from '../utils/player.ts';
 import {
   UPDATE_ERROR_MESSAGE_MAP,
   UPDATE_STATUS_MESSAGE_MAP,
@@ -17,12 +17,12 @@ import { errorToast, infoToast, storageError } from '@ym-video/ui/lib/toast';
 export const useUpdateStore = defineStore('desktop-update', () => {
   // 自动检查更新的本地偏好。
   const autoUpdate = useStorage('ym-video:auto-update', false, undefined, {
-    onError: () => storageError('浏览器设置'),
+    onError: () => storageError('本地设置'),
   });
 
   // 上次成功完成自动检查的时间戳。
   const lastCheck = useStorage('ym-video:last-update-check', 0, undefined, {
-    onError: () => storageError('浏览器设置'),
+    onError: () => storageError('本地设置'),
   });
 
   // 当前安装的客户端版本。
@@ -60,7 +60,7 @@ export const useUpdateStore = defineStore('desktop-update', () => {
   // 下载失败释放原生资源，下一次检查创建新的更新任务。
   const check = async () => {
     if (
-      !isTauri() ||
+      !isDesktop ||
       ['checking', 'downloading', 'downloaded', 'installing'].includes(
         status.value,
       )
@@ -154,7 +154,7 @@ export const useUpdateStore = defineStore('desktop-update', () => {
 
   // 应用启动时读取版本，每天最多执行一次自动检查。
   const init = () => {
-    if (!isTauri() || initialized) {
+    if (!isDesktop || initialized) {
       return () => {};
     }
 

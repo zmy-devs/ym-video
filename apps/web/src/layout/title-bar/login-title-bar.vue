@@ -6,8 +6,7 @@
 </template>
 
 <script setup lang="ts">
-import { isTauri } from '@/lib/desktop';
+import { isDesktop } from '@/platform';
 
 // 登录页只预留无装饰的窗口拖动区域。
-const isDesktop = isTauri();
 </script>

@@ -2,11 +2,15 @@ import { invoke, isTauri } from '@tauri-apps/api/core';
 
 export { isTauri };
 
-// 邀请和认证使用可在浏览器访问的站点来源。
-export const webOrigin =
-  isTauri() && !import.meta.env.DEV
-    ? 'https://ym-video.zhangmingyang.dpdns.org'
-    : window.location.origin;
+// 浏览器开发页经 Vite 同源转发，原生壳由 Rust 访问本地 API。
+const developmentOrigin = isTauri()
+  ? 'http://127.0.0.1:8788'
+  : window.location.origin;
+
+// 正式构建统一访问已部署的账号服务。
+export const apiOrigin = import.meta.env.DEV
+  ? developmentOrigin
+  : 'https://ym-video.zhangmingyang.dpdns.org';
 
 // 将 Rust 的结构化错误转成已有表单和提示组件可读取的 Error。
 const nativeError = (cause: unknown) => {
@@ -65,15 +69,17 @@ const requestNative = async <T>(
 export const requestDesktopResource = (url: string, signal?: AbortSignal) =>
   requestNative<unknown>('request_resource', { url }, signal);
 
-// 为 Better Auth 和业务接口提供统一的浏览器 Response 契约。
+// 为 Better Auth 和业务接口提供统一的 Response 契约。
 export const apiFetch: typeof fetch = async (input, init) => {
   if (!isTauri()) {
-    return window.fetch(input, init);
+    const address =
+      input instanceof Request ? input : new URL(String(input), apiOrigin);
+    return window.fetch(address, { credentials: 'include', ...init });
   }
 
   // 转换为绝对地址后的请求输入。
   const address =
-    input instanceof Request ? input : new URL(String(input), webOrigin);
+    input instanceof Request ? input : new URL(String(input), apiOrigin);
 
   // 调用方提供的方法、请求体和取消信号。
   const request = new Request(address, init);
@@ -81,7 +87,7 @@ export const apiFetch: typeof fetch = async (input, init) => {
   // 用于验证来源和读取查询条件的请求地址。
   const url = new URL(request.url);
 
-  if (![webOrigin, window.location.origin].includes(url.origin)) {
+  if (url.origin !== apiOrigin) {
     throw new Error('API 地址无效');
   }
 

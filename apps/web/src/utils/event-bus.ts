@@ -3,7 +3,6 @@ import type { ConfirmDialogOptions } from '@ym-video/ui/lib/confirm';
 
 // 定义事件到函数类型的映射，弹窗参数由业务事件约束。
 type EventMap = {
-  'player-episodes:show': [];
   'source:show': [sourceId?: string];
   'source-switcher:focus': [];
   'search:show': [];

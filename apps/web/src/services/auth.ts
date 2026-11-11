@@ -1,9 +1,9 @@
 import { createAccountClient } from '@ym-video/account/client';
 import { retryRequest } from '@ym-video/account/request-retry';
-import { apiFetch, webOrigin } from '@/lib/desktop';
+import { apiFetch, apiOrigin } from '@/lib/desktop';
 
 // 开发代理与生产同域共用 Cookie 会话，不在本地保存登录令牌。
-export const authClient = createAccountClient(webOrigin, apiFetch);
+export const authClient = createAccountClient(apiOrigin, apiFetch);
 
 // 复用已确认的账号，明确失效的会话不能沿用后台保留的旧数据。
 export const getCachedUser = () => {

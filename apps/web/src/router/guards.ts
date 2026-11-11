@@ -1,7 +1,6 @@
 import type { RouteLocationNormalized, Router } from 'vue-router';
 import { getLoginRedirect } from '@ym-video/account/navigation';
 import { errorToast } from '@ym-video/ui/lib/toast';
-import { isTauri, webOrigin } from '@/lib/desktop';
 import { authClient, getCachedUser, verifySession } from '@/services/auth';
 
 // 登录入口保持可访问，受保护页面保留完整回跳地址。
@@ -32,9 +31,13 @@ export const registerGuards = (router: Router) => {
   // 新导航取消上一轮验证及重试等待。
   let controller: AbortController | undefined;
 
-  // 登录和邀请页面直接显示，受保护页面首次进入时验证会话。
+  // 登录和注册页面直接显示，受保护页面首次进入时验证会话。
   const handleNavigation = async (to: RouteLocationNormalized) => {
     controller?.abort();
+
+    if (to.name === 'register') {
+      return true;
+    }
 
     if (!to.meta.requiresAuth && to.name !== 'login') {
       return true;
@@ -71,12 +74,6 @@ export const registerGuards = (router: Router) => {
 
     if (!user) {
       return getLoginRoute(to);
-    }
-
-    if (user.role === 'admin' && !isTauri()) {
-      window.location.replace(new URL('/admin/', webOrigin).href);
-
-      return false;
     }
 
     if (user.role === 'admin') {

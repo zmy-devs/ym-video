@@ -33,13 +33,11 @@
 </template>
 
 <script setup lang="ts">
-import { isTauri } from '@/lib/desktop';
+import { isDesktop } from '@/platform';
 import { Button } from '@ym-video/ui/components/button';
 import { useUpdateStore } from '@/stores/update-store';
 
-// 浏览器不展示桌面客户端版本。
-const isDesktop = isTauri();
-
+// 移动端不展示桌面更新版本。
 // 复用应用启动时读取的客户端版本。
 const update = useUpdateStore();
 </script>

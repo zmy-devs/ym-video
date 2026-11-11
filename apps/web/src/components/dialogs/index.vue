@@ -1,6 +1,6 @@
 <template>
   <SourceDialog />
-  <SearchDialog />
+  <SearchDialog v-if="isDesktop" />
   <SettingsDialog />
   <ConfirmDialog ref="confirmDialog" />
 </template>
@@ -13,6 +13,7 @@ import SearchDialog from './search-dialog.vue';
 import SettingsDialog from './settings-dialog.vue';
 import ConfirmDialog from '@ym-video/ui/common/confirm-dialog.vue';
 import { eventBus } from '@/utils/event-bus';
+import { isDesktop } from '@/platform';
 
 // 确认框的通用命令接入本应用事件。
 const confirmDialog = useTemplateRef('confirmDialog');

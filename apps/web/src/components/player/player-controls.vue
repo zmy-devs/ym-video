@@ -1,7 +1,9 @@
 <template>
   <div class="flex flex-col gap-3 px-4 pt-4">
-    <div class="flex items-center justify-between gap-4">
-      <p class="min-w-0 truncate text-3xl text-white/80 text-shadow-[0_1px_3px_#000]">
+    <div v-show="!seeking" class="flex items-center justify-between gap-4">
+      <p
+        class="min-w-0 truncate text-3xl text-white/80 text-shadow-[0_1px_3px_#000]"
+      >
         {{ label }}
       </p>
       <div class="flex shrink-0 items-center gap-2">
@@ -13,6 +15,7 @@
           @next="emit('next')"
         />
         <PlayerVolume
+          v-if="!mobile"
           v-model:open="volumeOpen"
           :volume="volume"
           :container="container"
@@ -21,6 +24,7 @@
         <PlayerRateControl
           v-model:open="rateOpen"
           :rate="rate"
+          :mobile="mobile"
           :container="container"
           @rate="emit('rate', $event)"
         />
@@ -33,8 +37,10 @@
         <PlayerEpisodesButton
           :available="hasEpisodes"
           :container="container"
+          @click="emit('episodes')"
         />
         <PlayerFullscreenButton
+          v-if="showFullscreen"
           :available="fullscreenAvailable"
           :fullscreen="fullscreen"
           :container="container"
@@ -45,7 +51,10 @@
     <PlayerProgress
       :current-time="currentTime"
       :duration="duration"
+      :preview-time="seekPreview"
+      :mobile="mobile"
       @seek="emit('seek', $event)"
+      @dragging="emit('dragging', $event)"
     />
   </div>
 </template>
@@ -59,7 +68,7 @@ import PlayerPipButton from './player-pip-button.vue';
 import PlayerProgress from './player-progress.vue';
 import PlayerRateControl from './player-rate-control.vue';
 import PlayerVolume from './player-volume.vue';
-import { formatRemarks } from '@/lib/movie';
+import { formatRemarks } from '../../lib/movie.ts';
 
 // 控制栏显示影片信息并反映真实媒体状态。
 const props = defineProps<{
@@ -68,9 +77,13 @@ const props = defineProps<{
   hasEpisodes: boolean;
   currentTime: number;
   duration: number;
+  seekPreview?: number;
+  seeking?: boolean;
   rate: number;
   volume: number;
   fullscreen: boolean;
+  mobile?: boolean;
+  showFullscreen: boolean;
   container: HTMLElement | null;
   hasPrevious: boolean;
   hasNext: boolean;
@@ -80,12 +93,14 @@ const props = defineProps<{
 // 用户操作由页面接入播放器业务。
 const emit = defineEmits<{
   seek: [seconds: number];
+  dragging: [active: boolean];
   rate: [speed: number];
   volume: [value: number];
   previous: [];
   next: [];
   pip: [];
   fullscreen: [];
+  episodes: [];
   menuOpen: [open: boolean];
 }>();
 

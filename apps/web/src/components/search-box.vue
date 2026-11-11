@@ -3,7 +3,7 @@
     id="search-trigger"
     :active="route.path === '/search'"
     tooltip="搜索影视资源"
-    shortcut="Ctrl K"
+    shortcut="Ctrl + K"
     @click="eventBus.emit('search:show')"
   >
     <Search />

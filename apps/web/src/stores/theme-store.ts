@@ -4,10 +4,11 @@ import { defineStore } from 'pinia';
 import { useColorMode, watchImmediate } from '@vueuse/core';
 import { isTauri } from '@/lib/desktop';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { isDesktop } from '@/platform';
 
-// 主题偏好保存在浏览器，VueUse 负责跟随系统和同步根节点主题类。
+// 主题偏好保存在当前设备，VueUse 负责跟随系统和同步根节点主题类。
 export const useThemeStore = defineStore('theme', () => {
-  // 浏览器外观由共享 UI 包持久化。
+  // 当前设备外观由共享 UI 包持久化。
   const { mode, color, setMode, setColor } = useThemePreferences();
 
   // 播放页固定暗色，仅影响当前窗口，不改写用户的主题偏好。
@@ -31,7 +32,7 @@ export const useThemeStore = defineStore('theme', () => {
     playerMode.value = value;
   };
 
-  // 实际明暗主题决定浏览器工具栏颜色。
+  // 实际明暗主题决定 WebView 工具栏颜色。
   watchImmediate(
     resolved,
     (nextTheme) => {
@@ -41,11 +42,11 @@ export const useThemeStore = defineStore('theme', () => {
     },
   );
 
-  // 自动模式交回系统控制，避免窗口主题反过来固定 WebView 的媒体查询。
+  // 桌面自动模式交回系统控制，Android 状态栏由移动设备能力单独同步。
   watchImmediate(
     effectiveMode,
     (nextMode) => {
-      if (isTauri()) {
+      if (isDesktop && isTauri()) {
         getCurrentWindow()
           .setTheme(nextMode === 'auto' ? null : nextMode)
           .catch(console.error);

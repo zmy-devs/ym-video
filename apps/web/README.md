@@ -1,56 +1,38 @@
-# ym-video Web
+# 统一客户端前端
 
-面向 PC 浏览器的视频聚合播放器，支持浏览、搜索、多播放源、在线播放、续播与跨设备观看历史。推荐使用新版 Chrome 或 Edge。
+`apps/web` 是 Windows 桌面端和 Android 客户端共用的 Vue 页面与业务逻辑源码，不作为独立网页产品发布。
 
-## 技术栈
+## 平台构建
 
-Vue 3、TypeScript、Vite、Vue Router、Pinia、Tailwind CSS 4、hls.js。基础组件来自 `@ym-video/ui`，账号组件与校验来自 `@ym-video/account`。
-
-## 启动
-
-在仓库根目录安装依赖，并按 [API 说明](../api/README.md) 配置本地环境、应用数据库迁移。
-
-分别启动以下服务：
+平台由构建 mode 固定：
 
 ```sh
-pnpm dev:api
+pnpm --filter @ym-video/web run dev:desktop
+pnpm --filter @ym-video/web run dev:mobile
+pnpm --filter @ym-video/web run build:desktop
+pnpm --filter @ym-video/web run build:mobile
 ```
 
-```sh
-pnpm dev:web
-```
+页面通过 `src/platform.ts` 读取 `desktop` 或 `mobile` 常量选择应用壳。目录、搜索、播放源、历史、账号和播放器逻辑由两端共用。
 
-管理页面开发时同时启动 `pnpm dev:admin`。访问 <http://localhost:3000>。Web 的 `/api` 请求会转发到 <http://localhost:8787>。
+## 页面结构
 
-默认端口被占用时可运行 `pnpm dev:web --port 3000`。使用其他端口时，需要在 `apps/api/wrangler.jsonc` 的 `WEB_ORIGINS` 中添加对应来源。
+- 桌面端使用侧边栏、标题栏、窗口控件和桌面分类导航。
+- 移动端使用顶部标题栏、底部导航、安全区和上下两层分类导航。
+- 页面路由、Pinia store、播放器和账号界面保持统一。
 
-## 使用
+## 源码职责
 
-- 使用邮箱和密码登录；新用户通过管理员提供的邀请链接注册。管理员在浏览器登录后进入独立管理应用。
-- 在概览或分类页浏览影片，通过搜索查找内容；侧栏底部的播放源菜单可切换或添加播放源。
-- 播放器支持选集、续播、上一集／下一集、倍速、音量、全屏和画中画。头像菜单中的设置可修改外观、用户名和密码。
+- `src/components/player`、`src/composables/player`：播放器界面、媒体控制、快捷键和手势。
+- `src/components/movie-card`、`src/components/greeting.vue`：影片卡片、海报和问候。
+- `src/lib`：影片解析、分类、内置播放源、问候规则和 HLS 清单处理。
+- `src/services`：目录请求、媒体加载、本机历史队列和云端历史同步。
+- `src/types.ts`、`src/types/player.ts`：客户端业务类型和播放器契约。
 
-观看历史按账号同步，离线操作会在联网后补传。自定义播放源、搜索记录、音量和主题仅保存在当前浏览器；清除浏览器数据会删除这些偏好及尚未上传的历史，已同步历史可重新读取。
+基础 UI、主题和账号界面由 `@ym-video/ui` 提供，账号客户端由 `@ym-video/account` 提供；`@ym-video/history` 与 API 共用数据契约和合并规则。
 
-自定义源需允许浏览器跨域访问；通过 HTTPS 访问 Web 时，源接口和媒体地址也应使用 HTTPS。
+## 请求
 
-## 快捷键
+账号和观看历史通过 API Worker 请求；目录、搜索、播放源和视频资源由 Tauri 原生网络核心直接请求第三方资源源。
 
-| 快捷键       | 操作            |
-| ------------ | --------------- |
-| Ctrl + K     | 打开搜索        |
-| Ctrl + B     | 展开／收起侧栏  |
-| 空格         | 播放／暂停      |
-| 左右方向键   | 后退／前进 5 秒 |
-| 长按右方向键 | 临时三倍速      |
-| 上下方向键   | 调整音量        |
-| F            | 切换全屏        |
-
-## 构建与预览
-
-```sh
-pnpm build:web
-pnpm preview:web
-```
-
-产物位于 `apps/web/dist/`，预览地址为 <http://localhost:4173>，预览时仍需启动 API。生产环境由 API Worker 同时提供网页和接口，部署方法见 [API 说明](../api/README.md)。
+Vite 开发服务只作为 Tauri WebView 的本地页面宿主，发布产物由 `apps/desktop` 和 `apps/mobile` 分别打包。

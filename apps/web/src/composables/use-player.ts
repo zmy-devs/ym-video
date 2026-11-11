@@ -7,7 +7,7 @@ import { getMovies } from '@/services/api';
 import { useHistoryStore } from '@/stores/history-store';
 import { useLibraryStore } from '@/stores/library-store';
 import { isMovieComplete, movieKey } from '@/lib/movie';
-import { useMedia } from './player/use-media';
+import { useMedia } from './player/use-media.ts';
 
 // 编排当前影片、选集和账号历史，媒体及快捷键分别管理自己的生命周期。
 export const usePlayer = () => {
@@ -108,7 +108,7 @@ export const usePlayer = () => {
         );
 
         if (!source && sourceId.startsWith('custom:')) {
-          throw new Error('此浏览器未添加该播放源，请先添加对应接口');
+          throw new Error('此设备未添加该播放源，请先添加对应接口');
         }
 
         const result = await getMovies(
@@ -200,9 +200,8 @@ export const usePlayer = () => {
   };
 
   watch(media.currentTime, captureProgress);
-  watchImmediate(
-    [() => route.params.sourceId, () => route.params.vodId],
-    () => loadMovie(),
+  watchImmediate([() => route.params.sourceId, () => route.params.vodId], () =>
+    loadMovie(),
   );
   watch(media.video, startMedia);
   watch(

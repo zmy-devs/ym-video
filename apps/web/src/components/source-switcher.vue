@@ -1,17 +1,67 @@
 <template>
-  <DropdownMenu v-model:open="open">
+  <Drawer
+    v-if="props.mobile"
+    v-model:open="open"
+    full-height
+    @close-auto-focus="handleMenuCloseFocus"
+  >
+    <template #header>
+      <DrawerClose as-child>
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="关闭播放源"
+          class="absolute top-4 left-4 size-11 rounded-full !bg-white text-black backdrop-blur-xl hover:text-black dark:!bg-card/60 dark:text-foreground dark:hover:text-foreground"
+        >
+          <X class="size-5" />
+        </Button>
+      </DrawerClose>
+      <DrawerTitle class="sr-only">播放源</DrawerTitle>
+      <DrawerDescription class="sr-only">
+        选择播放源，或添加、编辑和删除本机自定义源
+      </DrawerDescription>
+    </template>
+    <template #trigger>
+      <DrawerTrigger as-child>
+        <Button
+          ref="trigger"
+          aria-label="切换播放源"
+          variant="outline"
+          size="icon"
+          class="size-[58px] rounded-full !bg-white/60 backdrop-blur-xl dark:!bg-card/60"
+        >
+          <Server class="size-[22px]" />
+        </Button>
+      </DrawerTrigger>
+    </template>
+    <template #actions>
+      <Button
+        size="icon"
+        aria-label="添加播放源"
+        class="size-11 rounded-full"
+        @click="handleEdit()"
+      >
+        <Plus class="size-[22px]" />
+      </Button>
+    </template>
+    <SourceDrawer
+      @select="handleSource"
+      @edit="handleEdit"
+      @delete="handleDelete"
+    />
+  </Drawer>
+  <DropdownMenu v-else v-model:open="open">
     <DropdownMenuTrigger as-child>
-      <button
+      <Button
         ref="trigger"
         type="button"
         aria-label="切换播放源"
-        :class="[
-          buttonVariants({ variant: 'ghost', size: 'icon-sm' }),
-          'data-[state=open]:bg-accent data-[state=open]:text-accent-foreground',
-        ]"
+        variant="ghost"
+        size="icon-sm"
+        class="data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
       >
         <Server class="size-4" />
-      </button>
+      </Button>
     </DropdownMenuTrigger>
     <DropdownMenuContent
       side="right"
@@ -19,12 +69,7 @@
       class="w-56"
       @close-auto-focus="handleMenuCloseFocus"
     >
-      <DropdownMenuLabel
-        v-if="library.platformSources.length"
-        class="text-xs text-muted-foreground"
-      >
-        播放源
-      </DropdownMenuLabel>
+      <SourceMenuLabel v-if="library.platformSources.length" />
       <DropdownMenuItem
         v-for="source in library.platformSources"
         :key="source.id"
@@ -37,12 +82,7 @@
       <DropdownMenuSeparator
         v-if="library.platformSources.length && library.customSources.length"
       />
-      <DropdownMenuLabel
-        v-if="library.customSources.length"
-        class="text-xs text-muted-foreground"
-      >
-        我的播放源
-      </DropdownMenuLabel>
+      <SourceMenuLabel v-if="library.customSources.length" custom />
       <div
         v-for="source in library.customSources"
         :key="source.id"
@@ -99,13 +139,19 @@
 <script setup lang="ts">
 import { onScopeDispose, ref, useTemplateRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Check, Pencil, Plus, Server, Trash2 } from 'lucide-vue-next';
-import { Button, buttonVariants } from '@ym-video/ui/components/button';
+import { Check, Pencil, Plus, Server, Trash2, X } from 'lucide-vue-next';
+import { DrawerTrigger } from 'reka-ui';
+import { Button } from '@ym-video/ui/components/button';
+import {
+  DrawerClose,
+  DrawerDescription,
+  DrawerTitle,
+} from '@ym-video/ui/components/drawer';
+import Drawer from '@ym-video/ui/common/drawer.vue';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@ym-video/ui/components/dropdown-menu';
@@ -113,8 +159,15 @@ import { useLibraryStore } from '@/stores/library-store';
 import { eventBus } from '@/utils/event-bus';
 import { successToast } from '@ym-video/ui/lib/toast';
 import type { CustomSource } from '@/types';
+import SourceMenuLabel from './source-menu-label.vue';
+import SourceDrawer from './source-drawer.vue';
+import { useMobileDrawer } from '@/composables/use-mobile-drawer';
 
-// 当前页面用于判断是否需要重置分类。
+// 移动端调用方显式启用圆形 outline 触发按钮。
+const props = withDefaults(defineProps<{ mobile?: boolean }>(), {
+  mobile: false,
+});
+
 const route = useRoute();
 
 // 切换播放源时清除旧源的分类路由。
@@ -124,10 +177,14 @@ const router = useRouter();
 const library = useLibraryStore();
 
 // 弹层关闭时将焦点恢复到播放源入口。
-const trigger = useTemplateRef<HTMLButtonElement>('trigger');
+const trigger = useTemplateRef<{ $el: HTMLElement; focus: () => void }>(
+  'trigger',
+);
 
-// 图标操作先关闭菜单，再交给根组件的弹窗。
+// 播放源选择面板的显示状态。
 const open = ref(false);
+
+useMobileDrawer(open);
 
 // 全局弹窗和确认框关闭后恢复到触发入口。
 onScopeDispose(
@@ -145,10 +202,13 @@ const handleMenuCloseFocus = (event: Event) => {
   }
 };
 
-// 添加与编辑只发送业务事件，不直接持有弹窗状态。
+// 移动端表单叠加在抽屉上，桌面端先收起菜单。
 const handleEdit = (id?: string) => {
-  openingDialog = true;
-  open.value = false;
+  if (!props.mobile) {
+    openingDialog = true;
+    open.value = false;
+  }
+
   eventBus.emit('source:show', id);
 };
 
@@ -160,7 +220,7 @@ const handleDelete = (source: CustomSource) => {
     title: '删除播放源？',
     description: `确定删除“${source.name}”吗？删除后可重新添加，观看历史会保留。`,
     pendingText: '正在删除…',
-    returnFocus: () => trigger.value,
+    returnFocus: () => trigger.value?.$el ?? null,
     onConfirm: async (signal) => {
       const wasSelected = library.selected === source.id;
 
@@ -212,6 +272,9 @@ const handleRowFocus = (event: KeyboardEvent) => {
 const handleSource = async (id: unknown) => {
   if (typeof id !== 'string' || id === library.selected) {
     return;
+  }
+  if (!props.mobile) {
+    open.value = false;
   }
   if (route.path.startsWith('/category')) {
     await router.push('/category');

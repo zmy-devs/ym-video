@@ -3,6 +3,8 @@
     v-model:open="open"
     :title="sourceId ? '编辑播放源' : '添加播放源'"
     :description="description"
+    class="z-60"
+    overlay-class="z-60"
     @close-auto-focus="handleCloseFocus"
   >
     <form class="grid gap-6" novalidate @submit.prevent="handleSave">
@@ -66,6 +68,7 @@ import Field from '@ym-video/ui/common/field.vue';
 import { useLibraryStore } from '@/stores/library-store';
 import { successToast } from '@ym-video/ui/lib/toast';
 import { eventBus } from '@/utils/event-bus';
+import { isMobile } from '@/platform';
 
 // 根组件只挂载一个实例，通过事件区分新增与编辑。
 const open = ref(false);
@@ -149,8 +152,12 @@ onScopeDispose(
   }),
 );
 
-// 菜单项已卸载，关闭后将焦点恢复到播放源菜单按钮。
+// 移动端恢复抽屉内的原按钮，桌面端恢复已关闭菜单的入口。
 const handleCloseFocus = (event: Event) => {
+  if (isMobile) {
+    return;
+  }
+
   event.preventDefault();
   eventBus.emit('source-switcher:focus');
 };
