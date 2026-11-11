@@ -38,7 +38,7 @@ const run = async () => {
           invitation: {
             id: 'created',
             name: '测试分享',
-            token: 'created-token',
+            code: 'created-token',
             createdAt: 0,
             usedAt: null,
           },
@@ -68,7 +68,7 @@ const run = async () => {
           : {
               id: `invite-${index}`,
               name: `navigation_invitation_${index}`,
-              token: `token-${index}`,
+              code: `token-${index}`,
               createdAt: 0,
               usedAt: null,
             },
@@ -133,8 +133,8 @@ const run = async () => {
       invitationCreates === 1 &&
         document
           .querySelector<HTMLInputElement>('#created-invitation')
-          ?.value.endsWith('/invite/created-token'),
-      '邀请由根弹窗生成并展示链接',
+          ?.value === 'created-token',
+      '邀请由根弹窗生成并展示邀请码',
     );
     document.querySelector<HTMLElement>('[data-slot="dialog-close"]')?.click();
     await until(() => !document.querySelector('[data-slot="dialog-content"]'));
@@ -142,7 +142,7 @@ const run = async () => {
       document.activeElement?.id === 'invitations-create',
       '邀请弹窗关闭恢复新增入口',
     );
-    report('根邀请弹窗生成链接并恢复焦点');
+    report('根邀请弹窗生成邀请码并恢复焦点');
 
     document
       .querySelector<HTMLElement>('tbody [data-slot="dropdown-menu-trigger"]')
@@ -155,7 +155,7 @@ const run = async () => {
         '[data-slot="dropdown-menu-item"]',
       ),
     ]
-      .find((item) => item.textContent?.includes('删除链接'))
+      .find((item) => item.textContent?.includes('删除邀请码'))
       ?.click();
     await until(() =>
       Boolean(document.querySelector('[data-slot="alert-dialog-content"]')),

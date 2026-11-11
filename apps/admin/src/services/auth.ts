@@ -1,10 +1,5 @@
 import { createAccountClient } from '@ym-video/account/client';
 
-// 开发环境的分享链接指向影视应用，生产环境共用同域来源。
-export const webOrigin = import.meta.env.DEV
-  ? 'http://localhost:3000'
-  : window.location.origin;
-
 // 管理应用只使用浏览器 Cookie 会话。
 export const authClient = createAccountClient(
   window.location.origin,

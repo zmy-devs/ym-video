@@ -6,18 +6,15 @@
     :icon="icon"
   >
     <template #footer>
-      <a
-        :href="webOrigin"
-        class="text-center text-sm text-muted-foreground hover:text-primary"
-      >
-        返回 Ym Video
-      </a>
+      <p class="text-center text-sm text-muted-foreground">
+        普通用户请使用 Windows 或 Android 客户端
+      </p>
     </template>
   </AccountLogin>
 </template>
 
 <script setup lang="ts">
-import AccountLogin from '@ym-video/account/login.vue';
-import { authClient, webOrigin } from '@/services/auth';
+import AccountLogin from '@ym-video/ui/account/login.vue';
+import { authClient } from '@/services/auth';
 import icon from '../../../../assets/icon.png';
 </script>

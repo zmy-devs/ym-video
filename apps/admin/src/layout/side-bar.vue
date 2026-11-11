@@ -32,7 +32,7 @@ import { Link, Users } from 'lucide-vue-next';
 import Sidebar from '@ym-video/ui/common/sidebar/index.vue';
 import SidebarGroup from '@ym-video/ui/common/sidebar/group.vue';
 import SidebarItem from '@ym-video/ui/common/sidebar/item.vue';
-import AccountMenu from '@ym-video/account/menu.vue';
+import AccountMenu from '@ym-video/ui/account/menu.vue';
 import { authClient } from '@/services/auth';
 import { eventBus } from '@/utils/event-bus';
 

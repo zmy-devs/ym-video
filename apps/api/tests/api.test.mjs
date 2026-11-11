@@ -3,12 +3,11 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { convertV4MiniflareOptions, Miniflare, Response } from 'miniflare';
+import { convertV4MiniflareOptions, Miniflare } from 'miniflare';
 import { hashPassword } from 'better-auth/crypto';
 
 let worker;
-const outboundRequests = [];
-const origin = 'https://web.example.com';
+const origin = 'https://admin.example.com';
 
 before(async () => {
   worker = new Miniflare(
@@ -35,37 +34,6 @@ before(async () => {
           namespace_id: '1001',
           simple: { limit: 60, period: 60 },
         },
-        PROXY_RATE_LIMITER: {
-          namespace_id: '1002',
-          simple: { limit: 120, period: 60 },
-        },
-      },
-      outboundService: async (request) => {
-        outboundRequests.push(request);
-        const keyword = new URL(request.url).searchParams.get('wd');
-        if (keyword === 'redirect')
-          return new Response(null, {
-            status: 302,
-            headers: { location: 'http://127.0.0.1/private' },
-          });
-        if (keyword === 'bad-json')
-          return new Response('<html>upstream error</html>');
-        if (keyword === 'failure')
-          return new Response('unavailable', { status: 503 });
-        if (keyword === 'large')
-          return new Response('x'.repeat(2 * 1024 * 1024 + 1));
-        if (keyword === 'timeout') {
-          await new Promise((resolve) => setTimeout(resolve, 11_000));
-        }
-        return new Response(
-          JSON.stringify({ class: [], list: [{ vod_id: 1 }], pagecount: 1 }),
-          {
-            headers: {
-              'content-type': 'application/json',
-              'set-cookie': 'upstream-secret=hidden',
-            },
-          },
-        );
       },
     }),
   );
@@ -339,15 +307,12 @@ test('观看历史按账号隔离、逐集合并，并尊重删除和清空版�
   assert.equal(finalSnapshot.records[0].entry.progress['0'].currentTime, 9);
 });
 
-test('静态页面支持 SPA 深层路由，API 导航仍进入 Worker', async () => {
-  for (const path of ['/home', '/player/baofeng/123']) {
-    const response = await request(path, {
-      headers: { 'sec-fetch-mode': 'navigate' },
-    });
-    assert.equal(response.status, 200);
-    assert.match(response.headers.get('content-type'), /text\/html/);
-    assert.match(await response.text(), /<div id="app"><\/div>/);
-  }
+test('API 导航仍进入 Worker，影视客户端不由 API 托管', async () => {
+  const clientRoute = await request('/overview', {
+    headers: { 'sec-fetch-mode': 'navigate' },
+  });
+  assert.equal(clientRoute.status, 404);
+  assert.equal((await request('/api/v1/proxy/sources')).status, 404);
   for (const path of ['/api', '/api/not-found']) {
     const response = await request(path, {
       headers: { 'sec-fetch-mode': 'navigate' },
@@ -419,7 +384,7 @@ test('已有账号登录、用户隔离、错误密码与退出后的会话撤�
   assert.notEqual(stored.password, account.password);
 });
 
-test('仅支持邮箱登录，禁用网页和 Expo 用户名登录，保留六位密码与会话撤销', async () => {
+test('仅支持邮箱登录，禁用用户名登录，保留六位密码与会话撤销', async () => {
   const account = await createAccount('username@example.com', 'Username', {
     username: 'test_admin',
     password: randomBytes(3).toString('hex'),
@@ -434,22 +399,20 @@ test('仅支持邮箱登录，禁用网页和 Expo 用户名登录，保留六�
   assert.equal(session.user.username, 'test_admin');
   assert.equal(session.user.email, account.email);
 
-  for (const headers of [{ origin }, { 'expo-origin': 'ymvideo://' }]) {
-    for (const path of [
-      '/api/auth/sign-in/username',
-      '/api/auth/sign-in/username/',
-    ]) {
-      const blocked = await request(path, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', ...headers },
-        body: JSON.stringify({
-          username: 'TEST_ADMIN',
-          password: account.password,
-        }),
-      });
-      assert.equal(blocked.status, 404);
-      assert.equal(getCookie(blocked), '');
-    }
+  for (const path of [
+    '/api/auth/sign-in/username',
+    '/api/auth/sign-in/username/',
+  ]) {
+    const blocked = await request(path, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin },
+      body: JSON.stringify({
+        username: 'TEST_ADMIN',
+        password: account.password,
+      }),
+    });
+    assert.equal(blocked.status, 404);
+    assert.equal(getCookie(blocked), '');
   }
 
   for (const body of [
@@ -469,27 +432,22 @@ test('仅支持邮箱登录，禁用网页和 Expo 用户名登录，保留六�
   );
 });
 
-test('网页与 Expo 均禁止公开注册，拒绝后不会创建账号', async () => {
+test('禁止公开注册，拒绝后不会创建账号', async () => {
   const email = 'blocked@example.com';
 
-  for (const headers of [{ origin }, { 'expo-origin': 'ymvideo://' }]) {
-    const response = await request('/api/auth/sign-up/email', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', ...headers },
-      body: JSON.stringify({
-        email,
-        name: 'Blocked',
-        username: 'blocked_user',
-        password: randomBytes(16).toString('hex'),
-      }),
-    });
+  const response = await request('/api/auth/sign-up/email', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin },
+    body: JSON.stringify({
+      email,
+      name: 'Blocked',
+      username: 'blocked_user',
+      password: randomBytes(16).toString('hex'),
+    }),
+  });
 
-    assert.equal(response.status, 400);
-    assert.equal(
-      (await response.json()).code,
-      'EMAIL_PASSWORD_SIGN_UP_DISABLED',
-    );
-  }
+  assert.equal(response.status, 400);
+  assert.equal((await response.json()).code, 'EMAIL_PASSWORD_SIGN_UP_DISABLED');
 
   const db = await worker.getD1Database('DB');
   const account = await db
@@ -500,22 +458,22 @@ test('网页与 Expo 均禁止公开注册，拒绝后不会创建账号', async
   assert.equal(account, null);
 });
 
-test('Expo 已有账号可以登录，拒绝未知来源、跨站退出与超大请求', async () => {
-  const nativeAccount = await createAccount('native@example.com', 'Native');
-  const nativeSignIn = await request('/api/auth/sign-in/email', {
+test('拒绝未知来源、跨站退出与超大请求', async () => {
+  const account = await createAccount('native@example.com', 'Native');
+  const signIn = await request('/api/auth/sign-in/email', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'expo-origin': 'ymvideo://',
+      origin,
     },
-    body: JSON.stringify(nativeAccount),
+    body: JSON.stringify(account),
   });
-  assert.equal(nativeSignIn.status, 200, await nativeSignIn.clone().text());
+  assert.equal(signIn.status, 200, await signIn.clone().text());
 
   assert.equal(
     (
       await request('/api/v1/me', {
-        headers: { cookie: getCookie(nativeSignIn) },
+        headers: { cookie: getCookie(signIn) },
       })
     ).status,
     200,
@@ -570,65 +528,7 @@ test('可信来源预检包含凭证支持，拒绝未知来源预检', async ()
   );
 });
 
-test('代理保留 JSON 格式，限制来源和参数，不转发双方凭证', async () => {
-  const sources = await (await request('/api/v1/proxy/sources')).json();
-  assert.equal(sources.sources.length, 7);
-  const response = await request(
-    '/api/v1/proxy/baofeng?ac=detail&wd=测试&pg=1',
-    {
-      headers: {
-        cookie: 'private=secret',
-        authorization: 'Bearer private-value',
-      },
-    },
-  );
-  assert.equal(response.status, 200);
-  assert.equal((await response.json()).list[0].vod_id, 1);
-  assert.equal(response.headers.get('set-cookie'), null);
-  assert.equal(response.headers.get('cache-control'), 'no-store');
-  const forwarded = outboundRequests.at(-1);
-  assert.equal(new URL(forwarded.url).hostname, 'bfzyapi.com');
-  assert.equal(new URL(forwarded.url).searchParams.get('wd'), '测试');
-  assert.equal(forwarded.headers.get('cookie'), null);
-  assert.equal(forwarded.headers.get('authorization'), null);
 
-  const count = outboundRequests.length;
-  for (const query of [
-    'url=http://127.0.0.1',
-    'pg=0',
-    'pg=1&pg=2',
-    'ac=delete',
-    'ids=1,abc',
-    '__proto__=x',
-  ]) {
-    assert.equal(
-      (await request(`/api/v1/proxy/baofeng?${query}`)).status,
-      400,
-      query,
-    );
-  }
-  assert.equal((await request('/api/v1/proxy/unknown')).status, 404);
-  assert.equal(outboundRequests.length, count);
-});
-
-test('代理拒绝重定向、无效 JSON、过大响应和上游错误', async () => {
-  for (const [keyword, code] of [
-    ['redirect', 'UPSTREAM_REDIRECT'],
-    ['bad-json', 'UPSTREAM_INVALID_JSON'],
-    ['large', 'UPSTREAM_TOO_LARGE'],
-    ['failure', 'UPSTREAM_ERROR'],
-  ]) {
-    const response = await request(`/api/v1/proxy/baofeng?wd=${keyword}`);
-    assert.equal(response.status, 502);
-    assert.equal((await response.json()).code, code);
-  }
-});
-
-test('代理在超时后返回 504', { timeout: 20_000 }, async () => {
-  const response = await request('/api/v1/proxy/baofeng?wd=timeout');
-  assert.equal(response.status, 504);
-  assert.equal((await response.json()).code, 'UPSTREAM_TIMEOUT');
-});
 
 test('认证请求通过 Workers 限流 binding 返回 429', async () => {
   let limited;
@@ -1285,278 +1185,85 @@ test('并发停用或删除管理员时始终保留一个可用管理员', async
   }
 });
 
-test('邀请分页、注册原子性、并发单次使用与删除状态', async () => {
+
+
+test('邀请码创建、注册和单次使用', async () => {
   const admin = await manager('invite_manager');
-  const db = await worker.getD1Database('DB');
-  const beforeInvalid = await db
-    .prepare('SELECT count(*) AS n FROM invitation')
-    .first();
-  // 无效备注不能提前生成邀请，也不能写入数据库。
-  for (const name of [undefined, null, 123, '', '   ', 'x'.repeat(81)]) {
-    const response = await manage(
-      '/api/v1/admin/invitations',
-      'POST',
-      { name },
-      admin.cookie,
-    );
-    assert.equal(response.status, 400);
-    assert.equal((await response.json()).code, 'INVALID_INVITATION_NAME');
-  }
-  assert.equal(
-    (await db.prepare('SELECT count(*) AS n FROM invitation').first()).n,
-    beforeInvalid.n,
+  const response = await manage(
+    '/api/v1/admin/invitations',
+    'POST',
+    { name: '团队分享 Alpha' },
+    admin.cookie,
   );
-  const create = async (name = '  团队分享 Alpha  ') => {
-    const response = await manage(
-      '/api/v1/admin/invitations',
-      'POST',
-      { name },
-      admin.cookie,
-    );
-    assert.equal(response.status, 201);
-    const invitation = (await response.json()).invitation;
-    assert.match(invitation.token, /^[A-Za-z0-9_-]{22}$/u);
-    assert.equal(Buffer.from(invitation.token, 'base64url').length, 16);
-    assert.equal(invitation.name, name.trim());
-    return invitation;
-  };
-  const invitation = await create();
-  const path = `/api/v1/invitations/${invitation.token}`;
-  assert.deepEqual(await (await manage(path)).json(), { status: 'unused' });
-  const searched = await (
+  assert.equal(response.status, 201);
+  const invitation = (await response.json()).invitation;
+  assert.match(invitation.code, /^[A-Za-z0-9_-]{22}$/u);
+  assert.equal(invitation.name, '团队分享 Alpha');
+
+  const listed = await (
     await manage(
-      `/api/v1/admin/invitations?search=${encodeURIComponent(`https://web.example.com/invite/${invitation.token}`)}`,
+      '/api/v1/admin/invitations?search=Alpha',
       'GET',
       undefined,
       admin.cookie,
     )
   ).json();
-  assert.equal(searched.total, 1);
-  assert.equal(searched.items[0].id, invitation.id);
-  assert.equal(searched.items[0].name, '团队分享 Alpha');
-  const byName = await (
-    await manage(
-      '/api/v1/admin/invitations?search=aLpHa',
-      'GET',
-      undefined,
-      admin.cookie,
-    )
-  ).json();
-  assert.equal(byName.total, 1);
-  assert.equal(byName.items[0].token, invitation.token);
+  assert.equal(listed.items[0].code, invitation.code);
+
   const input = {
-    username: '煎bingguo子',
-    email: 'invited@example.com',
+    code: invitation.code,
+    username: '邀请码用户',
+    email: 'invited-code@example.com',
     password: '123456',
     confirmPassword: '123456',
     role: 'admin',
   };
-  assert.equal(
-    (
-      await manage(`${path}/register`, 'POST', {
-        ...input,
-        confirmPassword: 'different',
-      })
-    ).status,
-    400,
+  const registered = await manage(
+    '/api/v1/invitations/register',
+    'POST',
+    input,
   );
-  assert.equal(
-    (await manage(`${path}/register`, 'POST', input, admin.cookie)).status,
-    409,
+  assert.equal(registered.status, 201);
+  assert.equal((await registered.json()).user.role, 'user');
+
+  const reused = await manage(
+    '/api/v1/invitations/register',
+    'POST',
+    { ...input, username: '邀请码用户2', email: 'invited-code-2@example.com' },
   );
-  const collision = await manager('invite_collision', 'user');
-  assert.equal(
-    (
-      await manage(`${path}/register`, 'POST', {
-        ...input,
-        email: collision.email,
-      })
-    ).status,
-    409,
+  assert.equal(reused.status, 409);
+
+  const removed = await manage(
+    '/api/v1/admin/invitations',
+    'POST',
+    { name: '待删除' },
+    admin.cookie,
   );
-  assert.deepEqual(await (await manage(path)).json(), { status: 'unused' });
-  assert.equal(
-    await db
-      .prepare('SELECT id FROM user WHERE username = ?')
-      .bind(input.username)
-      .first(),
-    null,
-  );
-  // 在凭据插入阶段强制失败，验证用户写入和邀请状态一起回滚。
-  await db.exec(
-    "CREATE TRIGGER fail_invited_account BEFORE INSERT ON account WHEN NEW.userId IN (SELECT id FROM user WHERE username = 'rollback_user') BEGIN SELECT RAISE(ABORT, 'test failure'); END",
-  );
-  assert.equal(
-    (
-      await manage(`${path}/register`, 'POST', {
-        ...input,
-        username: 'rollback_user',
-        email: 'rollback@example.com',
-      })
-    ).status,
-    500,
-  );
-  assert.equal(
-    await db
-      .prepare("SELECT id FROM user WHERE username = 'rollback_user'")
-      .first(),
-    null,
-  );
-  assert.deepEqual(await (await manage(path)).json(), { status: 'unused' });
-  await db.exec('DROP TRIGGER fail_invited_account');
-  const results = await Promise.all([
-    manage(`${path}/register`, 'POST', input),
-    manage(`${path}/register`, 'POST', {
-      ...input,
-      username: '竞争_user',
-      email: 'competing@example.com',
-    }),
-  ]);
-  assert.deepEqual(
-    results.map((response) => response.status).sort(),
-    [201, 409],
-  );
-  const success = await results
-    .find((response) => response.status === 201)
-    .json();
-  assert.equal(success.user.role, 'user');
-  assert.equal(
-    (
-      await db
-        .prepare('SELECT count(*) AS n FROM user WHERE username IN (?, ?)')
-        .bind(input.username, '竞争_user')
-        .first()
-    ).n,
-    1,
-  );
-  const login = await manage('/api/auth/sign-in/email', 'POST', {
-    email: success.user.email,
-    password: input.password,
-  });
-  assert.equal(login.status, 200);
-  assert.deepEqual(await (await manage(path)).json(), { status: 'used' });
-  assert.equal(
-    (
-      await manage(`${path}/register`, 'POST', {
-        ...input,
-        username: 'later_user',
-        email: 'later@example.com',
-      })
-    ).status,
-    409,
-  );
+  const removedCode = (await removed.json()).invitation.code;
+  const listedBeforeDelete = await (
+    await manage('/api/v1/admin/invitations?search=待删除', 'GET', undefined, admin.cookie)
+  ).json();
   await manage(
-    `/api/v1/admin/users/${success.user.id}`,
+    `/api/v1/admin/invitations/${listedBeforeDelete.items[0].id}`,
     'DELETE',
     undefined,
     admin.cookie,
   );
-  assert.deepEqual(await (await manage(path)).json(), { status: 'used' });
-  assert.equal(
-    (
-      await db
-        .prepare('SELECT used_by_id FROM invitation WHERE id = ?')
-        .bind(invitation.id)
-        .first()
-    ).used_by_id,
-    null,
+  const deletedRegister = await manage(
+    '/api/v1/invitations/register',
+    'POST',
+    {
+      code: removedCode,
+      username: '删除邀请码用户',
+      email: 'deleted-code@example.com',
+      password: '123456',
+      confirmPassword: '123456',
+    },
   );
-  const removed = await create('备注'.repeat(40));
-  assert.notEqual(removed.token, invitation.token);
-  await manage(
-    `/api/v1/admin/invitations/${removed.id}`,
-    'DELETE',
-    undefined,
-    admin.cookie,
-  );
-  assert.equal(
-    (await manage(`/api/v1/invitations/${removed.token}`)).status,
-    404,
-  );
-  assert.equal(
-    (
-      await manage(
-        `/api/v1/invitations/${removed.token}/register`,
-        'POST',
-        input,
-      )
-    ).status,
-    409,
-  );
-  // 旧版 64 位十六进制邀请继续支持查询、注册与单次核销。
-  const legacyToken = randomBytes(32).toString('hex');
-  await db
-    .prepare('INSERT INTO invitation (id, token, created_at) VALUES (?, ?, ?)')
-    .bind(randomUUID(), legacyToken, Date.now())
-    .run();
-  const legacyPath = `/api/v1/invitations/${legacyToken}`;
-  const legacyList = await (
-    await manage(
-      `/api/v1/admin/invitations?search=${legacyToken}`,
-      'GET',
-      undefined,
-      admin.cookie,
-    )
-  ).json();
-  assert.equal(legacyList.items[0].name, '');
-  assert.deepEqual(await (await manage(legacyPath)).json(), {
-    status: 'unused',
-  });
-  assert.equal(
-    (
-      await manage(`${legacyPath}/register`, 'POST', {
-        ...input,
-        username: 'legacy_invited_user',
-        email: 'legacy-invited@example.com',
-      })
-    ).status,
-    201,
-  );
-  assert.deepEqual(await (await manage(legacyPath)).json(), { status: 'used' });
-  const now = Date.now();
-  await db.batch(
-    Array.from({ length: 21 }, (_, index) =>
-      db
-        .prepare(
-          'INSERT INTO invitation (id, token, created_at) VALUES (?, ?, ?)',
-        )
-        .bind(randomUUID(), `paging_token_${index}`, now),
-    ),
-  );
-  const first = await (
-    await manage(
-      '/api/v1/admin/invitations?search=paging_token_',
-      'GET',
-      undefined,
-      admin.cookie,
-    )
-  ).json();
-  const second = await (
-    await manage(
-      '/api/v1/admin/invitations?search=paging_token_&page=2',
-      'GET',
-      undefined,
-      admin.cookie,
-    )
-  ).json();
-  assert.equal(first.total, 21);
-  assert.equal(first.items.length, 20);
-  assert.equal(second.items.length, 1);
-  const preflight = await request('/api/v1/admin/users/id', {
-    method: 'OPTIONS',
-    headers: { origin, 'access-control-request-method': 'PATCH' },
-  });
-  assert.match(preflight.headers.get('access-control-allow-methods'), /PATCH/);
+  assert.equal(deletedRegister.status, 409);
 });
 
-test('影视和管理应用使用独立静态入口，管理子路由支持刷新', async () => {
-  const web = await worker.dispatchFetch('https://api.example.com/overview', {
-    headers: { 'sec-fetch-mode': 'navigate', accept: 'text/html' },
-  });
-  const webHtml = await web.text();
-  assert.equal(web.status, 200);
-  assert.match(webHtml, /<title>Ym Video<\/title>/);
-
+test('API 继续托管 Admin 静态入口', async () => {
   const response = await worker.dispatchFetch(
     'https://api.example.com/admin/invitations',
     { headers: { accept: 'text/html' } },

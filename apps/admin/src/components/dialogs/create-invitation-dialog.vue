@@ -1,13 +1,13 @@
 <template>
   <Dialog
     v-model:open="open"
-    :title="createdUrl ? '邀请链接已生成' : '新增邀请'"
+    :title="createdCode ? '邀请码已生成' : '新增邀请码'"
     :description="description"
     :pending="pending"
     @close-auto-focus="handleCloseFocus"
   >
     <form
-      v-if="!createdUrl"
+      v-if="!createdCode"
       class="grid gap-6"
       novalidate
       @submit.prevent="handleCreate"
@@ -38,13 +38,13 @@
       </DialogFooter>
     </form>
     <template v-else>
-      <Field id="created-invitation" v-slot="{ control }" label="邀请链接">
+      <Field id="created-invitation" v-slot="{ control }" label="邀请码">
         <Input
           v-bind="control"
           class="select-text"
-          :model-value="createdUrl"
+          :model-value="createdCode"
           readonly
-          @focus="handleSelectLink"
+          @focus="handleSelectCode"
         />
       </Field>
       <DialogFooter>
@@ -66,23 +66,23 @@ import { Input } from '@ym-video/ui/components/input';
 import Dialog from '@ym-video/ui/common/dialog.vue';
 import { DialogFooter } from '@ym-video/ui/components/dialog';
 import Field from '@ym-video/ui/common/field.vue';
-import { createInvitation, invitationUrl } from '@/services/admin';
+import { createInvitation } from '@/services/admin';
 import { errorToast } from '@ym-video/ui/lib/toast';
 import { eventBus } from '@/utils/event-bus';
 
-// 弹窗先填写备注，再生成并展示邀请链接。
+// 弹窗先填写备注，再生成并展示邀请码。
 const open = ref(false);
 
 // 分享名称仅作为后台备注保存。
 const name = ref('');
 
-// 完整链接同时决定是否进入复制步骤。
-const createdUrl = ref('');
+// 邀请码决定是否进入复制步骤。
+const createdCode = ref('');
 
 // 创建成功后展示当前邀请的分享说明。
 const description = computed(() =>
-  createdUrl.value
-    ? `${name.value} · 链接永久有效，仅可注册一次。`
+  createdCode.value
+    ? `${name.value} · 邀请码仅可注册一次。`
     : '填写分享名称作为备注，方便识别邀请。',
 );
 
@@ -108,7 +108,7 @@ watch(
       return;
     }
     name.value = '';
-    createdUrl.value = '';
+    createdCode.value = '';
     copied.value = false;
     error.value = '';
   },
@@ -133,9 +133,9 @@ const handleCloseFocus = (event: Event) => {
   document.getElementById('invitations-create')?.focus();
 };
 
-// 只有名称有效且点击下一步后，才请求生成链接。
+// 只有名称有效且点击下一步后，才请求生成邀请码。
 const handleCreate = async () => {
-  if (pending.value || createdUrl.value) {
+  if (pending.value || createdCode.value) {
     return;
   }
   name.value = name.value.trim();
@@ -147,19 +147,19 @@ const handleCreate = async () => {
   pending.value = true;
   error.value = '';
 
-  // 切页或卸载后不能把旧链接展示到新草稿。
+  // 切页或卸载后不能把旧邀请码展示到新草稿。
   const requestController = new AbortController();
 
   controller = requestController;
   try {
-    // 服务端保存名称后返回可复制的单次邀请。
+    // 服务端保存名称后返回可复制的单次邀请码。
     const invitation = await createInvitation(
       name.value,
       requestController.signal,
     );
 
     requestController.signal.throwIfAborted();
-    createdUrl.value = invitationUrl(invitation.token);
+    createdCode.value = invitation.code;
     eventBus.emit('invitations:changed');
     await nextTick();
     if (!requestController.signal.aborted) {
@@ -177,26 +177,26 @@ const handleCreate = async () => {
   }
 };
 
-// 复制结果仅更新当前链接，剪贴板不可用时仍可手动复制。
+// 复制结果仅更新当前邀请码，剪贴板不可用时仍可手动复制。
 const handleCopy = async () => {
-  // 关闭或重新生成链接后，忽略旧复制请求的结果。
-  const url = createdUrl.value;
+  // 关闭或重新生成邀请码后，忽略旧复制请求的结果。
+  const code = createdCode.value;
 
   try {
-    await navigator.clipboard.writeText(url);
-    if (open.value && createdUrl.value === url) {
+    await navigator.clipboard.writeText(code);
+    if (open.value && createdCode.value === code) {
       copied.value = true;
     }
   } catch {
-    if (open.value && createdUrl.value === url) {
+    if (open.value && createdCode.value === code) {
       copied.value = false;
-      errorToast('复制失败，请选中链接手动复制');
+      errorToast('复制失败，请选中邀请码手动复制');
     }
   }
 };
 
-// 生成成功后聚焦并选中完整链接。
-const handleSelectLink = (event: FocusEvent) => {
+// 生成成功后聚焦并选中邀请码。
+const handleSelectCode = (event: FocusEvent) => {
   if (event.target instanceof HTMLInputElement) {
     event.target.select();
   }

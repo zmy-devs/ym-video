@@ -22,27 +22,19 @@
         ><Plus />新增账号</Button
       >
     </div>
-    <Empty v-if="empty" class="min-h-80">
-      <EmptyHeader>
-        <EmptyMedia variant="icon"><Users /></EmptyMedia>
-        <EmptyTitle>{{
-          search ? '没有找到匹配的账号' : '暂无账号'
-        }}</EmptyTitle>
-        <EmptyDescription>{{
-          search
-            ? '换个关键词，或清除搜索后查看全部账号。'
-            : '创建第一个账号，分配用户或管理员权限。'
-        }}</EmptyDescription>
-      </EmptyHeader>
-      <EmptyContent>
-        <Button v-if="search" variant="outline" @click="search = ''"
-          >清除搜索</Button
-        >
-        <Button v-else id="users-create" @click="eventBus.emit('account:show')"
-          ><Plus />新增账号</Button
-        >
-      </EmptyContent>
-    </Empty>
+    <CommonEmpty
+      v-if="empty"
+      class="min-h-80"
+      :label="search ? '没有找到匹配的账号' : '暂无账号'"
+      :description="
+        search
+          ? '换个关键词，或清除搜索后查看全部账号。'
+          : '创建第一个账号，分配用户或管理员权限。'
+      "
+      :action="search ? '清除搜索' : '新增账号'"
+      :icon="Users"
+      @action="search ? (search = '') : eventBus.emit('account:show')"
+    />
     <div
       v-else-if="status === 'loading' && !loaded"
       class="flex min-h-80 items-center justify-center gap-2 text-muted-foreground"
@@ -165,14 +157,7 @@ import {
   InputGroupInput,
   InputGroupAddon,
 } from '@ym-video/ui/components/input-group';
-import {
-  Empty,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  EmptyDescription,
-  EmptyContent,
-} from '@ym-video/ui/components/empty';
+import CommonEmpty from '@ym-video/ui/common/empty.vue';
 import {
   Table,
   TableBody,

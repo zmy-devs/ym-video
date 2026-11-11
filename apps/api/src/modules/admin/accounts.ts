@@ -53,11 +53,11 @@ export const accountConflict = (error: unknown): never => {
 export const createAccount = async (
   db: D1Database,
   input: ReturnType<typeof parseAccount>,
-  options: { token?: string; role?: 'user' | 'admin' } = {},
+  options: { code?: string; role?: 'user' | 'admin' } = {},
 ) => {
   // 邀请永远创建普通用户；仅已鉴权的后台接口可以指定管理员。
-  const { token } = options;
-  const role = token ? 'user' : (options.role ?? 'user');
+  const { code } = options;
+  const role = code ? 'user' : (options.role ?? 'user');
   // 兼容旧数据中的大小写；新写入统一小写，唯一约束负责并发判重。
   const existing = await db
     .prepare(
@@ -83,12 +83,12 @@ export const createAccount = async (
     input.username,
     role,
   ];
-  const insertUser = token
+  const insertUser = code
     ? db
         .prepare(
           'INSERT INTO user (id, name, email, emailVerified, createdAt, updatedAt, username, role, banned) SELECT ?, ?, ?, 0, ?, ?, ?, ?, 0 FROM invitation WHERE token = ? AND used_at IS NULL',
         )
-        .bind(...values, token)
+        .bind(...values, code)
     : db
         .prepare(
           'INSERT INTO user (id, name, email, emailVerified, createdAt, updatedAt, username, role, banned) VALUES (?, ?, ?, 0, ?, ?, ?, ?, 0)',
@@ -102,13 +102,13 @@ export const createAccount = async (
       )
       .bind(crypto.randomUUID(), password, now, now, id),
   ];
-  if (token) {
+  if (code) {
     statements.push(
       db
         .prepare(
           'UPDATE invitation SET used_at = ?, used_by_id = ? WHERE token = ? AND used_at IS NULL AND EXISTS (SELECT 1 FROM user WHERE id = ?)',
         )
-        .bind(now, id, token, id),
+        .bind(now, id, code, id),
     );
   }
   try {
@@ -117,7 +117,7 @@ export const createAccount = async (
       throw new HttpError(
         409,
         'INVITATION_UNAVAILABLE',
-        '邀请链接已使用或已删除',
+        '邀请码已使用或已删除',
       );
     }
   } catch (error) {

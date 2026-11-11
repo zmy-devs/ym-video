@@ -3,7 +3,6 @@ import { HttpError, registerErrorHandlers } from './errors';
 import { getAuthConfig } from './env';
 import { createAuth } from './modules/auth/auth';
 import { registerAuthRoutes } from './modules/auth/routes';
-import { registerProxyRoutes } from './modules/proxy/routes';
 import { registerUserDataRoutes } from './modules/user-data/routes';
 import { registerAdminRoutes } from './modules/admin/routes';
 import { registerInvitationRoutes } from './modules/invitations/routes';
@@ -37,7 +36,7 @@ export const createApp = (env: Env) => {
       );
       reply.header(
         'access-control-allow-headers',
-        'Content-Type,Authorization,Expo-Origin',
+        'Content-Type,Authorization',
       );
       reply.header('access-control-max-age', '600');
       return reply.code(204).send();
@@ -51,9 +50,7 @@ export const createApp = (env: Env) => {
       path.startsWith('/api/v1/invitations/') ||
       path.startsWith('/api/v1/history')
         ? env.AUTH_RATE_LIMITER
-        : path.startsWith('/api/v1/proxy/')
-          ? env.PROXY_RATE_LIMITER
-          : null;
+        : null;
     if (limiter) {
       const ip = request.headers['cf-connecting-ip'];
       const { success } = await limiter.limit({
@@ -72,6 +69,5 @@ export const createApp = (env: Env) => {
   registerAdminRoutes(app, auth, env.DB);
   registerInvitationRoutes(app, auth, env.DB);
   registerUserDataRoutes(app, auth, env.DB);
-  registerProxyRoutes(app);
   return app;
 };

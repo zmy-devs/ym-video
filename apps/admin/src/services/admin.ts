@@ -1,4 +1,3 @@
-import { webOrigin } from './auth';
 import { authClient } from './auth';
 
 // 管理接口只在响应边界收窄未知对象。
@@ -15,11 +14,11 @@ export interface AdminUser {
   banned: boolean;
 }
 
-// 邀请链接由当前 Web 来源和 token 组合，兼容开发代理。
+// 邀请码只作为一次性注册凭据展示。
 export interface Invitation {
   id: string;
   name: string;
-  token: string;
+  code: string;
   createdAt: number;
   usedAt: number | null;
 }
@@ -74,7 +73,7 @@ const isInvitation = (value: unknown): value is Invitation =>
   isRecord(value) &&
   typeof value.id === 'string' &&
   typeof value.name === 'string' &&
-  typeof value.token === 'string' &&
+  typeof value.code === 'string' &&
   typeof value.createdAt === 'number' &&
   (value.usedAt === null || typeof value.usedAt === 'number');
 
@@ -126,11 +125,7 @@ export const createInvitation = async (name: string, signal?: AbortSignal) => {
     signal,
   });
   if (!isRecord(body) || !isInvitation(body.invitation)) {
-    throw new Error('邀请链接数据格式不正确');
+    throw new Error('邀请码数据格式不正确');
   }
   return body.invitation;
 };
-
-// 当前访问域名生成可直接分享的邀请链接。
-export const invitationUrl = (token: string) =>
-  `${webOrigin}/invite/${encodeURIComponent(token)}`;

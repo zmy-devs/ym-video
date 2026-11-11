@@ -41,7 +41,7 @@ import { CircleAlert, Palette, UserRound } from 'lucide-vue-next';
 import { Button } from '@ym-video/ui/components/button';
 import SettingsDialog from '@ym-video/ui/common/settings-dialog.vue';
 import AppearanceSettings from '@ym-video/ui/common/appearance-settings.vue';
-import AccountSettings from '@ym-video/account/settings.vue';
+import AccountSettings from '@ym-video/ui/account/settings.vue';
 import { authClient } from '@/services/auth';
 import { useThemeStore } from '@/stores/theme-store';
 import { eventBus } from '@/utils/event-bus';

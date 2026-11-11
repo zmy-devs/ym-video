@@ -3,7 +3,7 @@
     <header>
       <h1 id="invitations-heading" class="text-2xl font-semibold">邀请管理</h1>
       <p class="mt-2 text-sm text-muted-foreground">
-        通过邀请链接分发账号，每条链接仅可注册一次。
+        通过一次性邀请码分发账号，每个邀请码仅可注册一次。
       </p>
     </header>
     <div
@@ -14,7 +14,7 @@
         <InputGroupInput
           id="invitations-search"
           v-model="search"
-          placeholder="搜索名称或邀请链接…"
+          placeholder="搜索名称或邀请码…"
         />
         <InputGroupAddon><Search /></InputGroupAddon>
       </InputGroup>
@@ -22,30 +22,19 @@
         ><Plus />新增邀请</Button
       >
     </div>
-    <Empty v-if="empty" class="min-h-80">
-      <EmptyHeader>
-        <EmptyMedia variant="icon"><Link /></EmptyMedia>
-        <EmptyTitle>{{
-          search ? '没有找到匹配的邀请' : '暂无邀请'
-        }}</EmptyTitle>
-        <EmptyDescription>{{
-          search
-            ? '换个关键词，或清除搜索后查看全部邀请。'
-            : '创建邀请链接，邀请他人注册普通用户账号。'
-        }}</EmptyDescription>
-      </EmptyHeader>
-      <EmptyContent>
-        <Button v-if="search" variant="outline" @click="search = ''"
-          >清除搜索</Button
-        >
-        <Button
-          v-else
-          id="invitations-create"
-          @click="eventBus.emit('invitation:show')"
-          ><Plus />新增邀请</Button
-        >
-      </EmptyContent>
-    </Empty>
+    <CommonEmpty
+      v-if="empty"
+      class="min-h-80"
+      :label="search ? '没有找到匹配的邀请码' : '暂无邀请码'"
+      :description="
+        search
+          ? '换个关键词，或清除搜索后查看全部邀请码。'
+          : '创建邀请码，邀请他人注册普通用户账号。'
+      "
+      :action="search ? '清除搜索' : '新增邀请'"
+      :icon="Link"
+      @action="search ? (search = '') : eventBus.emit('invitation:show')"
+    />
     <div
       v-else-if="status === 'loading' && !loaded"
       class="flex min-h-80 items-center justify-center gap-2 text-muted-foreground"
@@ -60,7 +49,7 @@
             <TableHeader class="bg-muted"
               ><TableRow
                 ><TableHead class="w-48 pl-4">分享名称</TableHead
-                ><TableHead>邀请链接</TableHead
+                ><TableHead>邀请码</TableHead
                 ><TableHead class="w-28 text-center">状态</TableHead
                 ><TableHead class="w-20 pr-4 text-right"
                   >操作</TableHead
@@ -95,15 +84,14 @@
                     </Tooltip>
                   </TableCell>
                   <TableCell>
-                    <Tooltip :label="invitationUrl(invitation.token)" side="top">
-                      <a
-                        :href="invitationUrl(invitation.token)"
-                        target="_blank"
-                        rel="noopener"
-                        class="block truncate underline-offset-4 hover:underline"
+                    <Tooltip :label="invitation.code" side="top">
+                      <button
+                        type="button"
+                        class="block max-w-full truncate text-left underline-offset-4 hover:underline"
+                        @click="copyCode(invitation.code)"
                       >
-                        {{ invitationUrl(invitation.token) }}
-                      </a>
+                        {{ invitation.code }}
+                      </button>
                     </Tooltip>
                   </TableCell>
                   <TableCell class="text-center"
@@ -130,7 +118,7 @@
                         ><DropdownMenuItem
                           variant="destructive"
                           @select="handleDelete(invitation)"
-                          ><Trash2 />删除链接</DropdownMenuItem
+                          ><Trash2 />删除邀请码</DropdownMenuItem
                         ></DropdownMenuContent
                       >
                     </DropdownMenu>
@@ -167,14 +155,7 @@ import {
   InputGroupInput,
   InputGroupAddon,
 } from '@ym-video/ui/components/input-group';
-import {
-  Empty,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  EmptyDescription,
-  EmptyContent,
-} from '@ym-video/ui/components/empty';
+import CommonEmpty from '@ym-video/ui/common/empty.vue';
 import {
   Table,
   TableBody,
@@ -194,7 +175,6 @@ import { useAdminList } from '@/composables/use-admin-list';
 import {
   accountRequest,
   getInvitations,
-  invitationUrl,
 } from '@/services/admin';
 import type { Invitation } from '@/services/admin';
 import { successToast } from '@ym-video/ui/lib/toast';
@@ -232,12 +212,22 @@ const getDeleteFocus = () => {
   );
 };
 
+// 点击邀请码即可复制，方便直接发给注册用户。
+const copyCode = async (code: string) => {
+  try {
+    await navigator.clipboard.writeText(code);
+    successToast('邀请码已复制');
+  } catch {
+    successToast('请手动复制邀请码');
+  }
+};
+
 // 删除已使用邀请不影响对应的注册账号。
 const handleDelete = (invitation: Invitation) => {
   eventBus.emit('confirm:show', {
-    title: '删除邀请链接？',
-    description: '删除后此链接将无法用于注册，已创建的账号不受影响。',
-    confirmText: '删除链接',
+    title: '删除邀请码？',
+    description: '删除后此邀请码将无法用于注册，已创建的账号不受影响。',
+    confirmText: '删除邀请码',
     pendingText: '正在删除…',
     returnFocus: getDeleteFocus,
     onConfirm: async (signal) => {
@@ -249,7 +239,7 @@ const handleDelete = (invitation: Invitation) => {
           { method: 'DELETE', signal },
         );
         signal.throwIfAborted();
-        successToast('邀请链接已删除');
+        successToast('邀请码已删除');
         await refresh();
       } finally {
         deleting.value = false;

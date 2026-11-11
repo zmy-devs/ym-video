@@ -4,6 +4,7 @@
   "main": "src/worker.ts",
   "compatibility_date": "2026-10-12",
   "compatibility_flags": ["nodejs_compat"],
+  "dev": { "port": 8788 },
   "upload_source_maps": true,
   "assets": {
     "directory": ".assets",
@@ -14,8 +15,8 @@
   "observability": { "enabled": true, "head_sampling_rate": 1 },
   "secrets": { "required": ["BETTER_AUTH_SECRET"] },
   "vars": {
-    "BETTER_AUTH_URL": "http://localhost:8787",
-    "WEB_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173,http://localhost:3001,http://127.0.0.1:3001,http://localhost:4174",
+    "BETTER_AUTH_URL": "http://127.0.0.1:8788",
+    "WEB_ORIGINS": "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001,http://localhost:3002,http://127.0.0.1:3002,http://localhost:4174",
   },
   "d1_databases": [
     {
@@ -30,11 +31,6 @@
       "name": "AUTH_RATE_LIMITER",
       "namespace_id": "1001",
       "simple": { "limit": 60, "period": 60 },
-    },
-    {
-      "name": "PROXY_RATE_LIMITER",
-      "namespace_id": "1002",
-      "simple": { "limit": 120, "period": 60 },
     },
   ],
   "env": {
@@ -65,11 +61,6 @@
           "name": "AUTH_RATE_LIMITER",
           "namespace_id": "1003",
           "simple": { "limit": 60, "period": 60 },
-        },
-        {
-          "name": "PROXY_RATE_LIMITER",
-          "namespace_id": "1004",
-          "simple": { "limit": 120, "period": 60 },
         },
       ],
     },

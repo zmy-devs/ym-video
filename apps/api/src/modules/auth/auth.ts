@@ -17,7 +17,7 @@ export const createAuth = (env: Env, config: AuthConfig) =>
       schema,
       transaction: false,
     }),
-    trustedOrigins: [...config.webOrigins, 'ymvideo://'],
+    trustedOrigins: config.webOrigins,
     advanced: { useSecureCookies: config.secureCookies },
     // 请求限流由 Workers binding 实施，不使用 isolate 内的内存计数器。
     rateLimit: { enabled: false },

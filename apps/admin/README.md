@@ -4,7 +4,7 @@
 
 ## 技术栈
 
-Vue 3、TypeScript、Vite、Vue Router、Pinia、shadcn-vue、Tailwind CSS 4。基础组件与主题来自 `@ym-video/ui`，账号表单与校验来自 `@ym-video/account`。
+Vue 3、TypeScript、Vite、Vue Router、Pinia、shadcn-vue、Tailwind CSS 4。基础组件、主题与账号界面来自 `@ym-video/ui`，认证客户端与校验来自 `@ym-video/account`。
 
 ## 开发
 
@@ -13,12 +13,11 @@ Vue 3、TypeScript、Vite、Vue Router、Pinia、shadcn-vue、Tailwind CSS 4。�
 ```sh
 pnpm dev:api
 pnpm dev:admin
-pnpm dev:web
 ```
 
-管理应用访问 <http://localhost:3001/admin/>，开发 API 代理到 <http://localhost:8787>，邀请链接指向 <http://localhost:3000/invite/:token>。
+管理应用访问 <http://localhost:3001/admin/>，邀请码由管理端生成并复制给客户端注册页面使用。
 
-管理员使用邮箱和密码登录。普通用户会看到账号权限提示，可通过页面链接返回影视应用。
+管理员使用邮箱和密码登录。普通用户会看到账号权限提示，需要使用 Windows 或 Android 客户端访问影视功能。
 
 ## 构建
 

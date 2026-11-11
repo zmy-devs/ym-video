@@ -1,4 +1,3 @@
-import { expo } from '@better-auth/expo';
 import { admin, username } from 'better-auth/plugins';
 import type { BetterAuthOptions } from 'better-auth';
 import { isValidUsername } from './username';
@@ -14,7 +13,6 @@ export const authOptions = {
     maxPasswordLength: 128,
   },
   plugins: [
-    expo(),
     username({ displayUsername: false, usernameValidator: isValidUsername }),
     admin({
       defaultRole: 'user',

@@ -147,10 +147,8 @@ export const registerAdminRoutes = (
         const { page, search, pageSize, offset } = parseListQuery(
           request.query,
         );
-        // 备注名称、完整链接和单独 token 均可搜索，来源域名不参与筛选。
-        const keyword = search.includes('/invite/')
-          ? (search.split('/invite/').pop() ?? '')
-          : search;
+        // 备注名称和邀请码均可搜索。
+        const keyword = search;
         const [count, rows] = await Promise.all([
           db
             .prepare(
@@ -160,7 +158,7 @@ export const registerAdminRoutes = (
             .first<{ total: number }>(),
           db
             .prepare(
-              'SELECT id, name, token, created_at AS createdAt, used_at AS usedAt FROM invitation WHERE instr(lower(name), lower(?)) > 0 OR instr(token, ?) > 0 ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?',
+              'SELECT id, name, token AS code, created_at AS createdAt, used_at AS usedAt FROM invitation WHERE instr(lower(name), lower(?)) > 0 OR instr(token, ?) > 0 ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?',
             )
             .bind(keyword, keyword, pageSize, offset)
             .all(),
@@ -174,7 +172,7 @@ export const registerAdminRoutes = (
       });
 
       admin.post('/invitations', async (request, reply) => {
-        // 分享名称仅供后台备注，校验成功后才生成并保存链接。
+        // 分享名称仅供后台备注，校验成功后才生成并保存邀请码。
         const body = request.body;
         const name =
           body &&
@@ -191,7 +189,7 @@ export const registerAdminRoutes = (
           );
         }
         const id = crypto.randomUUID();
-        // 128 位安全随机数编码为 22 位 URL 安全字符，缩短邀请链接。
+        // 128 位安全随机数编码为 22 位 URL 安全字符。
         const token = Buffer.from(
           crypto.getRandomValues(new Uint8Array(16)),
         ).toString('base64url');
@@ -204,7 +202,9 @@ export const registerAdminRoutes = (
           .run();
         return reply
           .code(201)
-          .send({ invitation: { id, name, token, createdAt, usedAt: null } });
+          .send({
+            invitation: { id, name, code: token, createdAt, usedAt: null },
+          });
       });
 
       admin.delete<{ Params: { id: string } }>(
@@ -215,7 +215,7 @@ export const registerAdminRoutes = (
             .bind(request.params.id)
             .run();
           if (!result.meta.changes) {
-            throw new HttpError(404, 'INVITATION_NOT_FOUND', '邀请链接不存在');
+            throw new HttpError(404, 'INVITATION_NOT_FOUND', '邀请码不存在');
           }
           return { success: true };
         },
