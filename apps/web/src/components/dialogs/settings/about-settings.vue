@@ -16,16 +16,13 @@
           >
         </Button>
       </div>
-      <div
-        v-if="isDesktop"
-        class="min-h-17.5 flex items-center gap-2.5 px-4 py-3 text-sm"
-      >
+      <div class="min-h-17.5 flex items-center gap-2.5 px-4 py-3 text-sm">
         <div class="min-w-0 flex-1 space-y-1">
           <h3 class="font-medium">版本</h3>
           <p class="text-muted-foreground">当前应用的版本</p>
         </div>
         <span class="shrink-0">
-          {{ update.version ? `v${update.version}` : '正在读取版本…' }}
+          {{ update.version || '正在读取版本…' }}
         </span>
       </div>
     </div>
@@ -33,11 +30,9 @@
 </template>
 
 <script setup lang="ts">
-import { isDesktop } from '@/platform';
 import { Button } from '@ym-video/ui/components/button';
 import { useUpdateStore } from '@/stores/update-store';
 
-// 移动端不展示桌面更新版本。
 // 复用应用启动时读取的客户端版本。
 const update = useUpdateStore();
 </script>

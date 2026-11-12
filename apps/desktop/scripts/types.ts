@@ -11,6 +11,13 @@ export interface UpdateManifest {
   };
 }
 
+// Android 独立更新入口对应的版本与 Gitee APK 直链。
+export interface AndroidUpdateManifest {
+  version: string;
+  notes: string;
+  url: string;
+}
+
 // 发布脚本读取的一个本地附件。
 export interface ReleaseFile {
   name: string;

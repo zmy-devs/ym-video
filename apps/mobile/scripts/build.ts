@@ -162,20 +162,48 @@ if (command === 'dev') {
     join(directory, 'scripts/android-signing.gradle'),
   ]);
 
-  const apkRoot = join(directory, 'src-tauri/gen/android');
-  const apk = readdirSync(apkRoot, {
-    recursive: true,
-    encoding: 'utf8',
-  }).find((name) => name.includes('release') && name.endsWith('.apk'));
-  if (!apk) {
+  // ARM64 构建只读取本次 universal release 产物。
+  const apk = join(
+    directory,
+    'src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk',
+  );
+
+  if (!existsSync(apk)) {
     throw new Error('缺少 Android APK');
   }
   const output = join(directory, 'dist');
   mkdirSync(output, { recursive: true });
-  copyFileSync(
-    join(apkRoot, apk),
-    join(output, `ym-video-${desktopPackage.version}-android-arm64.apk`),
+  // 版本产物与更新清单共用固定的 APK 文件名。
+  const filename = `ym-video-${desktopPackage.version}-android-arm64.apk`;
+
+  copyFileSync(apk, join(output, filename));
+
+  // 两端发布说明按版本共享，Android 更新入口单独发布。
+  const notes = readFileSync(
+    join(directory, '../desktop/docs/release-note.md'),
+    'utf8',
   );
+
+  // 当前发布版本在共用说明中的章节标题。
+  const heading = `## ${desktopPackage.version}`;
+
+  // 更新界面展示对应版本的说明内容。
+  const section = notes.includes(heading)
+    ? notes.split(heading)[1].split('\n## ')[0].trim()
+    : `发布 ${desktopPackage.version}`;
+
+  // 客户端只从对应版本的 Gitee APK 直链下载。
+  const manifest = {
+    version: desktopPackage.version,
+    notes: section,
+    url: `https://gitee.com/zmy-devs/ym-video/releases/download/v${desktopPackage.version}/${filename}`,
+  };
+
+  writeFileSync(
+    join(output, 'android.json'),
+    JSON.stringify(manifest, null, 2) + '\n',
+  );
+
   console.log(`Android APK 已生成于 ${output}`);
 } else {
   throw new Error('用法：pnpm dev 或 pnpm build');

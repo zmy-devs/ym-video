@@ -1,10 +1,11 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { getVersion } from '@tauri-apps/api/app';
-import { check as checkUpdate, type Update } from '@tauri-apps/plugin-updater';
+import { isTauri } from '@tauri-apps/api/core';
 import { isDesktop } from '@/platform';
 import { useStorage } from '@vueuse/core';
-import { getProgress } from '../utils/player.ts';
+import { checkClientUpdate } from '@/services/update';
+import type { ClientUpdate } from '@/types/update';
 import {
   UPDATE_ERROR_MESSAGE_MAP,
   UPDATE_STATUS_MESSAGE_MAP,
@@ -14,13 +15,13 @@ import {
 import { errorToast, infoToast, storageError } from '@ym-video/ui/lib/toast';
 
 // 更新任务与已下载资源由应用共享，设置弹窗关闭后继续保留。
-export const useUpdateStore = defineStore('desktop-update', () => {
+export const useUpdateStore = defineStore('client-update', () => {
   // 自动检查更新的本地偏好。
   const autoUpdate = useStorage('ym-video:auto-update', false, undefined, {
     onError: () => storageError('本地设置'),
   });
 
-  // 上次成功完成自动检查的时间戳。
+  // 上次成功完成更新检查的时间戳。
   const lastCheck = useStorage('ym-video:last-update-check', 0, undefined, {
     onError: () => storageError('本地设置'),
   });
@@ -37,19 +38,33 @@ export const useUpdateStore = defineStore('desktop-update', () => {
   // 检查或安装失败的类别决定对应提示。
   const errorType = ref<UpdateErrorType | null>(null);
 
-  // 安装包已经下载的百分比。
-  const progress = ref(0);
+  // Android 原生检查返回的明确原因优先展示。
+  const checkErrorMessage = ref('');
 
-  // updater 持有的版本信息和已下载资源。
-  let update: Update | null = null;
+  // 未提供下载总量时不展示百分比。
+  const progress = ref<number | null>(null);
+
+  // 可用版本的发布说明。
+  const notes = ref('');
+
+  // 当前平台持有的版本信息和已下载资源。
+  let update: ClientUpdate | null = null;
 
   // 应用更新任务是否已经初始化。
   let initialized = false;
 
   // 状态文案从集中映射读取，并填入版本和进度。
   const message = computed(() => {
-    if (status.value === 'error') {
-      return UPDATE_ERROR_MESSAGE_MAP[errorType.value ?? 'check'];
+    if (errorType.value === 'check' && checkErrorMessage.value) {
+      return checkErrorMessage.value;
+    }
+
+    if (errorType.value) {
+      return UPDATE_ERROR_MESSAGE_MAP[errorType.value];
+    }
+
+    if (status.value === 'downloading' && progress.value === null) {
+      return `正在下载 v${latestVersion.value}…`;
     }
 
     return UPDATE_STATUS_MESSAGE_MAP[status.value]
@@ -57,104 +72,135 @@ export const useUpdateStore = defineStore('desktop-update', () => {
       .replace('{progress}', String(progress.value));
   });
 
-  // 下载失败释放原生资源，下一次检查创建新的更新任务。
+  // 下载资源由应用持有，失败或退出时统一释放。
+  const closeUpdate = async () => {
+    // 先移除本地引用，后续检查只使用新创建的更新任务。
+    const current = update;
+
+    update = null;
+
+    await current?.close?.();
+  };
+
+  // 检查后自动下载对应平台安装包，安装由用户确认。
   const check = async () => {
     if (
-      !isDesktop ||
-      ['checking', 'downloading', 'downloaded', 'installing'].includes(
-        status.value,
-      )
+      !isTauri() ||
+      [
+        'checking',
+        'downloading',
+        'downloaded',
+        'installing',
+        'installer-opened',
+      ].includes(status.value)
     ) {
       return;
     }
 
     status.value = 'checking';
     errorType.value = null;
-
-    progress.value = 0;
+    checkErrorMessage.value = '';
+    progress.value = null;
+    latestVersion.value = '';
+    notes.value = '';
 
     try {
-      await update?.close();
+      await closeUpdate();
 
-      update = await checkUpdate({ timeout: 10000 });
+      update = await checkClientUpdate();
 
       if (!update) {
         status.value = 'up-to-date';
+        lastCheck.value = Date.now();
 
         return;
       }
 
       latestVersion.value = update.version;
+      notes.value = update.body;
 
       status.value = 'downloading';
 
-      // 更新安装包的总字节数。
-      let total = 0;
-
-      // 本次下载已经接收的字节数。
-      let received = 0;
-
-      await update.download(
-        (event) => {
-          if (event.event === 'Started') {
-            total = event.data.contentLength ?? 0;
-          }
-
-          if (event.event === 'Progress') {
-            received += event.data.chunkLength;
-
-            progress.value = Math.min(
-              99,
-              Math.floor(getProgress(received, total)),
-            );
-          }
-        },
-        { timeout: 60000 },
-      );
+      await update.download((value) => {
+        progress.value = value;
+      });
 
       progress.value = 100;
 
       status.value = 'downloaded';
+      lastCheck.value = Date.now();
 
-      infoToast('新版本已下载，安装后将重启应用', {
-        duration: Infinity,
-        action: { label: '现在安装', onClick: install },
-      });
+      infoToast(
+        isDesktop
+          ? '新版本已下载，安装后将重启应用'
+          : '新版本已下载，请确认安装更新',
+        {
+          id: 'client-update-ready',
+          duration: Infinity,
+          action: { label: '现在安装', onClick: install },
+        },
+      );
     } catch (cause) {
-      errorType.value = cause instanceof TypeError ? 'network' : 'check';
+      errorType.value = status.value === 'downloading' ? 'download' : 'check';
+
+      if (!isDesktop && errorType.value === 'check' && cause instanceof Error) {
+        checkErrorMessage.value = cause.message;
+      }
+
       status.value = 'error';
+      console.error('客户端更新失败', cause);
+
+      await closeUpdate().catch(console.error);
+
+      errorToast(message.value, { id: 'client-update-error' });
     }
   };
 
-  // Windows updater 启动已验证的安装包并重启应用。
+  // 平台安装器处理安装；Android 保留 APK，允许返回后再次打开。
   const install = async () => {
-    if (!update || status.value !== 'downloaded') {
+    if (!update || !['downloaded', 'installer-opened'].includes(status.value)) {
       return;
     }
 
     status.value = 'installing';
+    errorType.value = null;
 
     try {
-      await update.install({ restartAfterInstall: true });
-    } catch {
+      if (!(await update.install())) {
+        status.value = 'downloaded';
+        errorType.value = 'permission';
+        errorToast(UPDATE_ERROR_MESSAGE_MAP.permission, {
+          id: 'client-update-error',
+        });
+
+        return;
+      }
+
+      if (!isDesktop) {
+        status.value = 'installer-opened';
+      }
+    } catch (cause) {
       status.value = 'downloaded';
       errorType.value = 'install';
-      errorToast(UPDATE_ERROR_MESSAGE_MAP.install);
+      console.error('客户端更新安装失败', cause);
+      errorToast(UPDATE_ERROR_MESSAGE_MAP.install, {
+        id: 'client-update-error',
+      });
     }
   };
 
   // 保存自动更新偏好，并在启用后检查更新。
-  const setAutoUpdate = (enabled: boolean) => {
+  const setAutoUpdate = async (enabled: boolean) => {
     autoUpdate.value = enabled;
 
     if (enabled) {
-      check();
+      await check();
     }
   };
 
   // 应用启动时读取版本，每天最多执行一次自动检查。
   const init = () => {
-    if (!isDesktop || initialized) {
+    if (!isTauri() || initialized) {
       return () => {};
     }
 
@@ -167,26 +213,23 @@ export const useUpdateStore = defineStore('desktop-update', () => {
       .catch(() => errorToast('无法读取客户端版本'));
 
     if (autoUpdate.value && Date.now() - lastCheck.value >= 86400000) {
-      check().then(() => {
-        if (status.value !== 'error') {
-          lastCheck.value = Date.now();
-        }
-      });
+      check().catch(console.error);
     }
 
     return () => {
       initialized = false;
 
-      update?.close().catch(console.error);
-
-      update = null;
+      closeUpdate().catch(console.error);
     };
   };
 
   return {
     autoUpdate,
     version,
+    latestVersion,
+    notes,
     status,
+    errorType,
     progress,
     message,
     check,

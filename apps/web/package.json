@@ -10,27 +10,31 @@
     "dev": "pnpm run dev:desktop",
     "dev:desktop": "vite --mode desktop --host localhost",
     "dev:mobile": "vite --mode mobile --host 0.0.0.0",
-    "typecheck": "vue-tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
+    "typecheck": "vue-tsc --noEmit && tsc --noEmit -p tsconfig.node.json && vue-tsc --noEmit -p tests/tsconfig.browser.json",
     "build": "pnpm run build:desktop",
     "build:desktop": "pnpm run typecheck && vite build --mode desktop",
     "build:mobile": "pnpm run typecheck && vite build --mode mobile",
-    "test": "node --experimental-strip-types --test tests/*.test.ts"
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "test:update:desktop": "node --experimental-strip-types scripts/test-update.ts desktop",
+    "test:update:mobile": "node --experimental-strip-types scripts/test-update.ts mobile"
   },
   "dependencies": {
-    "@ym-video/history": "workspace:*",
-    "@vueuse/core": "14.1.0",
-    "hls.js": "1.6.12",
-    "pinia": "2.1.7",
-    "vue": "3.5.24",
-    "vue-router": "4.4.5",
-    "reka-ui": "^2.9.0",
-    "lucide-vue-next": "^0.468.0",
     "@tauri-apps/api": "2.12.4",
     "@tauri-apps/plugin-updater": "2.14.1",
-    "zod": "^4.6.7",
-    "vue3-touch-events": "5.0.15",
+    "@tauri-apps/plugin-upload": "2.5.0",
+    "@vueuse/core": "14.1.0",
+    "@ym-video/account": "workspace:*",
+    "@ym-video/history": "workspace:*",
     "@ym-video/ui": "workspace:*",
-    "@ym-video/account": "workspace:*"
+    "hls.js": "1.6.12",
+    "lucide-vue-next": "^0.468.0",
+    "pinia": "2.1.7",
+    "reka-ui": "^2.9.0",
+    "tauri-plugin-android-installer-api": "0.1.0",
+    "vue": "3.5.24",
+    "vue-router": "4.4.5",
+    "vue3-touch-events": "5.0.15",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.3",
@@ -38,7 +42,7 @@
     "@vitejs/plugin-vue": "6.0.1",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.2",
-    "vue-tsc": "3.1.4",
-    "vite": "7.2.2"
+    "vite": "7.2.2",
+    "vue-tsc": "3.1.4"
   }
 }

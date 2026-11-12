@@ -6,6 +6,9 @@
   "permissions": [
     "core:default",
     "opener:allow-open-url",
+    "opener:allow-default-urls",
+    "upload:allow-download",
+    "android-installer:default",
     "mobile-controls:allow-set-status-bar-style",
     "mobile-controls:allow-set-brightness",
     "mobile-controls:allow-get-brightness",

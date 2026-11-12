@@ -28,15 +28,22 @@ Windows 播放器对所有 HTTPS 片源的证书过期错误按会话放行，�
 
 Windows 回归测试使用 `cargo install tauri-driver --locked` 安装驱动，将匹配 WebView2 版本的 `msedgedriver.exe` 放入 `CARGO_HOME/bin`，并准备 FFmpeg。测试使用本地 5180 和 8788 端口。
 
-| 命令                     | 用途                                             |
-| ------------------------ | ------------------------------------------------ |
-| `pnpm typecheck:desktop` | TypeScript 与 Rust 类型检查                      |
-| `pnpm test:desktop`      | Rust 测试、浏览器回归与 Windows WebDriver 验证   |
-| `pnpm build:desktop`     | 构建内置 Web 页面和 Windows 可执行文件           |
-| `pnpm build:win`         | 构建 NSIS 安装包及更新签名，汇总到桌面 dist 目录 |
-| `pnpm start`             | 运行已构建的 release 可执行文件                  |
+| 命令                                          | 用途                                             |
+| --------------------------------------------- | ------------------------------------------------ |
+| `pnpm typecheck:desktop`                      | TypeScript 与 Rust 类型检查                      |
+| `pnpm test:desktop`                           | Rust 测试、浏览器回归与 Windows WebDriver 验证   |
+| `pnpm --filter @ym-video/desktop test:update` | Windows 更新设置、任务与原生签名回归测试         |
+| `pnpm build:desktop`                          | 构建内置 Web 页面和 Windows 可执行文件           |
+| `pnpm build:win`                              | 构建 NSIS 安装包及更新签名，汇总到桌面 dist 目录 |
+| `pnpm start`                                  | 运行已构建的 release 可执行文件                  |
 
 NSIS 安装程序会在需要时安装 WebView2 Runtime。`build:win` 生成 `ym-video-<version>-windows-x64.exe`、对应 `.sig` 和 `latest.json`。
+
+## 应用更新
+
+在设置的“更新”中手动检查新版本，或开启“自动更新”，启动时每天检查一次。发现新版本后自动下载安装包，下载完成后点击“安装并重启”。更新任务在关闭设置后继续运行；下载或签名校验失败可以重新检查，安装失败可以直接重试安装。
+
+客户端使用 Tauri 官方 updater，优先读取 Gitee 的 `latest/latest.json`，同时配置 GitHub 更新入口。每个站点的清单指向该站点的版本安装包；下载与安装均由插件校验签名。
 
 ## 签名与发布
 

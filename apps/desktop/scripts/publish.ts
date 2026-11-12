@@ -1,5 +1,6 @@
 import type {
   UpdateManifest,
+  AndroidUpdateManifest,
   ReleaseFile,
   GithubRelease,
   GiteeRelease,
@@ -34,11 +35,22 @@ const publishAndroid = async () => {
   }
   const digest = (value: Uint8Array) =>
     createHash('sha256').update(value).digest('hex');
-  const notes = await readFile(join(directory, 'docs/release-note.md'), 'utf8');
-  const heading = `## ${pkg.version}`;
-  const body = notes.includes(heading)
-    ? notes.split(heading)[1].split('\n## ')[0].trim()
-    : `发布 ${pkg.version}`;
+  // 构建产物中的清单必须与本次 APK 和应用版本一致。
+  const manifest: AndroidUpdateManifest = JSON.parse(
+    await readFile(join(directory, '../mobile/dist/android.json'), 'utf8'),
+  );
+
+  if (
+    manifest.version !== pkg.version ||
+    typeof manifest.notes !== 'string' ||
+    manifest.url !==
+      `https://gitee.com/${repository}/releases/download/v${pkg.version}/${filename}`
+  ) {
+    throw new Error('Android 更新清单与安装包不一致，请重新构建');
+  }
+
+  // GitHub Release 展示构建时生成的 Android 版本说明。
+  const body = manifest.notes;
   const tag = `v${pkg.version}`;
   const githubHeaders = {
     Authorization: `Bearer ${process.env.GH_TOKEN}`,
@@ -101,54 +113,7 @@ const publishAndroid = async () => {
     body: JSON.stringify({ draft: false, make_latest: 'true' }),
   });
 
-  const token = process.env.GITEE_TOKEN;
-  if (!token) {
-    throw new Error('缺少 Gitee 发布令牌');
-  }
-  const listGiteeReleases = () =>
-    requestJson<GiteeRelease[]>(
-      `${gitee}/releases?per_page=100&access_token=${encodeURIComponent(token)}`,
-    );
-  const known = (await listGiteeReleases()).find(
-    (item) => item.tag_name === tag,
-  );
-  const giteeRelease =
-    known ??
-    (await requestJson<GiteeRelease>(`${gitee}/releases`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        access_token: token,
-        tag_name: tag,
-        name: pkg.version,
-        body,
-        target_commitish: 'main',
-      }),
-    }));
-  const current = await requestJson<GiteeRelease>(
-    `${gitee}/releases/${giteeRelease.id}?access_token=${encodeURIComponent(token)}`,
-  );
-  const giteeAsset = current.assets?.find((asset) => asset.name === filename);
-  if (giteeAsset) {
-    const remote = await request(giteeAsset.browser_download_url);
-    if (digest(Buffer.from(await remote.arrayBuffer())) !== digest(bytes)) {
-      throw new Error('同版本 Android APK 内容不同，请更新应用版本后发布');
-    }
-  } else {
-    const form = new FormData();
-    form.set('access_token', token);
-    form.set(
-      'file',
-      new Blob([Uint8Array.from(bytes)], {
-        type: 'application/vnd.android.package-archive',
-      }),
-      filename,
-    );
-    await request(`${gitee}/releases/${giteeRelease.id}/attach_files`, {
-      method: 'POST',
-      body: form,
-    });
-  }
+  await publishGitee(manifest, [{ name: filename, bytes }]);
 };
 
 // 调用发布接口，统一处理超时与 HTTP 错误。
@@ -283,8 +248,11 @@ const publishGithub = async (
   });
 };
 
-// Gitee 固定 latest 标签只存放指向完整版本产物的更新清单。
-const publishGitee = async (manifest: UpdateManifest, files: ReleaseFile[]) => {
+// Gitee 按平台维护独立更新入口，只在版本产物完整后切换清单。
+const publishGitee = async (
+  manifest: UpdateManifest | AndroidUpdateManifest,
+  files: ReleaseFile[],
+) => {
   // 当前进程提供的 Gitee 发布令牌。
   const token = process.env.GITEE_TOKEN;
 
@@ -385,9 +353,15 @@ const publishGitee = async (manifest: UpdateManifest, files: ReleaseFile[]) => {
     await upload(version, file.name, file.bytes);
   }
 
+  // 两端更新入口使用独立标签，发布时只替换当前平台的清单。
+  const android = 'url' in manifest;
+
+  // 当前发布平台的稳定清单标签。
+  const entryTag = android ? 'latest-android' : 'latest';
+
   // Gitee 现有的稳定更新清单版本。
   const previous = (await list()).find(
-    (release) => release.tag_name === 'latest',
+    (release) => release.tag_name === entryTag,
   );
 
   if (previous) {
@@ -402,22 +376,24 @@ const publishGitee = async (manifest: UpdateManifest, files: ReleaseFile[]) => {
   }
 
   // 用于发布稳定更新清单的 Release。
-  const latest = await getRelease('latest', 'latest');
+  const latest = await getRelease(entryTag, entryTag);
 
   // 指向 Gitee 版本产物的更新清单。
   const mirror = structuredClone(manifest);
 
-  mirror.platforms['windows-x86_64'].url =
-    'https://gitee.com/' +
-    repository +
-    '/releases/download/v' +
-    manifest.version +
-    '/' +
-    files[0].name;
+  if ('platforms' in mirror) {
+    mirror.platforms['windows-x86_64'].url =
+      'https://gitee.com/' +
+      repository +
+      '/releases/download/v' +
+      manifest.version +
+      '/' +
+      files[0].name;
+  }
 
   await upload(
     latest,
-    'latest.json',
+    android ? 'android.json' : 'latest.json',
     Buffer.from(JSON.stringify(mirror, null, 2)),
   );
 };

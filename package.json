@@ -17,6 +17,7 @@
     "typecheck:client": "pnpm --filter @ym-video/web run typecheck",
     "test:client": "pnpm --filter @ym-video/web run test",
     "test:desktop": "pnpm --filter @ym-video/desktop run test",
+    "test:update:android:local": "pnpm --filter @ym-video/mobile run test:update:local",
     "dev:desktop": "pnpm --filter @ym-video/desktop run dev",
     "dev:android": "pnpm --filter @ym-video/mobile run dev",
     "dev:api": "pnpm --filter @ym-video/api run dev",

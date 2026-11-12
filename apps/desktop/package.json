@@ -16,6 +16,7 @@
     "build:unpack": "tsx scripts/build.ts build",
     "build:win": "tsx scripts/build.ts bundle",
     "test": "tsx scripts/test.ts",
+    "test:update": "pnpm --filter @ym-video/web run test:update:desktop && cargo test --manifest-path src-tauri/Cargo.toml --test windows_update --locked",
     "release": "tsx --env-file-if-exists=.env.development scripts/publish.ts"
   },
   "devDependencies": {

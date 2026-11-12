@@ -284,12 +284,10 @@ useEventListener(document, 'fullscreenchange', () => {
   }
 });
 
-// 桌面端启动更新检查，移动端由 Android 发布流程负责更新。
+// 两端启动应用级更新任务，设置弹窗复用同一任务。
 let cleanupUpdate: (() => void) | undefined;
 onMounted(() => {
-  if (isDesktop) {
-    cleanupUpdate = useUpdateStore().init();
-  }
+  cleanupUpdate = useUpdateStore().init();
 
   if (isMobile && !library.platformSources.length) {
     library.init().catch(console.error);

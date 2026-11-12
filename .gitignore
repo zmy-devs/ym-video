@@ -32,6 +32,7 @@ coverage/
 /apps/mobile/src-tauri/target/
 /apps/mobile/src-tauri/gen/
 /apps/mobile/build/generated/
+/apps/mobile/build/local-update/
 /apps/desktop/src-tauri/gen/
 /apps/desktop/build/generated/
 

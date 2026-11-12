@@ -20,7 +20,6 @@
 </template>
 
 <script setup lang="ts">
-import { isDesktop } from '@/platform';
 import { onScopeDispose, ref, watch } from 'vue';
 import {
   CircleAlert,
@@ -49,14 +48,11 @@ const theme = useThemeStore();
 // 账号提交期间禁止切换分类和手动关闭，切页仍可强制清理。
 const pending = ref<'username' | 'password' | null>(null);
 
-// 通过 Tauri 运行环境识别桌面客户端。
-// 更新入口只向桌面客户端提供。
+// 两端共用设置分类，更新任务由当前平台处理。
 const navigation = [
   { value: 'appearance', label: '外观', icon: Palette },
   { value: 'account', label: '账号', icon: UserRound },
-  ...(isDesktop
-    ? [{ value: 'update', label: '更新', icon: CircleArrowUp }]
-    : []),
+  { value: 'update', label: '更新', icon: CircleArrowUp },
   { value: 'about', label: '关于', icon: CircleAlert },
 ];
 
