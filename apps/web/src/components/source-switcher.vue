@@ -10,8 +10,6 @@
         v-if="library.customSources.length"
         variant="outline"
         size="icon"
-        :aria-label="editing ? '退出编辑' : '编辑播放源'"
-        :aria-pressed="editing"
         class="absolute top-4 left-4 size-11 rounded-full !bg-white text-black backdrop-blur-xl hover:text-black dark:!bg-card/60 dark:text-foreground dark:hover:text-foreground"
         @click="handleToggleEdit"
       >
@@ -22,7 +20,6 @@
         <Button
           variant="outline"
           size="icon"
-          aria-label="关闭播放源"
           class="absolute top-4 left-4 size-11 rounded-full !bg-white text-black backdrop-blur-xl hover:text-black dark:!bg-card/60 dark:text-foreground dark:hover:text-foreground"
         >
           <X class="size-5" />
@@ -37,7 +34,6 @@
       <DrawerTrigger as-child>
         <Button
           ref="trigger"
-          aria-label="切换播放源"
           variant="outline"
           size="icon"
           class="size-[58px] rounded-full !bg-white/60 backdrop-blur-xl dark:!bg-card/60"
@@ -51,7 +47,6 @@
         v-if="editing"
         variant="destructive"
         size="icon"
-        aria-label="删除选中的播放源"
         :disabled="!selectedIds.length"
         class="size-11 rounded-full"
         @click="handleDeleteSelected"
@@ -61,14 +56,13 @@
       <Button
         v-else
         size="icon"
-        aria-label="添加播放源"
         class="size-11 rounded-full"
         @click="handleEdit()"
       >
         <Plus class="size-[22px]" />
       </Button>
     </template>
-    <SourceDrawer
+    <MobileSourceDrawer
       v-model:selected="selectedIds"
       :editing="editing"
       @select="handleSource"
@@ -80,7 +74,6 @@
       <Button
         ref="trigger"
         type="button"
-        aria-label="切换播放源"
         variant="ghost"
         size="icon-sm"
         class="data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
@@ -136,7 +129,6 @@
           <Button
             variant="ghost"
             size="icon-xs"
-            aria-label="编辑播放源"
             @click.stop="handleEdit(source.id)"
           >
             <Pencil class="size-[15px]" />
@@ -144,7 +136,6 @@
           <Button
             variant="ghost"
             size="icon-xs"
-            aria-label="删除播放源"
             class="text-destructive hover:text-destructive"
             @click.stop="handleDelete(source)"
           >
@@ -193,7 +184,7 @@ import { eventBus } from '@/utils/event-bus';
 import { successToast } from '@ym-video/ui/lib/toast';
 import type { CustomSource } from '@/types';
 import SourceMenuLabel from './source-menu-label.vue';
-import SourceDrawer from './source-drawer.vue';
+import MobileSourceDrawer from './mobile-source-drawer.vue';
 import { useMobileDrawer } from '@/composables/use-mobile-drawer';
 
 // 移动端调用方显式启用圆形 outline 触发按钮。

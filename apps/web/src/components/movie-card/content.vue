@@ -5,11 +5,7 @@
       class="block overflow-hidden rounded-lg focus-visible:outline-2 focus-visible:outline-ring"
     >
       <div class="relative aspect-[3/4] overflow-hidden rounded-lg bg-muted">
-        <MoviePoster
-          :src="movie.pic"
-          :alt="`${movie.name}海报`"
-          class="size-full"
-        />
+        <MoviePoster :src="movie.pic" class="size-full" />
         <div
           class="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.7),transparent_20%,transparent_80%,rgba(0,0,0,0.7))]"
         />

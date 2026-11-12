@@ -10,10 +10,7 @@
     >
       {{ title }}
     </h2>
-    <component
-      :is="mobile ? ButtonGroup : 'div'"
-      :aria-labelledby="mobile ? headingId : undefined"
-    >
+    <component :is="mobile ? ButtonGroup : 'div'">
       <slot />
     </component>
   </section>

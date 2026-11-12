@@ -9,10 +9,12 @@ import { createServer } from 'vite';
 // 按目标平台使用真实构建模式运行共用更新设置。
 const directory = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-// 命令行只选择本次测试的平台和页面。
+// 通过构建模式和页面名称选择浏览器回归场景。
 const mode = process.argv[2] === 'mobile' ? 'mobile' : 'desktop';
+const pages = process.argv.slice(3);
+if (!pages.length) pages.push(`${mode}-update`);
 
-// 更新测试独立于已运行的桌面程序，不覆盖其可执行文件。
+// 浏览器测试独立于已运行的桌面程序，不覆盖其可执行文件。
 const vite = await createServer({
   root: directory,
   mode,
@@ -48,7 +50,7 @@ const call = async (
     method,
     headers: { 'content-type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(10000),
+    signal: AbortSignal.timeout(30000),
   });
   const result: unknown = await response.json();
 
@@ -82,6 +84,7 @@ try {
     capabilities: {
       alwaysMatch: {
         browserName: 'MicrosoftEdge',
+        pageLoadStrategy: 'eager',
         'ms:edgeOptions': {
           args: [
             '--headless=new',
@@ -102,36 +105,41 @@ try {
   );
   session = browser.sessionId;
 
-  await call(`/session/${session}/url`, {
-    url: `http://127.0.0.1:5182/tests/browser/${mode}-update.html`,
-  });
-
-  // 测试页面串行覆盖检查、下载、签名失败、安装重试与自动检查。
-  const deadline = Date.now() + 60000;
-
-  while (true) {
-    // 只返回最终测试状态，失败文案包含对应断言。
-    const result = await call(`/session/${session}/execute/sync`, {
-      script:
-        "return { state: document.documentElement.dataset.result, message: document.querySelector('#status')?.textContent };",
-      args: [],
+  for (const page of pages) {
+    await call(`/session/${session}/url`, {
+      url: `http://127.0.0.1:5182/tests/browser/${page}.html`,
     });
 
-    assert(
-      result &&
-        typeof result === 'object' &&
-        'state' in result &&
-        'message' in result,
-    );
-    assert.notEqual(result.state, 'failed', String(result.message));
+    // 等待当前页面的交互断言完成。
+    const deadline = Date.now() + 60000;
 
-    if (result.state === 'passed') {
-      console.log(result.message);
-      break;
+    while (true) {
+      // 只返回最终测试状态，失败文案包含对应断言。
+      const result = await call(`/session/${session}/execute/sync`, {
+        script:
+          "return { state: document.documentElement.dataset.result, message: document.querySelector('#status')?.textContent };",
+        args: [],
+      });
+
+      assert(
+        result &&
+          typeof result === 'object' &&
+          'state' in result &&
+          'message' in result,
+      );
+      assert.notEqual(result.state, 'failed', String(result.message));
+
+      if (result.state === 'passed') {
+        console.log(page + '：' + result.message);
+        break;
+      }
+
+      assert(
+        Date.now() < deadline,
+        `浏览器测试超时：${String(result.message)}`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
-
-    assert(Date.now() < deadline, `更新测试超时：${String(result.message)}`);
-    await new Promise((resolve) => setTimeout(resolve, 100));
   }
 } finally {
   if (session) {

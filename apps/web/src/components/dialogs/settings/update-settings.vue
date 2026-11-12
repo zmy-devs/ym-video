@@ -4,7 +4,6 @@
       <span id="settings-mobile-auto-update">自动更新</span>
       <SwitchRoot
         :model-value="update.autoUpdate"
-        aria-labelledby="settings-mobile-auto-update"
         class="h-5 w-9 shrink-0 rounded-full border border-transparent bg-input transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=checked]:bg-primary"
         @update:model-value="update.setAutoUpdate"
       >

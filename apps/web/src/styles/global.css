@@ -1,8 +1,15 @@
 @import '@ym-video/ui/styles.css';
 
+@theme inline {
+  --spacing-title-bar: var(--title-bar-height);
+  --spacing-mobile-safe-top: var(--mobile-safe-top);
+  --spacing-mobile-safe-bottom: var(--mobile-safe-bottom);
+  --spacing-mobile-header: var(--mobile-header-height);
+  --spacing-mobile-navigation: calc(5.625rem + var(--mobile-safe-bottom));
+}
+
 :root {
   --title-bar-height: 0px;
-  --desktop-title-bar-height: 0px;
   --mobile-safe-top: env(safe-area-inset-top, 0px);
   --mobile-safe-bottom: env(safe-area-inset-bottom, 0px);
   --mobile-header-height: calc(56px + var(--mobile-safe-top));
@@ -20,10 +27,9 @@
 
 :root:has(.desktop-title-bar, .login-title-bar) {
   --title-bar-height: 40px;
-  --desktop-title-bar-height: var(--title-bar-height);
 }
 
-.desktop-title-bar {
+@utility desktop-title-bar {
   height: var(--title-bar-height);
   background-color: var(--sidebar);
   touch-action: none;
@@ -33,60 +39,24 @@
   padding-top: var(--title-bar-height);
 }
 
-.mobile-safe-top {
-  padding-top: var(--mobile-safe-top);
-}
-
-.mobile-safe-bottom {
-  padding-bottom: var(--mobile-safe-bottom);
-}
-
-.mobile-navigation-space {
-  padding-top: var(--mobile-header-height);
-  padding-bottom: calc(5.625rem + var(--mobile-safe-bottom));
-}
-
-.mobile-navigation {
+@utility mobile-navigation {
   padding-bottom: calc(8px + var(--mobile-safe-bottom));
   background: linear-gradient(to top, var(--background), transparent);
-}
-
-/* 暗色底栏让海报直接透过磨砂控件，保留内容本身的颜色。 */
-.dark .mobile-navigation {
-  background: none;
+  @variant dark {
+    background: none;
+  }
 }
 
 /* 移动端保留滚动能力，只隐藏滚动条轨道与滑块。 */
-.mobile-shell,
-.mobile-shell * {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.mobile-shell::-webkit-scrollbar,
-.mobile-shell *::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
-}
-
-.mobile-shell [data-slot='scroll-area-scrollbar'] {
-  display: none;
-}
-
-.mobile-page-enter-active,
-.mobile-page-leave-active {
-  transition:
-    opacity 180ms ease,
-    transform 180ms ease;
-}
-
-.mobile-page-enter-from {
-  opacity: 0;
-  transform: translateX(16px);
-}
-
-.mobile-page-leave-to {
-  opacity: 0;
-  transform: translateX(-16px);
+@utility mobile-shell {
+  &,
+  & * {
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+  & [data-slot='scroll-area-scrollbar'] {
+    display: none;
+  }
 }

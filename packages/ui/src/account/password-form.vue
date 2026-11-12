@@ -19,10 +19,6 @@
           :autocomplete="field.autocomplete"
           :placeholder="field.placeholder"
           :disabled="!!pending"
-          :aria-invalid="!!fieldErrors[field.key]"
-          :aria-describedby="
-            fieldErrors[field.key] ? `settings-${field.key}-error` : undefined
-          "
           @update:model-value="handleFieldChange(field.key)"
         />
       </Field>
@@ -31,7 +27,7 @@
       passwordError
     }}</FieldError>
     <DialogFooter>
-      <Button aria-label="保存密码" type="submit" :disabled="!!pending">
+      <Button type="submit" :disabled="!!pending">
         <LoaderCircle v-if="pending === 'password'" class="animate-spin" />
         {{ pending === 'password' ? '保存中…' : '保存' }}
       </Button>

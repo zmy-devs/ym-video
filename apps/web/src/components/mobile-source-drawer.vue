@@ -3,7 +3,6 @@
     v-if="editing"
     v-model="selected"
     orientation="vertical"
-    aria-label="选择要删除的播放源"
     class="grid gap-6 px-4 pt-2 pb-[calc(1.5rem+var(--mobile-safe-bottom))]"
   >
     <SettingsGroup title="我的播放源" mobile>
@@ -22,7 +21,6 @@
               source.name
             }}</span>
             <span
-              aria-hidden="true"
               class="flex size-5 shrink-0 items-center justify-center rounded-sm border border-input group-data-[state=checked]/source:border-primary group-data-[state=checked]/source:bg-primary group-data-[state=checked]/source:text-primary-foreground"
             >
               <CheckboxIndicator as-child>
@@ -34,7 +32,6 @@
         <Button
           variant="ghost"
           size="icon"
-          :aria-label="`编辑播放源：${source.name}`"
           class="absolute top-1/2 right-12 -translate-y-1/2"
           @click="emit('edit', source.id)"
         >
@@ -53,7 +50,6 @@
     v-else
     :model-value="library.selected"
     orientation="vertical"
-    aria-label="播放源"
     class="grid gap-6 px-4 pt-2 pb-[calc(1.5rem+var(--mobile-safe-bottom))]"
     @update:model-value="emit('select', $event)"
   >
@@ -69,7 +65,6 @@
             source.name
           }}</span>
           <span
-            aria-hidden="true"
             class="flex size-5 shrink-0 items-center justify-center rounded-full border border-input group-data-[state=checked]/source:border-primary"
           >
             <RadioGroupIndicator class="size-2.5 rounded-full bg-primary" />
@@ -94,7 +89,6 @@
             source.name
           }}</span>
           <span
-            aria-hidden="true"
             class="flex size-5 shrink-0 items-center justify-center rounded-full border border-input group-data-[state=checked]/source:border-primary"
           >
             <RadioGroupIndicator class="size-2.5 rounded-full bg-primary" />

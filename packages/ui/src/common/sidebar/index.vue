@@ -11,12 +11,7 @@
             class="min-w-0 flex items-center gap-2"
             :class="{ 'group-data-[collapsible=icon]:hidden': showTrigger }"
           >
-            <img
-              v-if="image"
-              :src="image"
-              alt=""
-              class="size-6 shrink-0 rounded-md"
-            />
+            <img v-if="image" :src="image" class="size-6 shrink-0 rounded-md" />
             <span
               class="truncate px-2 text-sm font-semibold group-data-[collapsible=icon]:hidden"
             >

@@ -1,12 +1,5 @@
 <template>
   <header
-    v-if="isDesktop"
-    class="login-title-bar desktop-title-bar-standalone fixed inset-x-0 top-0 z-60 h-(--title-bar-height)"
+    class="login-title-bar desktop-title-bar-standalone fixed inset-x-0 top-0 z-60 h-title-bar"
   />
 </template>
-
-<script setup lang="ts">
-import { isDesktop } from '@/platform';
-
-// 登录页只预留无装饰的窗口拖动区域。
-</script>

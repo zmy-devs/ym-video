@@ -39,7 +39,10 @@
             class="group-data-[collapsible=icon]:p-1.5!"
           >
             <RouterLink :to="playerPath(item)">
-              <MovieAvatar :src="item.pic" />
+              <MoviePoster
+                :src="item.pic"
+                class="size-5 shrink-0 rounded-full"
+              />
               <span>{{ item.name }}</span>
             </RouterLink>
           </SidebarItem>
@@ -123,7 +126,7 @@ import {
 import Tooltip from '@ym-video/ui/common/tooltip.vue';
 import HistoryMenuContent from '@/components/history-menu-content.vue';
 import SearchBox from '@/components/search-box.vue';
-import MovieAvatar from '@/components/movie-card/avatar.vue';
+import MoviePoster from '@/components/movie-card/poster.vue';
 import { useLibraryStore } from '@/stores/library-store';
 import { useHistoryStore } from '@/stores/history-store';
 import { playerPath } from '@/lib/movie';

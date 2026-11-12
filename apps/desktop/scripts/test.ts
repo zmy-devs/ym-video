@@ -412,9 +412,7 @@ const server = createServer(async (request, response) => {
   );
 });
 
-await new Promise<void>((resolve) =>
-  server.listen(8788, '127.0.0.1', resolve),
-);
+await new Promise<void>((resolve) => server.listen(8788, '127.0.0.1', resolve));
 
 // 承载浏览器回归页面的 Edge 驱动进程。
 const edge = spawn(driver, ['--port=9515'], { stdio: 'ignore' });
@@ -569,7 +567,7 @@ return !!document.querySelector('#login-heading');
       4444,
       nativeSession,
       `
-return document.querySelectorAll('[aria-label="关闭窗口"]').length;
+return document.querySelectorAll('[data-action="close"]').length;
 `,
     ),
     1,
@@ -688,7 +686,7 @@ setTimeout(() => {
     4444,
     nativeSession,
     `
-document.querySelector('[aria-label="最大化"]').click();
+document.querySelector('[data-action="maximize"]').click();
 `,
   );
 
@@ -697,7 +695,7 @@ document.querySelector('[aria-label="最大化"]').click();
       4444,
       nativeSession,
       `
-return !!document.querySelector('[aria-label="还原窗口"]');
+return !!document.querySelector('[data-action="restore"]');
 `,
     ),
   );

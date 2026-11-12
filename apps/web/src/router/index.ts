@@ -39,7 +39,7 @@ export const router = createRouter({
           path: 'search',
           name: 'search',
           component: isMobile
-            ? () => import('@/views/search.vue')
+            ? () => import('@/views/mobile-search.vue')
             : () => import('@/views/catalogue.vue'),
           meta: {
             title: '搜索',

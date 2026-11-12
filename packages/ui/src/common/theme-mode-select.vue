@@ -2,7 +2,6 @@
   <Select :model-value="model" @update:model-value="handleValue">
     <SelectTrigger
       :id="id"
-      aria-label="基础主题"
       :show-icon="!mobile"
       class="shrink-0"
       :class="

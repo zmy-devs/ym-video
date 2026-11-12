@@ -1,14 +1,12 @@
 <template>
   <div
     v-if="props.mobileActions && isMobile && entry"
+    ref="card"
     class="min-w-0"
     @click.capture="handleLongPressClick"
     @contextmenu.prevent
-    @pointercancel="cancelLongPress"
-    @pointerdown="startLongPress"
-    @pointerleave="cancelLongPress"
-    @pointermove="handleLongPressMove"
-    @pointerup="finishLongPress"
+    @pointerdown="handlePressStart"
+    @pointercancel="longPressCancelled = true"
   >
     <MovieCardContent
       :movie="movie"
@@ -31,7 +29,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
+import { onLongPress } from '@vueuse/core';
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -63,59 +62,30 @@ const sourceName = computed(
       ?.name || '未知播放源',
 );
 
-let longPressTimer: number | undefined;
-let longPressStart: { x: number; y: number } | undefined;
+// 移动卡片作为 VueUse 长按监听目标。
+const card = useTemplateRef('card');
+// 长按产生的下一次链接点击由卡片拦截。
 let longPressTriggered = false;
+// 系统滚动取消触点后丢弃尚未触发的长按。
+const longPressCancelled = ref(false);
 
-// 清理长按计时器，手指移动或离开卡片时取消触发。
-const cancelLongPress = () => {
-  if (longPressTimer !== undefined) {
-    window.clearTimeout(longPressTimer);
-    longPressTimer = undefined;
-  }
-  longPressStart = undefined;
-};
-
-// 释放触点后给链接点击一次机会，再清除长按标记。
-const finishLongPress = () => {
-  cancelLongPress();
-  if (longPressTriggered) {
-    window.setTimeout(() => {
-      longPressTriggered = false;
-    }, 300);
-  }
-};
-
-// 移动端按住卡片一段时间后打开操作抽屉。
-const startLongPress = (event: PointerEvent) => {
-  if (event.button !== 0) {
-    return;
-  }
-
-  cancelLongPress();
+// 新触点重新开始本轮长按判定。
+const handlePressStart = () => {
   longPressTriggered = false;
-  longPressStart = { x: event.clientX, y: event.clientY };
-  longPressTimer = window.setTimeout(() => {
-    longPressTriggered = true;
-    emits('long-press');
-  }, 450);
+  longPressCancelled.value = false;
 };
 
-// 保持滚动手势自然可用，移动距离超过阈值后取消长按。
-const handleLongPressMove = (event: PointerEvent) => {
-  if (!longPressStart) {
-    return;
-  }
-
-  if (
-    Math.hypot(
-      event.clientX - longPressStart.x,
-      event.clientY - longPressStart.y,
-    ) > 10
-  ) {
-    cancelLongPress();
-  }
-};
+// 移动容差与计时由 VueUse 管理，滚动超过 10px 自动取消。
+onLongPress(
+  card,
+  (event) => {
+    if (event.button === 0 && !longPressCancelled.value) {
+      longPressTriggered = true;
+      emits('long-press');
+    }
+  },
+  { delay: 450, distanceThreshold: 10 },
+);
 
 // 长按后阻止随后产生的链接点击，普通点击仍进入播放器。
 const handleLongPressClick = (event: MouseEvent) => {
@@ -127,6 +97,4 @@ const handleLongPressClick = (event: MouseEvent) => {
   event.stopPropagation();
   longPressTriggered = false;
 };
-
-onBeforeUnmount(cancelLongPress);
 </script>

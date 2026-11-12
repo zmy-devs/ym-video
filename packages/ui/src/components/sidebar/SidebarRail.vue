@@ -16,7 +16,6 @@ const { toggleSidebar } = useSidebar();
     <button
       data-sidebar="rail"
       data-slot="sidebar-rail"
-      aria-label="切换侧边栏"
       :tabindex="-1"
       :class="
         cn(

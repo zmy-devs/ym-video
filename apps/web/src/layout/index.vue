@@ -24,7 +24,6 @@
             v-if="pageRoute.meta.back"
             variant="outline"
             size="icon"
-            aria-label="返回"
             class="size-11 rounded-full !bg-white/60 text-foreground backdrop-blur-xl hover:text-foreground dark:!bg-card/60"
             @click="router.back()"
           >
@@ -57,12 +56,13 @@
       <main
         v-show="showMobileShell"
         class="min-h-0 flex-1 overflow-y-auto overscroll-contain"
-        :class="
-          pageRoute.name === 'settings' && 'pt-[var(--mobile-header-height)]'
-        "
+        :class="pageRoute.name === 'settings' && 'pt-mobile-header'"
       >
         <Transition
-          name="mobile-page"
+          enter-active-class="transition-[opacity,transform] duration-180 ease-out"
+          leave-active-class="transition-[opacity,transform] duration-180 ease-out"
+          enter-from-class="translate-x-4 opacity-0"
+          leave-to-class="-translate-x-4 opacity-0"
           mode="out-in"
           @after-enter="handlePageEnter"
         >
@@ -75,7 +75,10 @@
           </KeepAlive>
         </Transition>
         <Transition
-          name="mobile-page"
+          enter-active-class="transition-[opacity,transform] duration-180 ease-out"
+          leave-active-class="transition-[opacity,transform] duration-180 ease-out"
+          enter-from-class="translate-x-4 opacity-0"
+          leave-to-class="-translate-x-4 opacity-0"
           mode="out-in"
           @after-enter="handlePageEnter"
         >

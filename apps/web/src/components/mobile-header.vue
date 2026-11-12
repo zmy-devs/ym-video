@@ -1,12 +1,12 @@
 <template>
   <header
-    class="mobile-header mobile-safe-top relative flex h-[var(--mobile-header-height)] shrink-0 items-center border-b px-3"
+    class="mobile-header pt-mobile-safe-top relative flex h-mobile-header shrink-0 items-center border-b px-3"
     :class="[
       overlay && 'mobile-header-overlay',
       !overlay && scrolled ? 'border-border' : 'border-transparent',
     ]"
   >
-    <div class="mobile-header-blur" aria-hidden="true">
+    <div class="mobile-header-blur">
       <span
         v-for="layer in blurLayers"
         :key="layer.blur"

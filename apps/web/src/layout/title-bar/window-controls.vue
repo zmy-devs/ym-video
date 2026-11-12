@@ -2,20 +2,20 @@
   <div
     v-if="!fullscreen && !hidden"
     data-slot="window-controls"
-    class="h-(--title-bar-height) fixed top-0 right-0 z-70 flex"
+    class="h-title-bar fixed top-0 right-0 z-70 flex"
   >
     <button
       type="button"
-      aria-label="最小化"
       class="w-12 flex items-center justify-center hover:bg-foreground/10 focus-visible:outline-2 focus-visible:-outline-offset-2"
+      data-action="minimize"
       @click="handleMinimize"
     >
       <Minus class="size-4" />
     </button>
     <button
       type="button"
-      :aria-label="maximized ? '还原窗口' : '最大化'"
       class="w-12 flex items-center justify-center hover:bg-foreground/10 focus-visible:outline-2 focus-visible:-outline-offset-2"
+      :data-action="maximized ? 'restore' : 'maximize'"
       @click="handleMaximize"
     >
       <Copy v-if="maximized" class="size-3 rotate-90" />
@@ -23,8 +23,8 @@
     </button>
     <button
       type="button"
-      aria-label="关闭窗口"
       class="w-12 flex items-center justify-center hover:bg-[#e81123] hover:text-white focus-visible:outline-2 focus-visible:-outline-offset-2"
+      data-action="close"
       @click="handleClose"
     >
       <X class="size-4" />

@@ -3,14 +3,12 @@
     <img
       v-if="!loaded || failed || !src"
       :src="placeholder"
-      :alt="alt"
       class="absolute inset-0 size-full object-cover"
     />
     <img
       v-if="src && !failed"
       :key="src"
       :src="src"
-      :alt="alt"
       loading="lazy"
       referrerpolicy="no-referrer"
       class="size-full object-cover"
@@ -29,7 +27,6 @@ const placeholder = new URL('../../assets/default.avif', import.meta.url).href;
 // 统一管理影片海报的加载状态和占位图。
 const props = defineProps<{
   src: string;
-  alt: string;
   class?: HTMLAttributes['class'];
 }>();
 

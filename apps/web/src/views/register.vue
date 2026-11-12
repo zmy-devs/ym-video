@@ -2,9 +2,11 @@
   <main
     class="min-h-full flex items-center justify-center bg-muted p-4 dark:bg-background sm:p-8"
   >
-    <Card class="w-full max-w-md rounded-2xl px-6 py-8 shadow-xl sm:px-10 sm:py-10">
+    <Card
+      class="w-full max-w-md rounded-2xl px-6 py-8 shadow-xl sm:px-10 sm:py-10"
+    >
       <header class="mb-7 grid justify-items-center gap-3 text-center">
-        <img :src="icon" alt="" class="size-16 rounded-xl" />
+        <img :src="icon" class="size-16 rounded-xl" />
         <div class="grid gap-1.5">
           <h1 class="text-2xl font-bold">创建你的账号</h1>
           <p class="text-sm text-muted-foreground">请输入管理员提供的邀请码</p>
@@ -19,8 +21,18 @@
           {{ pending ? '正在退出…' : '退出当前账号并注册' }}
         </Button>
       </div>
-      <form v-else class="grid gap-5" novalidate @submit.prevent="handleRegister">
-        <Field id="register-code" v-slot="{ control }" label="邀请码" :error="fieldErrors.code">
+      <form
+        v-else
+        class="grid gap-5"
+        novalidate
+        @submit.prevent="handleRegister"
+      >
+        <Field
+          id="register-code"
+          v-slot="{ control }"
+          label="邀请码"
+          :error="fieldErrors.code"
+        >
           <Input
             v-bind="control"
             v-model="draft.code"
@@ -32,7 +44,12 @@
             @update:model-value="clearError('code')"
           />
         </Field>
-        <Field id="register-email" v-slot="{ control }" label="邮箱" :error="fieldErrors.email">
+        <Field
+          id="register-email"
+          v-slot="{ control }"
+          label="邮箱"
+          :error="fieldErrors.email"
+        >
           <Input
             v-bind="control"
             v-model="draft.email"
@@ -45,7 +62,12 @@
             @update:model-value="clearError('email')"
           />
         </Field>
-        <Field id="register-username" v-slot="{ control }" label="用户名" :error="fieldErrors.username">
+        <Field
+          id="register-username"
+          v-slot="{ control }"
+          label="用户名"
+          :error="fieldErrors.username"
+        >
           <Input
             v-bind="control"
             v-model="draft.username"
@@ -58,7 +80,12 @@
             @update:model-value="clearError('username')"
           />
         </Field>
-        <Field id="register-password" v-slot="{ control }" label="密码" :error="fieldErrors.password">
+        <Field
+          id="register-password"
+          v-slot="{ control }"
+          label="密码"
+          :error="fieldErrors.password"
+        >
           <Input
             v-bind="control"
             v-model="draft.password"
@@ -72,7 +99,12 @@
             @update:model-value="clearError('password')"
           />
         </Field>
-        <Field id="register-confirm" v-slot="{ control }" label="确认密码" :error="fieldErrors.confirmPassword">
+        <Field
+          id="register-confirm"
+          v-slot="{ control }"
+          label="确认密码"
+          :error="fieldErrors.confirmPassword"
+        >
           <Input
             v-bind="control"
             v-model="draft.confirmPassword"

@@ -13,7 +13,6 @@
     <slot />
     <div
       data-slot="pull-refresh-indicator"
-      aria-hidden="true"
       class="pointer-events-none absolute top-[var(--mobile-header-height)] left-1/2 z-40 -ml-5 flex size-10 items-center justify-center rounded-full bg-popover text-primary shadow-md"
       :class="
         !pulling &&

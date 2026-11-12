@@ -6,11 +6,7 @@
         选择对当前观看记录的操作
       </DrawerDescription>
       <div class="flex min-w-0 items-center gap-3">
-        <MoviePoster
-          :src="entry.pic"
-          :alt="`${entry.name}海报`"
-          class="size-14 shrink-0 rounded-xl"
-        />
+        <MoviePoster :src="entry.pic" class="size-14 shrink-0 rounded-xl" />
         <div class="min-w-0">
           <p class="truncate text-base font-semibold">{{ entry.name }}</p>
           <p class="mt-1 truncate text-sm text-muted-foreground">
@@ -21,7 +17,7 @@
     </template>
 
     <div v-if="entry" class="mx-auto w-full max-w-lg pb-4">
-      <ButtonGroup aria-label="历史记录操作" class="mx-4 w-auto">
+      <ButtonGroup class="mx-4 w-auto">
         <ButtonGroupItem as-child class="justify-start">
           <RouterLink :to="playerPath(entry)" @click="close">
             <Play class="size-5 text-foreground" />

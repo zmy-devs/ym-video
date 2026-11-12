@@ -5,7 +5,7 @@
         <DropdownMenuTrigger as-child>
           <Button
             id="account-menu-trigger"
-            :aria-label="`账号菜单：${userName}`"
+            :title="userName"
             :variant="props.mobile ? 'outline' : 'ghost'"
             size="icon-lg"
             :class="[

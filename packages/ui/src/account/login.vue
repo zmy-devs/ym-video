@@ -3,17 +3,11 @@
     class="login-page min-h-full flex items-center justify-center bg-muted p-4 dark:bg-background sm:p-8"
   >
     <Card
-      aria-labelledby="login-heading"
       class="w-full max-w-md rounded-2xl px-6 py-8 shadow-xl sm:px-10 sm:py-10"
     >
-      <form
-        class="grid gap-7"
-        :aria-busy="pending"
-        novalidate
-        @submit.prevent="handleSubmit"
-      >
+      <form class="grid gap-7" novalidate @submit.prevent="handleSubmit">
         <header class="grid justify-items-center gap-3 text-center">
-          <img :src="icon" alt="" class="size-16 rounded-xl" />
+          <img :src="icon" class="size-16 rounded-xl" />
           <div class="grid gap-1.5">
             <h1 id="login-heading" class="text-2xl font-bold">
               {{ loginTitle }}
@@ -107,9 +101,7 @@ const props = defineProps<{
 const isAdmin = computed(() => props.role === 'admin');
 
 // 登录文案根据当前应用的目标角色生成。
-const loginTitle = computed(() =>
-  isAdmin.value ? '管理员登录' : '欢迎回来',
-);
+const loginTitle = computed(() => (isAdmin.value ? '管理员登录' : '欢迎回来'));
 
 // 登录说明根据当前应用的使用场景生成。
 const loginDescription = computed(() =>

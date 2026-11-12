@@ -16,7 +16,6 @@
             type="text"
             role="searchbox"
             enterkeyhint="search"
-            aria-label="搜索影片"
             placeholder="搜索影片"
             autocomplete="off"
             class="h-full rounded-full text-base"
@@ -29,7 +28,6 @@
       <Button
         variant="outline"
         size="icon"
-        aria-label="关闭搜索"
         class="size-11 rounded-full !bg-white/60 text-foreground backdrop-blur-xl hover:text-foreground dark:!bg-card/60"
         @click="handleClose"
       >
@@ -38,7 +36,7 @@
     </MobileHeader>
     <ScrollArea class="min-h-0 flex-1" @scroll.capture="handleScroll">
       <div
-        class="mobile-safe-bottom flex flex-col px-4 pt-[var(--mobile-header-height)]"
+        class="pb-mobile-safe-bottom flex flex-col px-4 pt-mobile-header"
         :style="{ minHeight: `${viewport.height}px` }"
       >
         <CatalogueResults
@@ -51,11 +49,7 @@
           empty-label="没有找到相关影片"
           class="py-6"
         />
-        <section
-          v-else-if="recent.length"
-          aria-labelledby="search-history-heading"
-          class="flex flex-col gap-2 py-2"
-        >
+        <section v-else-if="recent.length" class="flex flex-col gap-2 py-2">
           <div class="flex items-center justify-between gap-3">
             <h2 id="search-history-heading" class="text-lg font-semibold">
               最近搜索
@@ -63,7 +57,6 @@
             <Button
               variant="ghost"
               size="icon"
-              aria-label="清空搜索历史"
               class="size-5 rounded-full text-muted-foreground"
               @click="handleClear"
             >

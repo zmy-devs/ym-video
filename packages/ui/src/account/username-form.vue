@@ -16,10 +16,6 @@
         autocomplete="username"
         placeholder="请输入用户名"
         :disabled="!!pending"
-        :aria-invalid="!!fieldErrors.username"
-        :aria-describedby="
-          fieldErrors.username ? 'settings-username-error' : undefined
-        "
         @update:model-value="handleFieldChange"
       />
     </Field>
@@ -27,11 +23,7 @@
       usernameError
     }}</FieldError>
     <DialogFooter>
-      <Button
-        aria-label="保存用户名"
-        type="submit"
-        :disabled="!!pending || !usernameChanged"
-      >
+      <Button type="submit" :disabled="!!pending || !usernameChanged">
         <LoaderCircle v-if="pending === 'username'" class="animate-spin" />
         {{ pending === 'username' ? '保存中…' : '保存' }}
       </Button>

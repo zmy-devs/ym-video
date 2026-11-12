@@ -134,7 +134,7 @@ const mount = async () => {
     () =>
       document
         .getElementById('account-menu-trigger')
-        ?.getAttribute('aria-label')
+        ?.getAttribute('title')
         ?.includes('settings_user') === true,
   );
 
@@ -207,8 +207,7 @@ const submit = async (text: string) => {
       '[data-slot="dialog-content"] button',
     ),
   ].find(
-    (item) =>
-      (item.getAttribute('aria-label') ?? item.textContent?.trim()) === text,
+    (item) => (item.getAttribute('title') ?? item.textContent?.trim()) === text,
   );
   assert(button && !button.disabled, `按钮不可用：${text}`);
   button?.click();
@@ -273,7 +272,7 @@ const run = async () => {
   const fixture = await mount();
   try {
     assert(
-      !document.querySelector('button[aria-label="设置"]'),
+      !document.querySelector('button[title="设置"]'),
       '侧栏不应有独立设置按钮',
     );
     await openSettings();
@@ -336,7 +335,7 @@ const run = async () => {
     selectTab('账号');
     await until(() => !!document.getElementById('settings-username'));
     const usernameSave = document.querySelector<HTMLButtonElement>(
-      'button[aria-label="保存用户名"]',
+      '[data-slot="dialog-content"] button[type="submit"]',
     );
     assert(usernameSave?.disabled === true, '未修改时保留保存按钮并禁用');
     usernameSave?.click();
@@ -353,7 +352,7 @@ const run = async () => {
     await nextTick();
     assert(usernameSave?.disabled === true, '恢复原用户名时禁用保存按钮');
     fill('settings-username', 'ab');
-    await submit('保存用户名');
+    await submit('保存');
     assert(
       document
         .getElementById('settings-username')
@@ -363,7 +362,7 @@ const run = async () => {
     );
     assert(!fixture.requests.length, '校验失败不能写入');
     fill('settings-username', 'taken_user');
-    await submit('保存用户名');
+    await submit('保存');
     await until(
       () =>
         document
@@ -371,12 +370,12 @@ const run = async () => {
           ?.textContent?.includes('已被使用') === true,
     );
     fill('settings-username', 'Renamed.User');
-    await submit('保存用户名');
+    await submit('保存');
     await until(
       () =>
         document
           .getElementById('account-menu-trigger')
-          ?.getAttribute('aria-label')
+          ?.getAttribute('title')
           ?.includes('renamed.user') === true,
     );
     assert(
@@ -445,7 +444,7 @@ const run = async () => {
 
     fixture.hold();
     fill('settings-username', 'pending_user');
-    await submit('保存用户名');
+    await submit('保存');
     await until(
       () => fixture.requests.at(-1)?.body.username === 'pending_user',
     );

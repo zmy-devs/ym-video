@@ -36,7 +36,6 @@
         <MoviePoster
           v-if="entry && !mobile"
           :src="entry.pic"
-          alt=""
           class="size-5 shrink-0 rounded-full"
         />
         <Skeleton

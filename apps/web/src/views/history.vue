@@ -1,5 +1,5 @@
 <template>
-  <PullRefresh
+  <MobilePullRefresh
     class="flex h-full flex-col"
     :disabled="!isMobile || !active || !history.loaded"
     :refresh="handleSync"
@@ -22,14 +22,14 @@
         label="还没有观看记录"
         description="开始播放后，会在这里记住你的进度"
         class="min-h-0 flex-1"
-        :class="isMobile && 'mobile-navigation-space'"
+        :class="isMobile && 'pt-mobile-header pb-mobile-navigation'"
       />
     </template>
     <ScrollArea v-else class="min-h-0 flex-1" @scroll.capture="handleScroll">
       <div
         data-slot="catalogue-page"
         class="mx-auto w-full max-w-[1400px] px-4 sm:px-10 sm:py-8"
-        :class="isMobile && 'mobile-navigation-space mt-4'"
+        :class="isMobile && 'pt-mobile-header pb-mobile-navigation mt-4'"
       >
         <div
           v-if="!isMobile || history.syncStatus === 'error'"
@@ -73,8 +73,11 @@
         </div>
       </div>
     </ScrollArea>
-    <HistoryActionDrawer v-model:open="actionOpen" :entry="selectedEntry" />
-  </PullRefresh>
+    <MobileHistoryActionDrawer
+      v-model:open="actionOpen"
+      :entry="selectedEntry"
+    />
+  </MobilePullRefresh>
 </template>
 
 <script setup lang="ts">
@@ -85,8 +88,8 @@ import { ScrollArea } from '@ym-video/ui/components/scroll-area';
 import { Button } from '@ym-video/ui/components/button';
 import MovieCard from '@/components/movie-card/index.vue';
 import MovieGridSkeleton from '@/components/movie-grid-skeleton.vue';
-import HistoryActionDrawer from '@/components/history-action-drawer.vue';
-import PullRefresh from '@/components/pull-refresh.vue';
+import MobileHistoryActionDrawer from '@/components/mobile-history-action-drawer.vue';
+import MobilePullRefresh from '@/components/mobile-pull-refresh.vue';
 import { useHistoryStore } from '@/stores/history-store';
 import { groupHistory } from '@/lib/history';
 import Empty from '@ym-video/ui/common/empty.vue';

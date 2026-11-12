@@ -1,5 +1,5 @@
 <template>
-  <div :aria-busy="status === 'loading' || loading">
+  <div>
     <MovieGridSkeleton
       v-if="!movies.length && (loading || status === 'loading')"
     />

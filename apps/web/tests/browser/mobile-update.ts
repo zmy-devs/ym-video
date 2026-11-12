@@ -237,7 +237,7 @@ const run = async () => {
 
   // 实际移动设置页的开关可用，并立即检查与保存偏好。
   const autoUpdateSwitch = fixture.querySelector(
-    '[role="switch"][aria-labelledby="settings-mobile-auto-update"]',
+    '#settings-mobile-auto-update + button',
   );
 
   if (!(autoUpdateSwitch instanceof HTMLButtonElement)) {

@@ -1,7 +1,6 @@
 <template>
   <nav
     class="mobile-navigation fixed inset-x-0 bottom-0 z-40 flex items-end justify-between gap-2 px-4"
-    aria-label="主导航"
   >
     <Button
       as-child
@@ -9,7 +8,7 @@
       size="icon"
       class="size-[58px] rounded-full !bg-white/60 backdrop-blur-xl dark:!bg-card/60"
     >
-      <RouterLink id="search-trigger" to="/search" aria-label="搜索影片">
+      <RouterLink id="search-trigger" to="/search">
         <Search class="size-6" />
       </RouterLink>
     </Button>
@@ -19,7 +18,6 @@
       size="sm"
       class="grid h-[58px] min-w-0 flex-1 grid-cols-3 items-center gap-1 rounded-full border border-border !bg-white/60 p-1 text-foreground shadow-xs backdrop-blur-xl dark:!bg-card/60"
       role="group"
-      aria-label="页面导航"
     >
       <RouterLink
         v-for="item in pages"
@@ -29,7 +27,6 @@
         :class="
           route.name === item.name && 'bg-muted/60 text-foreground shadow-xs'
         "
-        :aria-current="route.name === item.name ? 'page' : undefined"
       >
         <component :is="item.icon" class="size-6 shrink-0" />
         <span class="max-w-full truncate text-[10px] leading-3">{{

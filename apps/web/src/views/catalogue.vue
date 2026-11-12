@@ -1,5 +1,5 @@
 <template>
-  <PullRefresh
+  <MobilePullRefresh
     class="h-full"
     :disabled="!isMobile || !active || loading"
     :refresh="handleRefresh"
@@ -9,7 +9,7 @@
         data-slot="catalogue-page"
         :class="[
           'mx-auto w-full max-w-[1400px]',
-          isMobile && 'mobile-navigation-space px-4',
+          isMobile && 'pt-mobile-header pb-mobile-navigation px-4',
           isMobile && !isOverview && 'mt-4',
           !isMobile && 'px-10 py-8',
         ]"
@@ -103,7 +103,7 @@
         </section>
       </div>
     </ScrollArea>
-  </PullRefresh>
+  </MobilePullRefresh>
 </template>
 
 <script setup lang="ts">
@@ -115,7 +115,7 @@ import MovieCard from '@/components/movie-card/index.vue';
 import WelcomeGreeting from '../components/greeting.vue';
 import CatalogueResults from '@/components/catalogue-results.vue';
 import MobileCategoryNavigation from '@/components/mobile-category-navigation.vue';
-import PullRefresh from '@/components/pull-refresh.vue';
+import MobilePullRefresh from '@/components/mobile-pull-refresh.vue';
 import { useLibraryStore } from '@/stores/library-store';
 import { useHistoryStore } from '@/stores/history-store';
 import { useCachedScroll } from '@/composables/use-cached-scroll';
