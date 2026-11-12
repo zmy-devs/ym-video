@@ -1,6 +1,6 @@
 # ym-video Android 壳
 
-Android Tauri 工程只维护原生窗口、Android 权限、移动设备插件和 APK 发布脚本。页面与业务逻辑统一来自 `apps/web`。
+Android Tauri 工程只维护原生窗口、Android 权限、移动设备插件和 APK 构建脚本。页面与业务逻辑统一来自 `apps/web`。
 
 ## 开发
 
@@ -23,13 +23,13 @@ pnpm build:android
 pnpm release:android
 ```
 
-构建 ARM64 APK 前，在 `apps/mobile/.env` 配置 Android 签名密钥。移动端原生能力由 `packages/mobile-controls` 提供，包括状态栏图标样式、亮度、横屏、沉浸模式和保持屏幕常亮。
+构建 ARM64 APK 前，在根 `.env` 配置 Android 签名密钥。移动端原生能力由 `packages/mobile-controls` 提供，包括状态栏图标样式、亮度、横屏、沉浸模式和保持屏幕常亮。
 
 ## 应用内更新
 
 设置页共用检查更新、自动检查、下载进度和版本说明。APK 使用官方 `tauri-plugin-upload` 下载到应用缓存，用户点击“安装更新”后，由 `tauri-plugin-android-installer` 申请安装未知应用权限并打开系统安装器。返回应用后可以再次安装已下载的 APK。
 
-`pnpm build:android` 生成 APK 和 `dist/android.json`。`pnpm release:android` 上传版本 APK 后，将清单发布到 Gitee 的 `latest-android` 标签，客户端固定读取 `https://gitee.com/zmy-devs/ym-video/releases/download/latest-android/android.json`。Windows 使用独立的 `latest` 标签。
+`pnpm build:android` 生成 APK 和根 `dist/android.json`。`pnpm release:android` 上传版本 APK 后，将清单发布到 Gitee 的 `latest-android` 标签，客户端固定读取 `https://gitee.com/zmy-devs/ym-video/releases/download/latest-android/android.json`。Windows 使用独立的 `latest` 标签。
 
 清单包含 `version`、`notes` 和 `url`，其中 `url` 为当前版本的 Gitee ARM64 APK 直链。应用升级必须保持包名、签名证书一致，并递增版本号与 Android `versionCode`。系统安装界面需要用户确认；插件只报告安装器是否打开，应用重启后读取实际安装版本。
 

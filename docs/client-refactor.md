@@ -8,7 +8,7 @@
 └── Android Tauri 壳
 ```
 
-`apps/web` 保留为统一客户端前端源码。Windows 和 Android 共用路由、页面、Pinia store、播放器、账号和历史逻辑；两个 Tauri 工程分别负责原生窗口、平台权限、设备能力和发布。
+`apps/web` 保留为统一客户端前端源码。Windows 和 Android 共用路由、页面、Pinia store、播放器、账号和历史逻辑；两个 Tauri 工程分别负责原生窗口、平台权限、设备能力和构建。
 
 ## 平台常量
 
@@ -22,7 +22,7 @@
 
 目录资源不经过 API Worker。内置播放源保存在 `apps/web/src/lib/built-in-sources.ts`，目录解析和请求由 `apps/web/src/lib`、`apps/web/src/services` 维护，自定义播放源保存在本机存储中。
 
-播放器界面和媒体控制位于 `apps/web/src/components/player`、`apps/web/src/composables/player`。电影卡片、海报、问候和本机历史队列由 Web 直接维护；`packages/ui`、`packages/account` 保留 Web/Admin 共用能力，`packages/history` 保留客户端/API 共用的数据契约和合并规则。
+播放器位于 `apps/web/src/components/player/`，内部按 components、composables、services、utils 和类型组织。电影卡片、海报、问候和本机历史队列由 Web 直接维护；`packages/ui`、`packages/account` 保留 Web/Admin 共用能力，`packages/history` 保留客户端/API 共用的数据契约和合并规则。
 
 ## 邀请注册
 

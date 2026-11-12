@@ -23,11 +23,13 @@ pnpm --filter @ym-video/web run build:mobile
 
 ## 源码职责
 
-- `src/components/player`、`src/composables/player`：播放器界面、媒体控制、快捷键和手势。
+- `src/components/player/`：播放器入口，以及内部 components、composables、services、utils 和类型。
 - `src/components/movie-card`、`src/components/greeting.vue`：影片卡片、海报和问候。
-- `src/lib`：影片解析、分类、内置播放源、问候规则和 HLS 清单处理。
-- `src/services`：目录请求、媒体加载、本机历史队列和云端历史同步。
-- `src/types.ts`、`src/types/player.ts`：客户端业务类型和播放器契约。
+- `src/lib`：影片解析、分类、内置播放源、问候规则。
+- `src/services`：目录请求、本机历史队列和云端历史同步。
+- `src/schemas/`：表单和本地存储的 Zod 契约。
+- `src/map/`：按更新、历史业务组织的状态文案。
+- `src/types.ts`、`src/components/player/types.ts`：客户端业务类型和播放器契约。
 
 基础 UI、主题和账号界面由 `@ym-video/ui` 提供，账号客户端由 `@ym-video/account` 提供；`@ym-video/history` 与 API 共用数据契约和合并规则。
 
@@ -36,3 +38,7 @@ pnpm --filter @ym-video/web run build:mobile
 账号和观看历史通过 API Worker 请求；目录、搜索、播放源和视频资源由 Tauri 原生网络核心直接请求第三方资源源。
 
 Vite 开发服务只作为 Tauri WebView 的本地页面宿主，发布产物由 `apps/desktop` 和 `apps/mobile` 分别打包。
+
+## 验证
+
+`pnpm --filter @ym-video/web run test` 运行规则与数据契约测试；`pnpm --filter @ym-video/web run test:browser:mobile` 覆盖移动更新、播放源表单、长按与下拉刷新。浏览器回归需要 `CARGO_HOME/bin/msedgedriver.exe` 与本机 Edge 版本匹配。

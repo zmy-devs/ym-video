@@ -24,18 +24,18 @@ Windows 播放器对所有 HTTPS 片源的证书过期错误按会话放行，�
 
 ## 检查与构建
 
-所有命令在仓库根目录执行。桌面构建、测试和发布脚本使用 TypeScript，通过 tsx 运行，并纳入类型检查。
+所有命令在仓库根目录执行。桌面构建、测试及根 `scripts/` 发布脚本使用 TypeScript，通过 tsx 运行，并纳入类型检查。
 
 Windows 回归测试使用 `cargo install tauri-driver --locked` 安装驱动，将匹配 WebView2 版本的 `msedgedriver.exe` 放入 `CARGO_HOME/bin`，并准备 FFmpeg。测试使用本地 5180 和 8788 端口。
 
-| 命令                                          | 用途                                             |
-| --------------------------------------------- | ------------------------------------------------ |
-| `pnpm typecheck:desktop`                      | TypeScript 与 Rust 类型检查                      |
-| `pnpm test:desktop`                           | Rust 测试、浏览器回归与 Windows WebDriver 验证   |
-| `pnpm --filter @ym-video/desktop test:update` | Windows 更新设置、任务与原生签名回归测试         |
-| `pnpm build:desktop`                          | 构建内置 Web 页面和 Windows 可执行文件           |
-| `pnpm build:win`                              | 构建 NSIS 安装包及更新签名，汇总到桌面 dist 目录 |
-| `pnpm start`                                  | 运行已构建的 release 可执行文件                  |
+| 命令                                          | 用途                                           |
+| --------------------------------------------- | ---------------------------------------------- |
+| `pnpm typecheck:desktop`                      | TypeScript 与 Rust 类型检查                    |
+| `pnpm test:desktop`                           | Rust 测试、浏览器回归与 Windows WebDriver 验证 |
+| `pnpm --filter @ym-video/desktop test:update` | Windows 更新设置、任务与原生签名回归测试       |
+| `pnpm build:desktop`                          | 构建内置 Web 页面和 Windows 可执行文件         |
+| `pnpm build:win`                              | 构建 NSIS 安装包及更新签名，汇总到根 dist 目录 |
+| `pnpm start`                                  | 运行已构建的 release 可执行文件                |
 
 NSIS 安装程序会在需要时安装 WebView2 Runtime。`build:win` 生成 `ym-video-<version>-windows-x64.exe`、对应 `.sig` 和 `latest.json`。
 
@@ -49,7 +49,7 @@ NSIS 安装程序会在需要时安装 WebView2 Runtime。`build:win` 生成 `ym
 
 首次构建安装包时自动在用户目录 `.tauri/ym-video.key` 生成更新签名密钥，公钥保存在 Tauri 配置中。请备份私钥，后续版本使用同一密钥。
 
-将 `.env.development.example` 复制为同目录 `.env.development`，填写发布令牌。可通过 `TAURI_SIGNING_PRIVATE_KEY` 指定私钥文件，通过 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` 提供密码。构建脚本把本地配置传入 Tauri 子进程。
+将根 `.env.example` 复制为根 `.env`，填写发布令牌。可通过 `TAURI_SIGNING_PRIVATE_KEY` 指定私钥文件，通过 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` 提供密码。构建脚本把本地配置传入 Tauri 子进程。
 
 ```sh
 pnpm build:win

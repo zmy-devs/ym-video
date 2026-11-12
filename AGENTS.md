@@ -52,10 +52,10 @@
 ## 架构边界
 
 - 影视页面、目录业务、播放器和历史客户端统一由 `apps/web` 维护，使用 Vue 3、shadcn-vue 和 Tailwind CSS 4，通过 desktop、mobile 构建模式适配 PC 与移动界面。管理页面归独立的 `apps/admin`，面向 PC 浏览器。
-- Windows 桌面端和 Android 移动端分别使用 Tauri 2 与 Rust。`apps/desktop`、`apps/mobile` 维护各自原生壳、平台能力和发布脚本，共用 `apps/web` 的前端源码。
+- Windows 桌面端和 Android 移动端分别使用 Tauri 2 与 Rust。`apps/desktop`、`apps/mobile` 维护各自原生壳、平台能力和构建脚本，共用 `apps/web` 的前端源码。
 - API 使用 Fastify、Better Auth、Drizzle 和 D1，与 Web、Admin 的独立构建产物一同部署在 Cloudflare Workers，管理入口为 `/admin/`。
 - `packages/ui` 维护 Web 与 Admin 共用的 Vue 基础组件、通用封装、主题和账号界面；`packages/account` 维护共享账号客户端、导航、请求重试和校验；`packages/history` 维护客户端与 API 共用的影片和历史数据契约、校验与合并规则；`packages/native-core` 提供共享 Rust 网络与会话服务；`packages/mobile-controls` 提供 Android 设备能力。
-- 目录解析、内置播放源、播放器、电影卡片、问候和历史本机队列归 `apps/web`；仅将存在跨应用调用方的代码放入 `packages/`。应用各自维护平台配置、资源和发布脚本。
+- 目录解析、内置播放源、播放器、电影卡片、问候和历史本机队列归 `apps/web`；仅将存在跨应用调用方的代码放入 `packages/`。应用各自维护平台配置、资源和构建脚本；根 `scripts/` 维护统一发布与本地环境加载，发布配置使用根 `.env`，安装包与更新清单汇总到根 `dist/`，版本说明使用 `docs/release-note.md`。
 - 应用之间通过 `@ym-video/*` 共享包与 `workspace:*` 依赖协作，不通过相对路径引用其他应用源码。
 
 ## 实现与验证

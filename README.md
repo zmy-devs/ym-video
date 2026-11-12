@@ -7,10 +7,13 @@
 ```text
 apps/
   web/                         统一客户端页面、目录、播放器和历史客户端
-  desktop/                     Windows Tauri 壳、原生能力和发布脚本
-  mobile/                      Android Tauri 壳、设备插件和 APK 脚本
+  desktop/                     Windows Tauri 壳、原生能力和构建脚本
+  mobile/                      Android Tauri 壳、设备插件和构建脚本
   admin/                       Admin 管理页面
   api/                         账号、历史、Admin 和邀请码 API
+scripts/                       GitHub/Gitee 统一发布与本地环境加载
+docs/                          架构与共用版本更新说明
+dist/                          Windows/Android 安装包及更新清单
 packages/
   ui/                          Web/Admin 共用基础组件、主题和账号界面
   account/                     账号客户端、校验和注册契约
@@ -69,6 +72,12 @@ pnpm dev:admin
 | `pnpm build:api`       | 构建 API Worker 和 Admin 静态资源            |
 | `pnpm release:desktop` | 发布 Windows 安装包和更新清单                |
 | `pnpm release:android` | 发布 Android APK                             |
+
+## 客户端发布
+
+将根 `.env.example` 复制为 `.env`，填写 GitHub/Gitee 发布令牌及原生签名配置。`pnpm build:win` 和 `pnpm build:android` 将安装包及更新清单汇总到根 `dist/`，版本说明统一维护在 `docs/release-note.md`。
+
+`pnpm release:check` 校验两端产物；`pnpm release` 将两端产物一同上传到 GitHub 和 Gitee。也可通过 `pnpm release:desktop`、`pnpm release:android` 单独发布。
 
 ## 账号与资源请求
 
