@@ -229,15 +229,17 @@ export const useLibraryStore = defineStore('library', () => {
     signal: AbortSignal,
   ) => saveSource(name, value, signal, id);
 
-  // 删除当前源时回退到平台默认源，再刷新分类与持久化选择。
-  const removeSource = async (id: string) => {
-    if (!customSources.value.some((item) => item.id === id)) {
+  // 批量删除本机源，当前源被删除时切回默认源并刷新一次分类。
+  const removeSources = async (ids: string[]) => {
+    if (ids.some((id) => !customSources.value.some((item) => item.id === id))) {
       throw new Error('该播放源已不存在');
     }
 
-    customSources.value = customSources.value.filter((item) => item.id !== id);
+    customSources.value = customSources.value.filter(
+      (item) => !ids.includes(item.id),
+    );
 
-    if (selected.value === id) {
+    if (ids.includes(selected.value)) {
       selected.value =
         sources.value.find((item) => item.id === 'baofeng')?.id ??
         sources.value[0]?.id ??
@@ -270,6 +272,6 @@ export const useLibraryStore = defineStore('library', () => {
     loadCategories,
     addSource,
     updateSource,
-    removeSource,
+    removeSources,
   };
 });

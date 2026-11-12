@@ -60,11 +60,15 @@ const props = withDefaults(
 );
 
 // 查询变化时复用目录请求的取消与重置行为。
-const { movies, status, error, page, pageCount, load } = useCatalogue(() => ({
-  source: props.source,
-  category: props.category,
-  keyword: props.keyword,
-}));
+const { movies, status, error, page, pageCount, load, refresh } = useCatalogue(
+  () => ({
+    source: props.source,
+    category: props.category,
+    keyword: props.keyword,
+  }),
+);
+
+defineExpose({ refresh });
 
 // 列表底部同时作为滚动加载观察点和手动加载入口。
 const loadMoreTarget = useTemplateRef<HTMLElement>('loadMoreTarget');

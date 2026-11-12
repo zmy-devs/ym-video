@@ -35,7 +35,7 @@ export const useCatalogue = (
   let controller: AbortController | undefined;
 
   // 成功后才推进页码，失败后重试同一页。
-  const load = async (reset = false) => {
+  const load = async (reset = false, preserve = false) => {
     if (!current.source) {
       controller?.abort();
       movies.value = [];
@@ -62,7 +62,7 @@ export const useCatalogue = (
 
     // 本次请求使用的查询条件。
     const query = { ...current, source: current.source };
-    if (reset) {
+    if (reset && !preserve) {
       movies.value = [];
       page.value = 0;
       pageCount.value = 0;
@@ -95,9 +95,13 @@ export const useCatalogue = (
       status.value = 'ready';
     } catch (cause) {
       if (!signal.aborted) {
-        status.value = 'error';
-        error.value =
-          cause instanceof Error ? cause.message : '加载失败，请重试';
+        status.value = preserve && movies.value.length ? 'ready' : 'error';
+        error.value = '';
+
+        if (!preserve || !movies.value.length) {
+          error.value =
+            cause instanceof Error ? cause.message : '加载失败，请重试';
+        }
         errorToast('影片加载失败，请刷新后重试', {
           id: 'catalogue-load-error',
         });
@@ -106,13 +110,14 @@ export const useCatalogue = (
   };
 
   // 查询条件变化时旧页数据立即失效。
-  watchImmediate(
-    input,
-    (value) => {
-      current = value;
-      load(true);
-    },
-  );
+  watchImmediate(input, (value) => {
+    current = value;
+    load(true);
+  });
   onScopeDispose(() => controller?.abort());
-  return { movies, status, error, page, pageCount, load };
+
+  // 手动刷新保留当前内容，成功后用第一页替换列表与分页信息。
+  const refresh = () => load(true, true);
+
+  return { movies, status, error, page, pageCount, load, refresh };
 };

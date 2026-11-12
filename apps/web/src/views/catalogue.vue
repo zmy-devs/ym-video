@@ -1,100 +1,113 @@
 <template>
-  <ScrollArea class="h-full" @scroll.capture="handleScroll">
-    <div
-      data-slot="catalogue-page"
-      :class="[
-        'mx-auto w-full max-w-[1400px]',
-        isMobile && 'mobile-navigation-space px-4',
-        isMobile && !isOverview && 'mt-4',
-        !isMobile && 'px-10 py-8',
-      ]"
-    >
-      <WelcomeGreeting
-        v-if="isOverview && !isMobile"
-        class="mb-10 py-6 text-center text-3xl font-semibold tracking-tight"
-      />
-      <WelcomeGreeting
-        v-else-if="isMobile && isOverview"
-        prefix="Hi"
-        name=""
-        class="mb-6 text-3xl leading-10 font-semibold"
-      />
-      <MobileCategoryNavigation v-if="isMobile && isCategory" />
-      <section v-if="isOverview && history.entries.length" class="mb-10">
-        <h2 id="continue-heading" class="mb-5 text-lg font-semibold sm:text-xl">
-          最近观看
-        </h2>
-        <div v-if="isMobile" class="-mx-4 w-[calc(100%+2rem)] overflow-x-auto">
+  <PullRefresh
+    class="h-full"
+    :disabled="!isMobile || !active || loading"
+    :refresh="handleRefresh"
+  >
+    <ScrollArea class="h-full" @scroll.capture="handleScroll">
+      <div
+        data-slot="catalogue-page"
+        :class="[
+          'mx-auto w-full max-w-[1400px]',
+          isMobile && 'mobile-navigation-space px-4',
+          isMobile && !isOverview && 'mt-4',
+          !isMobile && 'px-10 py-8',
+        ]"
+      >
+        <WelcomeGreeting
+          v-if="isOverview && !isMobile"
+          class="mb-10 py-6 text-center text-3xl font-semibold tracking-tight"
+        />
+        <WelcomeGreeting
+          v-else-if="isMobile && isOverview"
+          prefix="Hi"
+          name=""
+          class="mb-6 text-3xl leading-10 font-semibold"
+        />
+        <MobileCategoryNavigation v-if="isMobile && isCategory" />
+        <section v-if="isOverview && history.entries.length" class="mb-10">
+          <h2
+            id="continue-heading"
+            class="mb-5 text-lg font-semibold sm:text-xl"
+          >
+            最近观看
+          </h2>
           <div
-            class="flex w-max min-w-full snap-x snap-mandatory gap-3 px-4 pb-2"
+            v-if="isMobile"
+            class="-mx-4 w-[calc(100%+2rem)] overflow-x-auto"
           >
             <div
-              v-for="item in history.entries.slice(0, 6)"
-              :key="item.id"
-              class="w-[40vw] shrink-0 snap-start"
+              class="flex w-max min-w-full snap-x snap-mandatory gap-3 px-4 pb-2"
             >
-              <MovieCard :movie="item" :entry="item" />
+              <div
+                v-for="item in history.entries.slice(0, 6)"
+                :key="item.id"
+                class="w-[40vw] shrink-0 snap-start"
+              >
+                <MovieCard :movie="item" :entry="item" />
+              </div>
             </div>
           </div>
-        </div>
-        <div
-          v-else
-          class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-5 gap-y-7"
-        >
-          <MovieCard
-            v-for="item in history.entries.slice(0, 6)"
-            :key="item.id"
-            :movie="item"
-            :entry="item"
-          />
-        </div>
-      </section>
-      <section>
-        <h2
-          v-if="isOverview"
-          id="catalogue-heading"
-          class="mb-5 text-lg font-semibold sm:text-xl"
-        >
-          {{ title }}
-        </h2>
-        <h1
-          v-else-if="!isMobile"
-          id="catalogue-heading"
-          class="mb-6 text-xl font-semibold tracking-tight sm:text-2xl"
-        >
-          {{ title }}
-        </h1>
-        <div
-          v-if="hasFilters && !isMobile"
-          class="mb-6 flex gap-2 overflow-x-auto"
-        >
-          <Button
-            v-for="item in selection.children"
-            :key="item.id"
-            size="sm"
-            :variant="selection.selectedId === item.id ? 'default' : 'outline'"
-            @click="handleCategoryChange(item.id)"
+          <div
+            v-else
+            class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-5 gap-y-7"
           >
-            {{ item.name }}
-          </Button>
-        </div>
-        <CatalogueResults
-          :source="query.source"
-          :category="query.category"
-          :keyword="query.keyword"
-          :active="active"
-          :loading="
-            library.status === 'loading' || library.categoryStatus === 'loading'
-          "
-          :empty-label="isSearch ? '没有找到相关影片' : '暂无影片'"
-        />
-      </section>
-    </div>
-  </ScrollArea>
+            <MovieCard
+              v-for="item in history.entries.slice(0, 6)"
+              :key="item.id"
+              :movie="item"
+              :entry="item"
+            />
+          </div>
+        </section>
+        <section>
+          <h2
+            v-if="isOverview"
+            id="catalogue-heading"
+            class="mb-5 text-lg font-semibold sm:text-xl"
+          >
+            {{ title }}
+          </h2>
+          <h1
+            v-else-if="!isMobile"
+            id="catalogue-heading"
+            class="mb-6 text-xl font-semibold tracking-tight sm:text-2xl"
+          >
+            {{ title }}
+          </h1>
+          <div
+            v-if="hasFilters && !isMobile"
+            class="mb-6 flex gap-2 overflow-x-auto"
+          >
+            <Button
+              v-for="item in selection.children"
+              :key="item.id"
+              size="sm"
+              :variant="
+                selection.selectedId === item.id ? 'default' : 'outline'
+              "
+              @click="handleCategoryChange(item.id)"
+            >
+              {{ item.name }}
+            </Button>
+          </div>
+          <CatalogueResults
+            ref="results"
+            :source="query.source"
+            :category="query.category"
+            :keyword="query.keyword"
+            :active="active"
+            :loading="loading"
+            :empty-label="isSearch ? '没有找到相关影片' : '暂无影片'"
+          />
+        </section>
+      </div>
+    </ScrollArea>
+  </PullRefresh>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, nextTick, useTemplateRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Button } from '@ym-video/ui/components/button';
 import { ScrollArea } from '@ym-video/ui/components/scroll-area';
@@ -102,6 +115,7 @@ import MovieCard from '@/components/movie-card/index.vue';
 import WelcomeGreeting from '../components/greeting.vue';
 import CatalogueResults from '@/components/catalogue-results.vue';
 import MobileCategoryNavigation from '@/components/mobile-category-navigation.vue';
+import PullRefresh from '@/components/pull-refresh.vue';
 import { useLibraryStore } from '@/stores/library-store';
 import { useHistoryStore } from '@/stores/history-store';
 import { useCachedScroll } from '@/composables/use-cached-scroll';
@@ -122,6 +136,31 @@ const library = useLibraryStore();
 
 // 当前设备的观看历史。
 const history = useHistoryStore();
+
+// 目录初始化和分类切换期间暂停下拉操作。
+const loading = computed(
+  () => library.status === 'loading' || library.categoryStatus === 'loading',
+);
+
+// 目录列表向页面提供保留内容的刷新入口。
+const results =
+  useTemplateRef<InstanceType<typeof CatalogueResults>>('results');
+
+// 刷新当前筛选的影片，概览同时拉取最近观看记录。
+const handleRefresh = async () => {
+  if (library.status === 'error') {
+    await library.init();
+    await nextTick();
+  } else if (library.categoryStatus === 'error') {
+    await library.loadCategories();
+    await nextTick();
+  }
+
+  await Promise.all([
+    results.value?.refresh(),
+    isOverview.value && history.refresh(),
+  ]);
+};
 
 // 当前是否展示概览。
 const isOverview = computed(() => route.path === '/overview');

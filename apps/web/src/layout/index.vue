@@ -36,7 +36,7 @@
             :class="[
               pageRoute.meta.standalone ? 'text-lg' : 'text-3xl',
               scrolled && !pageRoute.meta.standalone
-                ? 'text-white'
+                ? 'text-white text-shadow-[0_1px_2px_rgb(0_0_0/0.25)]'
                 : 'text-foreground',
             ]"
           >
@@ -146,6 +146,8 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import { ArrowLeft } from 'lucide-vue-next';
 import { useEventListener, useOnline, watchImmediate } from '@vueuse/core';
+import { onBackButtonPress } from '@tauri-apps/api/app';
+import { isTauri } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Button } from '@ym-video/ui/components/button';
 import AccountMenu from '@ym-video/ui/account/menu.vue';
@@ -172,15 +174,50 @@ const route = useRoute();
 // 页面按钮负责导航，标题栏只承载插槽内容。
 const router = useRouter();
 
+// 带返回入口的移动页面统一接管原生返回，离开后交回系统处理。
+watch(
+  () => isMobile && route.meta.back,
+  (enabled, _previous, onCleanup) => {
+    if (!enabled || !isTauri()) {
+      return;
+    }
+
+    // 返回键先沿用组件库的 Escape 行为收起最上层弹层。
+    const listener = onBackButtonPress(() => {
+      if (
+        document.querySelector('[data-dismissable-layer][data-state="open"]')
+      ) {
+        window.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: 'Escape',
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+        return;
+      }
+
+      router.back();
+    });
+
+    listener.catch(console.error);
+
+    onCleanup(() => {
+      listener.then((handle) => handle.unregister()).catch(console.error);
+    });
+  },
+  { immediate: true },
+);
+
 const library = useLibraryStore();
 const history = useHistoryStore();
 const theme = useThemeStore();
 const online = useOnline();
 
-// 页面滚动与缓存位置共同驱动标题栏。
+// 页面滚动与缓存位置共同驱动标题栏外观。
 const { scrolled, handleScroll, handlePageEnter } = useMobileScroll();
 
-// 所有移动页面按内容位置和应用主题同步状态栏。
+// 内容滚动后使用暗色状态栏外观，顶部跟随应用主题。
 useMobileStatusBar(scrolled);
 
 // 移动端主页面的缓存持续保留，播放、登录和注册页面单独显示。
@@ -194,7 +231,7 @@ const showMobileShell = computed(
 // 底部分类入口返回最近访问的分类地址。
 const categoryPath = ref('/category');
 
-// 分类、历史页显示随滚动切换颜色的顶部标题。
+// 分类、历史页在内容滚动后显示带阴影的白色标题。
 const showMobileTitle = computed(
   () => isMobile && (route.name === 'category' || route.name === 'history'),
 );
@@ -263,8 +300,17 @@ const historyRetryTimer = setInterval(() => {
 }, 30_000);
 onUnmounted(() => clearInterval(historyRetryTimer));
 
-// 冒泡阶段阻止浏览器菜单，保留应用自己的右键菜单。
-useEventListener(document, 'contextmenu', (event) => event.preventDefault());
+// 输入框保留系统编辑菜单，其他区域使用应用自己的右键菜单。
+useEventListener(document, 'contextmenu', (event) => {
+  if (
+    event.target instanceof Element &&
+    event.target.closest('input, textarea')
+  ) {
+    return;
+  }
+
+  event.preventDefault();
+});
 
 const loading = computed(
   () =>

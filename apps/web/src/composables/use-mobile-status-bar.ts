@@ -7,10 +7,10 @@ import { useThemeStore } from '@/stores/theme-store';
 
 // 当前显示的页面或抽屉决定状态栏样式，关闭后恢复外层状态。
 const useStatusBarHeaders = createSharedComposable(() => {
-  // 按显示顺序保留页面标题栏的滚动状态。
+  // 按显示顺序保留页面和抽屉的状态栏外观。
   const headers = ref(new Map<symbol, boolean>());
 
-  // 内容位于顶部时跟随应用当前主题。
+  // 状态栏的基础外观跟随应用当前主题。
   const theme = useThemeStore();
 
   watchImmediate(

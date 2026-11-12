@@ -21,26 +21,14 @@
     </template>
 
     <div v-if="entry" class="mx-auto w-full max-w-lg pb-4">
-      <div
-        role="group"
-        aria-label="历史记录操作"
-        class="mx-4 overflow-hidden rounded-2xl border border-border"
-      >
-        <Button
-          as-child
-          variant="outline"
-          class="!bg-white min-h-14 w-full justify-start gap-3 rounded-none border-0 border-b border-border px-4 text-sm font-medium dark:!bg-card"
-        >
+      <ButtonGroup aria-label="历史记录操作" class="mx-4 w-auto">
+        <ButtonGroupItem as-child class="justify-start">
           <RouterLink :to="playerPath(entry)" @click="close">
             <Play class="size-5 text-foreground" />
             <span>继续播放</span>
           </RouterLink>
-        </Button>
-        <Button
-          as-child
-          variant="outline"
-          class="!bg-white min-h-14 w-full justify-start gap-3 rounded-none border-0 border-b border-border px-4 text-sm font-medium dark:!bg-card"
-        >
+        </ButtonGroupItem>
+        <ButtonGroupItem as-child class="justify-start">
           <RouterLink
             :to="{ path: playerPath(entry), query: { restart: '1' } }"
             @click="close"
@@ -48,17 +36,15 @@
             <RotateCcw class="size-5 text-foreground" />
             <span>本集从头播放</span>
           </RouterLink>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          class="!bg-white min-h-14 w-full justify-start gap-3 rounded-none border-0 px-4 text-left text-sm font-medium text-destructive dark:!bg-card"
+        </ButtonGroupItem>
+        <ButtonGroupItem
+          class="justify-start text-left text-destructive hover:text-destructive"
           @click="remove"
         >
           <Trash2 class="size-5" />
           <span>删除</span>
-        </Button>
-      </div>
+        </ButtonGroupItem>
+      </ButtonGroup>
     </div>
   </Drawer>
 </template>
@@ -68,7 +54,8 @@ import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { Play, RotateCcw, Trash2 } from 'lucide-vue-next';
 import { DrawerDescription, DrawerTitle } from '@ym-video/ui/components/drawer';
-import { Button } from '@ym-video/ui/components/button';
+import ButtonGroup from '@ym-video/ui/common/button-group.vue';
+import ButtonGroupItem from '@ym-video/ui/common/button-group-item.vue';
 import MoviePoster from './movie-card/poster.vue';
 import Drawer from '@ym-video/ui/common/drawer.vue';
 import { useMobileDrawer } from '@/composables/use-mobile-drawer';

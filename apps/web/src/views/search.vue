@@ -38,7 +38,8 @@
     </MobileHeader>
     <ScrollArea class="min-h-0 flex-1" @scroll.capture="handleScroll">
       <div
-        class="mobile-safe-bottom flex min-h-[100svh] flex-col px-4 pt-[var(--mobile-header-height)]"
+        class="mobile-safe-bottom flex flex-col px-4 pt-[var(--mobile-header-height)]"
+        :style="{ minHeight: `${viewport.height}px` }"
       >
         <CatalogueResults
           v-if="submitted"
@@ -74,7 +75,7 @@
               <Badge
                 as-child
                 variant="secondary"
-                class="max-w-full bg-accent px-3 py-1.5 hover:bg-accent/80"
+                class="min-w-12 max-w-full bg-accent px-3 py-1.5 hover:bg-accent/80"
               >
                 <button type="button" @click="handleSearch(item)">
                   <span class="truncate">{{ item }}</span>
@@ -97,6 +98,7 @@
 
 <script setup lang="ts">
 import { onActivated, onScopeDispose, ref, useTemplateRef, watch } from 'vue';
+import { useEventListener } from '@vueuse/core';
 import { useRouter } from 'vue-router';
 import { PackageOpen, Search, Trash2, X } from 'lucide-vue-next';
 import { Badge } from '@ym-video/ui/components/badge';
@@ -136,6 +138,12 @@ const { recent, remember, clear } = useSearchHistory();
 // 页面元素用于聚焦输入框及重置结果滚动位置。
 const page = useTemplateRef<HTMLDivElement>('page');
 
+// 页面初始尺寸作为布局基准，软键盘开合保留空状态的位置。
+const viewport = ref({
+  width: window.innerWidth,
+  height: window.innerHeight,
+});
+
 // 提交后在当前搜索框下展示结果，并收起软键盘。
 const handleSearch = (value: string) => {
   // 去除输入首尾空格后执行查询。
@@ -157,6 +165,18 @@ watch(keyword, (value) => {
   if (!value.trim()) {
     submitted.value = '';
   }
+});
+
+// 屏幕旋转改变宽度时同步内容高度。
+useEventListener(window, 'resize', () => {
+  if (window.innerWidth === viewport.value.width) {
+    return;
+  }
+
+  viewport.value = {
+    width: window.innerWidth,
+    height: window.innerHeight,
+  };
 });
 
 // 首次进入搜索时聚焦输入，返回结果列表时保留浏览状态。

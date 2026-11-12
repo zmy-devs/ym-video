@@ -6,7 +6,19 @@
     @close-auto-focus="handleMenuCloseFocus"
   >
     <template #header>
-      <DrawerClose as-child>
+      <Button
+        v-if="library.customSources.length"
+        variant="outline"
+        size="icon"
+        :aria-label="editing ? '退出编辑' : '编辑播放源'"
+        :aria-pressed="editing"
+        class="absolute top-4 left-4 size-11 rounded-full !bg-white text-black backdrop-blur-xl hover:text-black dark:!bg-card/60 dark:text-foreground dark:hover:text-foreground"
+        @click="handleToggleEdit"
+      >
+        <X v-if="editing" class="size-5" />
+        <SquarePen v-else class="size-5" />
+      </Button>
+      <DrawerClose v-else as-child>
         <Button
           variant="outline"
           size="icon"
@@ -36,6 +48,18 @@
     </template>
     <template #actions>
       <Button
+        v-if="editing"
+        variant="destructive"
+        size="icon"
+        aria-label="删除选中的播放源"
+        :disabled="!selectedIds.length"
+        class="size-11 rounded-full"
+        @click="handleDeleteSelected"
+      >
+        <Trash2 class="size-[22px]" />
+      </Button>
+      <Button
+        v-else
         size="icon"
         aria-label="添加播放源"
         class="size-11 rounded-full"
@@ -45,9 +69,10 @@
       </Button>
     </template>
     <SourceDrawer
+      v-model:selected="selectedIds"
+      :editing="editing"
       @select="handleSource"
       @edit="handleEdit"
-      @delete="handleDelete"
     />
   </Drawer>
   <DropdownMenu v-else v-model:open="open">
@@ -137,9 +162,17 @@
 </template>
 
 <script setup lang="ts">
-import { onScopeDispose, ref, useTemplateRef } from 'vue';
+import { onScopeDispose, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Check, Pencil, Plus, Server, Trash2, X } from 'lucide-vue-next';
+import {
+  Check,
+  Pencil,
+  Plus,
+  Server,
+  SquarePen,
+  Trash2,
+  X,
+} from 'lucide-vue-next';
 import { DrawerTrigger } from 'reka-ui';
 import { Button } from '@ym-video/ui/components/button';
 import {
@@ -184,7 +217,21 @@ const trigger = useTemplateRef<{ $el: HTMLElement; focus: () => void }>(
 // 播放源选择面板的显示状态。
 const open = ref(false);
 
+// 移动端编辑模式独立于当前使用的播放源。
+const editing = ref(false);
+
+// 多选列表只保存本次准备删除的自定义源 ID。
+const selectedIds = ref<string[]>([]);
+
 useMobileDrawer(open);
+
+// 抽屉每次重新打开时从播放源选择模式开始。
+watch(open, (value) => {
+  if (!value) {
+    editing.value = false;
+    selectedIds.value = [];
+  }
+});
 
 // 全局弹窗和确认框关闭后恢复到触发入口。
 onScopeDispose(
@@ -212,6 +259,34 @@ const handleEdit = (id?: string) => {
   eventBus.emit('source:show', id);
 };
 
+// 进入和退出编辑时清空待删除项，保留当前播放源。
+const handleToggleEdit = () => {
+  editing.value = !editing.value;
+  selectedIds.value = [];
+};
+
+// 批量删除勾选的本机源，当前源被删除时清理旧分类路由。
+const handleDeleteSelected = async () => {
+  // 固定本次删除目标并立即清空勾选，避免重复提交。
+  const ids = selectedIds.value;
+
+  // 删除前记录当前源是否在本次勾选范围内。
+  const wasSelected = ids.includes(library.selected);
+
+  selectedIds.value = [];
+  await library.removeSources(ids);
+
+  if (!library.customSources.length) {
+    editing.value = false;
+  }
+
+  successToast('播放源已删除');
+
+  if (wasSelected && route.path.startsWith('/category')) {
+    await router.push('/category');
+  }
+};
+
 // 先确认再删除，当前源删除后同步清理旧分类路由。
 const handleDelete = (source: CustomSource) => {
   openingDialog = true;
@@ -224,7 +299,7 @@ const handleDelete = (source: CustomSource) => {
     onConfirm: async (signal) => {
       const wasSelected = library.selected === source.id;
 
-      await library.removeSource(source.id);
+      await library.removeSources([source.id]);
       signal.throwIfAborted();
       successToast('播放源已删除');
 

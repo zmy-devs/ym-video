@@ -26,14 +26,8 @@ export const UPDATE_ERROR_MESSAGE_MAP: Record<UpdateErrorType, string> = {
   install: '安装失败，请重试',
 };
 
-// 历史同步状态对应的列表标签。
+// 观看历史的同步状态。
 export type HistoryStatus = 'synced' | 'pending' | 'error';
-
-export const HISTORY_STATUS_MESSAGE_MAP: Record<HistoryStatus, string> = {
-  synced: '已同步',
-  pending: '待同步',
-  error: '同步失败',
-};
 
 // 历史同步错误集中映射为用户提示。
 import type { HistoryErrorType } from '@ym-video/history';
