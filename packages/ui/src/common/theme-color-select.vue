@@ -21,7 +21,7 @@
           themeColors[model].label
         }}</span>
       </SelectValue>
-      <ChevronsUpDown v-if="mobile" class="size-5 text-muted-foreground" />
+      <ChevronsUpDown v-if="mobile" class="size-5 stroke-muted-foreground" />
     </SelectTrigger>
     <SelectContent align="end" class="w-48">
       <SelectItem

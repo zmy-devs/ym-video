@@ -153,6 +153,10 @@
   * {
     @apply border-border outline-ring/50 font-normal select-none;
   }
+  input,
+  textarea {
+    @apply select-text;
+  }
   body {
     @apply bg-background text-foreground;
   }

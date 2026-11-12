@@ -16,6 +16,7 @@ interface SheetContentProps extends DialogContentProps {
   class?: HTMLAttributes['class'];
   side?: 'top' | 'right' | 'bottom' | 'left';
   portalContainer?: HTMLElement | null;
+  showOverlay?: boolean;
   showCloseButton?: boolean;
 }
 
@@ -25,6 +26,7 @@ defineOptions({
 
 const props = withDefaults(defineProps<SheetContentProps>(), {
   side: 'right',
+  showOverlay: true,
   showCloseButton: true,
 });
 const emits = defineEmits<DialogContentEmits>();
@@ -35,6 +37,7 @@ const delegatedProps = reactiveOmit(
   'class',
   'side',
   'portalContainer',
+  'showOverlay',
   'showCloseButton',
 );
 
@@ -43,7 +46,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
 
 <template>
   <DialogPortal :to="portalContainer ?? undefined">
-    <SheetOverlay />
+    <SheetOverlay v-if="showOverlay" />
     <DialogContent
       data-slot="sheet-content"
       :class="

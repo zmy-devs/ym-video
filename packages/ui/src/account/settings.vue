@@ -1,35 +1,23 @@
 <template>
   <SettingsGroup v-if="mobile" title="账号" mobile>
-    <Button
-      as="div"
-      variant="outline"
-      class="h-auto min-h-16 w-full justify-between gap-3 rounded-2xl !bg-white px-4 py-4 text-base font-normal shadow-none dark:!bg-card"
-    >
+    <ButtonGroupItem as="div">
       <span>邮箱</span>
       <span class="max-w-[65%] truncate text-sm text-muted-foreground">{{
         session.data?.user.email
       }}</span>
-    </Button>
-    <Button
-      variant="outline"
-      class="h-auto min-h-16 w-full justify-between gap-3 rounded-2xl !bg-white px-4 py-4 text-base font-normal shadow-none dark:!bg-card"
-      @click="handleEdit('username')"
-    >
+    </ButtonGroupItem>
+    <ButtonGroupItem @click="handleEdit('username')">
       <span>用户名</span>
       <span
         class="ml-auto max-w-[55%] truncate text-sm text-muted-foreground"
         >{{ session.data?.user.username }}</span
       >
-      <ChevronRight class="size-5 text-muted-foreground" />
-    </Button>
-    <Button
-      variant="outline"
-      class="h-auto min-h-16 w-full justify-between rounded-2xl !bg-white px-4 py-4 text-base font-normal shadow-none dark:!bg-card"
-      @click="handleEdit('password')"
-    >
+      <ChevronRight class="size-5 stroke-muted-foreground" />
+    </ButtonGroupItem>
+    <ButtonGroupItem @click="handleEdit('password')">
       <span>修改密码</span>
-      <ChevronRight class="size-5 text-muted-foreground" />
-    </Button>
+      <ChevronRight class="size-5 stroke-muted-foreground" />
+    </ButtonGroupItem>
   </SettingsGroup>
   <section v-else class="flex flex-col gap-8">
     <SettingsGroup title="账号信息">
@@ -73,7 +61,7 @@
       @interact-outside="handlePendingClose"
       @escape-key-down="handlePendingClose"
     >
-      <DialogHeader class="text-left">
+      <DialogHeader>
         <DialogTitle>{{
           editing === 'username' ? '修改用户名' : '修改密码'
         }}</DialogTitle>
@@ -103,6 +91,7 @@
 import { ref } from 'vue';
 import { ChevronRight } from 'lucide-vue-next';
 import { Button } from '@ym-video/ui/components/button';
+import ButtonGroupItem from '@ym-video/ui/common/button-group-item.vue';
 import {
   Dialog,
   DialogContent,

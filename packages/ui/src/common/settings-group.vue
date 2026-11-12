@@ -12,9 +12,7 @@
     </h2>
     <component
       :is="mobile ? ButtonGroup : 'div'"
-      :orientation="mobile ? 'vertical' : undefined"
       :aria-labelledby="mobile ? headingId : undefined"
-      :class="mobile && 'w-full min-w-0'"
     >
       <slot />
     </component>
@@ -23,7 +21,7 @@
 
 <script setup lang="ts">
 import { useId } from 'vue';
-import { ButtonGroup } from '@ym-video/ui/components/button-group';
+import ButtonGroup from './button-group.vue';
 
 // 设置分组在移动端使用竖向按钮组，桌面端沿用标题分区。
 defineProps<{ title: string; mobile?: boolean }>();

@@ -11,12 +11,18 @@ import {
 import { cn } from '@ym-video/ui/lib/utils';
 import { Toaster as Sonner } from 'vue-sonner';
 
-const props = defineProps<ToasterProps>();
+// 提示默认展示 2 秒，移动布局顶部不额外留白。
+const props = withDefaults(defineProps<ToasterProps>(), {
+  duration: 2000,
+  mobileOffset: () => ({ top: 0 }),
+});
 </script>
 
 <template>
   <Sonner
-    :class="cn('toaster group', props.class)"
+    :class="
+      cn('toaster group [&_[data-sonner-toast]]:rounded-full!', props.class)
+    "
     :style="{
       '--normal-bg': 'var(--popover)',
       '--normal-text': 'var(--popover-foreground)',
