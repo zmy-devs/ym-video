@@ -1,3 +1,4 @@
+import { loadEnvironment } from '../../../scripts/environment.js';
 import { execFileSync } from 'node:child_process';
 import {
   createReadStream,
@@ -11,6 +12,8 @@ import {
 import { createServer } from 'node:http';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+loadEnvironment();
 
 // 本地测试的 APK 和配置与正式发布产物分开保存。
 const directory = resolve(dirname(fileURLToPath(import.meta.url)), '..');

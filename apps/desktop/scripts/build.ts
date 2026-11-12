@@ -1,5 +1,7 @@
+import pngToIco from 'png-to-ico';
+import { loadEnvironment } from '../../../scripts/environment.js';
 import desktopConfig from '../src-tauri/tauri.conf.json' with { type: 'json' };
-import type { UpdateManifest } from './types.js';
+import type { UpdateManifest } from '../../../scripts/release-types.js';
 import { spawnSync } from 'node:child_process';
 import {
   existsSync,
@@ -19,15 +21,13 @@ const directory = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 // 工作区安装的 Tauri CLI 入口。
 const cli = join(directory, 'node_modules/@tauri-apps/cli/tauri.js');
 
-// 三端共用的应用图标源文件。
+// 客户端共用的应用图标源文件。
 const icon = join(directory, '../../assets/icon.png');
 
 // Tauri 所需的 Windows 图标生成在忽略的构建目录。
 const generatedIcons = join(directory, 'build/generated');
 
-if (existsSync(join(directory, '.env.development'))) {
-  process.loadEnvFile(join(directory, '.env.development'));
-}
+loadEnvironment();
 
 if (process.env.CARGO_HOME) {
   process.env.PATH =
@@ -52,6 +52,12 @@ const tauri = (args: string[]) => {
   }
 };
 
+// 直接将共用 PNG 转换为 Windows 所需的 ICO。
+const generateIcons = async () => {
+  mkdirSync(generatedIcons, { recursive: true });
+  writeFileSync(join(generatedIcons, 'icon.ico'), await pngToIco(icon));
+};
+
 // 命令行指定的桌面操作。
 const command = process.argv[2];
 
@@ -69,9 +75,9 @@ if (command === 'start') {
 
   process.exitCode = result.status ?? 1;
 } else if (command === 'icons') {
-  tauri(['icon', icon, '--output', generatedIcons]);
+  await generateIcons();
 } else {
-  tauri(['icon', icon, '--output', generatedIcons]);
+  await generateIcons();
 
   if (command === 'dev') {
     tauri(['dev']);
@@ -84,7 +90,9 @@ if (command === 'start') {
     const configuredKey = process.env.TAURI_SIGNING_PRIVATE_KEY;
 
     // 当前安装包使用的私钥文件。
-    const key = configuredKey || join(homedir(), '.tauri/ym-video.key');
+    const key = configuredKey
+      ? resolve(directory, '../..', configuredKey)
+      : join(homedir(), '.tauri/ym-video.key');
 
     if (!existsSync(key)) {
       if (configuredKey) {
@@ -159,7 +167,7 @@ if (command === 'start') {
     }
 
     // 对外分发的桌面产物目录。
-    const output = join(directory, 'dist');
+    const output = join(directory, '../../dist');
 
     mkdirSync(output, { recursive: true });
 
@@ -174,7 +182,10 @@ if (command === 'start') {
     );
 
     // 桌面应用的版本说明原文。
-    const notes = readFileSync(join(directory, 'docs/release-note.md'), 'utf8');
+    const notes = readFileSync(
+      join(directory, '../../docs/release-note.md'),
+      'utf8',
+    );
 
     // 当前版本在说明文档中的章节标题。
     const heading = '## ' + version;

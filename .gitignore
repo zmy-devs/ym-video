@@ -20,8 +20,6 @@ coverage/
 !**/.env.example
 !/apps/web/.env.desktop
 !/apps/web/.env.mobile
-!/apps/desktop/.env.development.example
-!/apps/mobile/.env.example
 .wrangler/
 /apps/api/worker-configuration.d.ts
 # Rust 与 Tauri 构建产物

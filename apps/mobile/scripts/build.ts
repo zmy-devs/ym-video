@@ -1,26 +1,24 @@
+import { loadEnvironment } from '../../../scripts/environment.js';
 import { spawnSync } from 'node:child_process';
 import {
   copyFileSync,
   existsSync,
   mkdirSync,
-  readdirSync,
   readFileSync,
   writeFileSync,
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Resolve the mobile workspace once so local builds and CI use the same paths.
+// 本地开发与构建统一使用移动端应用目录。
 const directory = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const cli = join(directory, 'node_modules/@tauri-apps/cli/tauri.js');
 const icon = join(directory, '../../assets/icon.png');
 const generatedIcons = join(directory, 'build/generated');
 
-if (existsSync(join(directory, '.env'))) {
-  process.loadEnvFile(join(directory, '.env'));
-}
+loadEnvironment();
 
-// Run Tauri commands with the selected Android host and signing environment.
+// 将 Android 设备与签名配置传入 Tauri 命令。
 const tauri = (args: string[]) => {
   const result = spawnSync(process.execPath, [cli, ...args], {
     cwd: directory,
@@ -35,24 +33,17 @@ const tauri = (args: string[]) => {
   }
 };
 
-// Generate platform icons and the Android Studio project when first needed.
+// 复用客户端 PNG，并按需创建 Android 工程。
 const prepareAndroid = () => {
-  tauri(['icon', icon, '--output', generatedIcons]);
+  mkdirSync(generatedIcons, { recursive: true });
+  copyFileSync(icon, join(generatedIcons, 'icon.png'));
   if (!existsSync(join(directory, 'src-tauri/gen/android/build.gradle.kts'))) {
     tauri(['android', 'init', '--ci']);
   }
-  const androidIcons = join(generatedIcons, 'android');
   const androidResources = join(
     directory,
     'src-tauri/gen/android/app/src/main/res',
   );
-  for (const folder of readdirSync(androidIcons)) {
-    const destination = join(androidResources, folder);
-    mkdirSync(destination, { recursive: true });
-    for (const file of readdirSync(join(androidIcons, folder))) {
-      copyFileSync(join(androidIcons, folder, file), join(destination, file));
-    }
-  }
   const drawable = join(androidResources, 'drawable');
   mkdirSync(drawable, { recursive: true });
   copyFileSync(icon, join(drawable, 'ym_video_icon.png'));
@@ -146,7 +137,7 @@ if (command === 'dev') {
   if (!keystorePath || signingValues.some((value) => !value)) {
     throw new Error('请配置 Android 签名密钥相关环境变量');
   }
-  const absoluteKeystorePath = resolve(keystorePath);
+  const absoluteKeystorePath = resolve(directory, '../..', keystorePath);
   if (!existsSync(absoluteKeystorePath)) {
     throw new Error('Android 签名密钥文件不存在');
   }
@@ -171,7 +162,7 @@ if (command === 'dev') {
   if (!existsSync(apk)) {
     throw new Error('缺少 Android APK');
   }
-  const output = join(directory, 'dist');
+  const output = join(directory, '../../dist');
   mkdirSync(output, { recursive: true });
   // 版本产物与更新清单共用固定的 APK 文件名。
   const filename = `ym-video-${desktopPackage.version}-android-arm64.apk`;
@@ -180,7 +171,7 @@ if (command === 'dev') {
 
   // 两端发布说明按版本共享，Android 更新入口单独发布。
   const notes = readFileSync(
-    join(directory, '../desktop/docs/release-note.md'),
+    join(directory, '../../docs/release-note.md'),
     'utf8',
   );
 

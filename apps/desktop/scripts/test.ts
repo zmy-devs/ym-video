@@ -1,3 +1,4 @@
+import { loadEnvironment } from '../../../scripts/environment.js';
 import desktopConfig from '../src-tauri/tauri.conf.json' with { type: 'json' };
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
@@ -7,6 +8,8 @@ import { existsSync, readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+
+loadEnvironment();
 
 // 桌面应用的根目录。
 const directory = resolve(dirname(fileURLToPath(import.meta.url)), '..');

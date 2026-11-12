@@ -5,11 +5,14 @@ import type {
   GithubRelease,
   GiteeRelease,
   GithubAsset,
-} from './types.js';
-import { readFile, stat } from 'node:fs/promises';
+} from './release-types.js';
+import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { dirname, join, basename } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadEnvironment } from './environment.js';
+
+loadEnvironment();
 
 // 发布前完整校验本地产物，再分别更新两个下载站点。
 const directory = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -22,99 +25,6 @@ const github = 'https://api.github.com/repos/' + repository;
 
 // Gitee Release API 的仓库地址。
 const gitee = 'https://gitee.com/api/v5/repos/' + repository;
-
-// Android shares the desktop repository and versioned release tag.
-const publishAndroid = async () => {
-  const pkg: { version: string } = JSON.parse(
-    await readFile(join(directory, 'package.json'), 'utf8'),
-  );
-  const filename = `ym-video-${pkg.version}-android-arm64.apk`;
-  const bytes = await readFile(join(directory, '../mobile/dist', filename));
-  if (!bytes.length) {
-    throw new Error('Android APK 为空');
-  }
-  const digest = (value: Uint8Array) =>
-    createHash('sha256').update(value).digest('hex');
-  // 构建产物中的清单必须与本次 APK 和应用版本一致。
-  const manifest: AndroidUpdateManifest = JSON.parse(
-    await readFile(join(directory, '../mobile/dist/android.json'), 'utf8'),
-  );
-
-  if (
-    manifest.version !== pkg.version ||
-    typeof manifest.notes !== 'string' ||
-    manifest.url !==
-      `https://gitee.com/${repository}/releases/download/v${pkg.version}/${filename}`
-  ) {
-    throw new Error('Android 更新清单与安装包不一致，请重新构建');
-  }
-
-  // GitHub Release 展示构建时生成的 Android 版本说明。
-  const body = manifest.notes;
-  const tag = `v${pkg.version}`;
-  const githubHeaders = {
-    Authorization: `Bearer ${process.env.GH_TOKEN}`,
-    Accept: 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28',
-  };
-  const lookup = await fetch(`${github}/releases/tags/${tag}`, {
-    headers: githubHeaders,
-  });
-  let release: GithubRelease;
-  if (lookup.status === 404) {
-    release = await requestJson<GithubRelease>(`${github}/releases`, {
-      method: 'POST',
-      headers: { ...githubHeaders, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        tag_name: tag,
-        name: pkg.version,
-        body,
-        draft: true,
-      }),
-    });
-  } else {
-    if (!lookup.ok) {
-      throw new Error('无法查询 GitHub Release');
-    }
-    release = (await lookup.json()) as GithubRelease;
-  }
-
-  const githubAssets = await requestJson<GithubAsset[]>(
-    `${github}/releases/${release.id}/assets`,
-    { headers: githubHeaders },
-  );
-  const githubAsset = githubAssets.find((asset) => asset.name === filename);
-  if (githubAsset) {
-    const remote = await request(
-      `${github}/releases/assets/${githubAsset.id}`,
-      {
-        headers: { ...githubHeaders, Accept: 'application/octet-stream' },
-      },
-    );
-    if (digest(Buffer.from(await remote.arrayBuffer())) !== digest(bytes)) {
-      throw new Error('同版本 Android APK 内容不同，请更新应用版本后发布');
-    }
-  } else {
-    await request(
-      `${release.upload_url.replace('{?name,label}', '')}?name=${encodeURIComponent(filename)}`,
-      {
-        method: 'POST',
-        headers: {
-          ...githubHeaders,
-          'content-type': 'application/vnd.android.package-archive',
-        },
-        body: Uint8Array.from(bytes),
-      },
-    );
-  }
-  await request(`${github}/releases/${release.id}`, {
-    method: 'PATCH',
-    headers: { ...githubHeaders, 'content-type': 'application/json' },
-    body: JSON.stringify({ draft: false, make_latest: 'true' }),
-  });
-
-  await publishGitee(manifest, [{ name: filename, bytes }]);
-};
 
 // 调用发布接口，统一处理超时与 HTTP 错误。
 const request = async (
@@ -149,7 +59,7 @@ const requestJson = async <T>(
 
 // 复用已校验的版本附件，再发布完整的更新清单。
 const publishGithub = async (
-  manifest: UpdateManifest,
+  manifest: UpdateManifest | AndroidUpdateManifest,
   files: ReleaseFile[],
 ) => {
   // 访问发布接口所需的身份和协议头。
@@ -236,7 +146,7 @@ const publishGithub = async (
   }
 
   await upload(
-    'latest.json',
+    'url' in manifest ? 'android.json' : 'latest.json',
     Buffer.from(JSON.stringify(manifest, null, 2)),
     'application/json',
   );
@@ -398,79 +308,86 @@ const publishGitee = async (
   );
 };
 
-// 校验本地产物后执行两个平台的发布任务。
-const main = async () => {
-  if (!process.env.GH_TOKEN || !process.env.GITEE_TOKEN) {
-    throw new Error('请配置 GH_TOKEN 和 GITEE_TOKEN');
-  }
-
-  if (process.argv[2] === 'android') {
-    await publishAndroid();
-    console.log('Android APK 已发布到主仓库 GitHub 与 Gitee Release');
-    return;
-  }
-
-  // 桌面 package.json 声明的版本信息。
-  const pkg: {
-    version: string;
-  } = JSON.parse(await readFile(join(directory, 'package.json'), 'utf8'));
-
-  // 供客户端读取的版本与签名清单。
-  const manifest: UpdateManifest = JSON.parse(
-    await readFile(join(directory, 'dist/latest.json'), 'utf8'),
+// 完整读取并校验平台产物，全部通过后才允许远程发布。
+const readRelease = async (target: 'desktop' | 'android') => {
+  const pkg: { version: string } = JSON.parse(
+    await readFile(join(directory, 'apps/desktop/package.json'), 'utf8'),
   );
-
-  if (manifest.version !== pkg.version) {
+  const android = target === 'android';
+  const name = android ? 'android.json' : 'latest.json';
+  const manifest: UpdateManifest | AndroidUpdateManifest = JSON.parse(
+    await readFile(join(directory, 'dist', name), 'utf8'),
+  );
+  if (manifest.version !== pkg.version || typeof manifest.notes !== 'string') {
     throw new Error('安装包版本与应用版本不一致');
   }
-
-  // Windows x64 对应的更新下载信息。
-  const platform = manifest.platforms['windows-x86_64'];
-
-  // 包含版本与平台信息的安装包名称。
-  const filename = basename(new URL(platform.url).pathname);
-
-  if (filename !== 'ym-video-' + pkg.version + '-windows-x64.exe') {
-    throw new Error('更新清单中的安装包名称不匹配');
+  const filename = `ym-video-${pkg.version}-${android ? 'android-arm64.apk' : 'windows-x64.exe'}`;
+  const url =
+    'url' in manifest ? manifest.url : manifest.platforms['windows-x86_64'].url;
+  const host = android ? 'gitee.com' : 'github.com';
+  if (
+    url !==
+    `https://${host}/${repository}/releases/download/v${pkg.version}/${filename}`
+  ) {
+    throw new Error('更新清单中的安装包地址不匹配');
   }
-
-  // 本次需要上传的安装包与签名。
   const files: ReleaseFile[] = [];
-
-  for (const name of [filename, filename + '.sig']) {
-    // 当前操作对应的文件或请求路径。
-    const path = join(directory, 'dist', name);
-
-    if (!(await stat(path)).size) {
+  for (const name of android ? [filename] : [filename, filename + '.sig']) {
+    const bytes = await readFile(join(directory, 'dist', name));
+    if (!bytes.length) {
       throw new Error('发布产物为空');
     }
-
-    files.push({ name, bytes: await readFile(path) });
+    files.push({ name, bytes });
   }
-
   if (
-    Buffer.from(files[1].bytes).toString('utf8').trim() !== platform.signature
+    'platforms' in manifest &&
+    Buffer.from(files[1].bytes).toString('utf8').trim() !==
+      manifest.platforms['windows-x86_64'].signature
   ) {
     throw new Error('更新清单签名与安装包签名不一致');
   }
+  return { manifest, files };
+};
 
-  // 两个平台各自上传完成后才切换该平台更新入口。
+// 共用一个发布入口，支持同时或单独发布 Windows 与 Android。
+const main = async () => {
+  const target = process.argv[2] ?? 'all';
+  if (!['all', 'desktop', 'android'].includes(target)) {
+    throw new Error('用法：pnpm release [all|desktop|android] [--check]');
+  }
+  const targets: ('desktop' | 'android')[] =
+    target === 'all'
+      ? ['desktop', 'android']
+      : [target as 'desktop' | 'android'];
+  const releases = await Promise.all(targets.map(readRelease));
+  if (process.argv.includes('--check')) {
+    console.log('发布产物校验通过：' + targets.join('、'));
+    return;
+  }
+  if (!process.env.GH_TOKEN || !process.env.GITEE_TOKEN) {
+    throw new Error('请配置 GH_TOKEN 和 GITEE_TOKEN');
+  }
+  // 同一站点按顺序上传两个平台，避免重复创建相同版本的 Release。
   const results = await Promise.allSettled([
-    publishGithub(manifest, files),
-    publishGitee(manifest, files),
+    (async () => {
+      for (const { manifest, files } of releases) {
+        await publishGithub(manifest, files);
+      }
+    })(),
+    (async () => {
+      for (const { manifest, files } of releases) {
+        await publishGitee(manifest, files);
+      }
+    })(),
   ]);
-
-  // 发布任务中需要报告的失败结果。
   const errors = results.filter((result) => result.status === 'rejected');
-
   if (errors.length) {
     throw new AggregateError(
       errors.map((result) => result.reason),
       '部分发布未完成，可重新运行发布命令',
     );
   }
-
-  console.log('Windows 版本已发布到 GitHub 与 Gitee');
+  console.log('安装包与更新清单已发布到 GitHub 与 Gitee');
 };
 
 main().catch((error) => {
