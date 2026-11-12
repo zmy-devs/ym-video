@@ -8,6 +8,7 @@
       </p>
       <div class="flex shrink-0 items-center gap-2">
         <PlayerEpisodeNavigation
+          v-if="hasEpisodes"
           :has-previous="hasPrevious"
           :has-next="hasNext"
           :container="container"

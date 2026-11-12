@@ -121,15 +121,18 @@ onMounted(() => {
   transform: translateZ(0);
 }
 
-/* 横竖屏统一按状态栏安全距离预留左右空间。 */
+/* 画面覆盖整个屏幕，控件按状态栏安全距离预留左右空间。 */
 .player-mobile {
   --player-safe-x: max(
     env(safe-area-inset-top, 0px),
     env(safe-area-inset-left, 0px),
     env(safe-area-inset-right, 0px)
   );
-  padding-inline: var(--player-safe-x);
   background-color: #000;
+}
+
+.player-mobile .player-overlay {
+  inset-inline: var(--player-safe-x);
 }
 
 .player-mobile :deep([data-slot='sheet-content']) {

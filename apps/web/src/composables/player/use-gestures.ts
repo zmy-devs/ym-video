@@ -11,7 +11,10 @@ export const useGestures = (
   scheduleHide: () => void,
 ) => {
   const gestureLabel = ref('');
+
+  // 保留用户调整后的画面缩放比例。
   const scale = ref(1);
+
   const suppressClick = ref(false);
   let start = { time: 0, volume: 1, brightness: 0.5 };
 
@@ -30,7 +33,10 @@ export const useGestures = (
   const adjustingVolume = computed(() => mode.value === 'volume');
 
   let heldRate: number | undefined;
+
+  // 本次双指手势开始时的间距和画面比例。
   let pinchDistance = 0;
+  let pinchScale = 1;
 
   const releaseRate = () => {
     if (heldRate !== undefined) {
@@ -42,7 +48,6 @@ export const useGestures = (
   const finish = () => {
     releaseRate();
     mode.value = null;
-    scale.value = 1;
     pinchDistance = 0;
     gestureLabel.value = '';
     scheduleHide();
@@ -117,6 +122,10 @@ export const useGestures = (
       media.setVolume(start.volume + deltaY / bounds.height);
     },
     onSwipeEnd: (event) => {
+      if (mode.value === 'zoom') {
+        return;
+      }
+
       if (mode.value === 'seek' && event.type !== 'touchcancel') {
         media.seek(seekTime.value);
       }
@@ -140,7 +149,6 @@ export const useGestures = (
       media.setRate(heldRate * 3);
       suppressClick.value = true;
       gestureLabel.value = `${media.rate.value} 倍速播放中…`;
-      keepControls();
     },
     {
       delay: 300,
@@ -153,7 +161,7 @@ export const useGestures = (
     },
   );
 
-  // 双指距离决定画面临时缩放，松手恢复完整画面。
+  // 双指开合基于手势开始时的比例缩放，松手保留画面大小。
   useEventListener(
     media.video,
     ['touchstart', 'touchmove'],
@@ -167,18 +175,33 @@ export const useGestures = (
       releaseRate();
       mode.value = 'zoom';
       suppressClick.value = true;
+      gestureLabel.value = '';
+      keepControls();
+
       const distance = Math.hypot(
         first.clientX - second.clientX,
         first.clientY - second.clientY,
       );
       if (!pinchDistance) {
         pinchDistance = distance;
+        pinchScale = scale.value;
+        return;
       }
-      scale.value = Math.max(1, Math.min(2.5, distance / pinchDistance));
+
+      scale.value = Math.max(
+        0.5,
+        Math.min(2.5, (pinchScale * distance) / pinchDistance),
+      );
     },
     { passive: false },
   );
-  useEventListener(media.video, ['touchend', 'touchcancel'], finish);
+  useEventListener(media.video, ['touchend', 'touchcancel'], (event) => {
+    pinchDistance = 0;
+
+    if (!event.touches.length) {
+      finish();
+    }
+  });
   useEventListener(window, 'blur', finish);
   onScopeDispose(releaseRate);
 

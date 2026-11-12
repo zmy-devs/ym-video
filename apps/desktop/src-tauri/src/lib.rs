@@ -3,6 +3,9 @@ use tauri::Manager;
 use tauri_plugin_opener::OpenerExt;
 use ym_video_native_core::{invoke_handler, manage_network};
 
+#[cfg(windows)]
+mod media;
+
 // Keep desktop window behavior in the Windows shell.
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let builder = tauri::Builder::default().invoke_handler(invoke_handler());
@@ -27,7 +30,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         manage_network(app)?;
         let handle = app.handle().clone();
         let navigation_handle = handle.clone();
-        tauri::WebviewWindowBuilder::from_config(app, &app.config().app.windows[0])?
+        let window = tauri::WebviewWindowBuilder::from_config(app, &app.config().app.windows[0])?
             .icon(tauri::include_image!("../../../assets/icon.png"))?
             .on_navigation(move |url| {
                 if is_app_url(url) {
@@ -49,6 +52,14 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                 tauri::webview::NewWindowResponse::Deny
             })
             .build()?;
+
+        #[cfg(windows)]
+        window.with_webview(|webview| {
+            if let Err(error) = media::configure_certificate_errors(webview.controller()) {
+                eprintln!("无法设置播放源证书处理：{error}");
+            }
+        })?;
+
         Ok(())
     });
 

@@ -1,0 +1,27 @@
+[env]
+# 使用 Wry 的 Android 类扩展接入视频源证书处理。
+WRY_RUSTWEBVIEWCLIENT_CLASS_EXTENSION = '''
+    override fun onReceivedSslError(
+        view: android.webkit.WebView,
+        handler: android.webkit.SslErrorHandler,
+        error: android.net.http.SslError
+    ) {
+        val url = android.net.Uri.parse(error.url)
+        val dateError = error.hasError(android.net.http.SslError.SSL_EXPIRED) ||
+            error.hasError(android.net.http.SslError.SSL_DATE_INVALID)
+        val otherError = intArrayOf(
+            android.net.http.SslError.SSL_NOTYETVALID,
+            android.net.http.SslError.SSL_IDMISMATCH,
+            android.net.http.SslError.SSL_UNTRUSTED,
+            android.net.http.SslError.SSL_INVALID
+        ).any(error::hasError)
+        val expired = error.certificate.validNotAfterDate?.before(java.util.Date()) == true
+
+        if (url.scheme == "https" && dateError && expired && !otherError) {
+            android.util.Log.i("YmVideoMedia", "允许片源过期证书：${url.host}")
+            handler.proceed()
+        } else {
+            handler.cancel()
+        }
+    }
+'''

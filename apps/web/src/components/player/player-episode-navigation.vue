@@ -1,17 +1,17 @@
 <template>
   <div class="flex items-center gap-2">
     <PlayerButton
-      v-if="hasPrevious"
       label="上一集"
       :container="container"
+      :disabled="!hasPrevious"
       @click="emit('previous')"
     >
       <SkipBack />
     </PlayerButton>
     <PlayerButton
-      v-if="hasNext"
       label="下一集"
       :container="container"
+      :disabled="!hasNext"
       @click="emit('next')"
     >
       <SkipForward />

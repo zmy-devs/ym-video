@@ -104,7 +104,10 @@
       class="desktop-title-bar-standalone fixed inset-x-0 top-0 z-60"
     />
     <RouterView
-      v-if="route.matched.length"
+      v-if="
+        route.matched.length && (route.name !== 'player' || backgroundRoute)
+      "
+      :route="route.name === 'player' ? backgroundRoute : undefined"
       v-slot="{ Component, route: pageRoute }"
     >
       <KeepAlive :key="history.ownerId ?? undefined" include="SideBar">
@@ -134,7 +137,10 @@
         <component :is="Component" v-else />
       </KeepAlive>
     </RouterView>
-    <WindowControls v-if="isDesktop" />
+    <RouterView v-if="route.name === 'player'" v-slot="{ Component }">
+      <component :is="Component" />
+    </RouterView>
+    <WindowControls v-if="isDesktop" :hidden="route.name === 'player'" />
   </template>
 
   <OfflineOverlay v-if="!online" class="z-60" />
@@ -142,8 +148,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
+import type { RouteLocationNormalizedLoaded } from 'vue-router';
 import { ArrowLeft } from 'lucide-vue-next';
 import { useEventListener, useOnline, watchImmediate } from '@vueuse/core';
 import { onBackButtonPress } from '@tauri-apps/api/app';
@@ -208,6 +215,20 @@ watch(
   },
   { immediate: true },
 );
+
+// PC 播放 Sheet 展开时保留进入前的业务页面。
+const backgroundRoute = shallowRef<RouteLocationNormalizedLoaded>();
+
+watch(router.currentRoute, (next, previous) => {
+  if (
+    isDesktop &&
+    next.name === 'player' &&
+    previous.name !== 'player' &&
+    previous.meta.requiresAuth
+  ) {
+    backgroundRoute.value = previous;
+  }
+});
 
 const library = useLibraryStore();
 const history = useHistoryStore();
@@ -278,10 +299,10 @@ onUnmounted(() => cleanupUpdate?.());
 
 useSessionSync();
 
-// 播放器页面固定暗色，离开后恢复用户主题。
+// 移动播放器切换应用主题，PC 播放 Sheet 在自身范围内使用暗色。
 watchImmediate(
   () => route.name,
-  (name) => theme.setPlayerMode(name === 'player'),
+  (name) => theme.setPlayerMode(isMobile && name === 'player'),
 );
 onUnmounted(() => theme.setPlayerMode(false));
 

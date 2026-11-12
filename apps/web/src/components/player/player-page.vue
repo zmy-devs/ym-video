@@ -22,21 +22,15 @@
         class="player-header flex shrink-0 items-center gap-2.5 border-b px-3"
         :class="headerClass"
       >
-        <Tooltip label="返回" side="bottom">
+        <Tooltip v-if="mobile" label="返回" side="bottom">
           <Button
             aria-label="返回"
             variant="ghost"
             size="icon"
-            :class="
-              mobile
-                ? 'size-11 bg-transparent text-white hover:bg-transparent hover:text-white dark:hover:bg-transparent'
-                : 'size-7'
-            "
+            class="size-11 bg-transparent text-white hover:bg-transparent hover:text-white dark:hover:bg-transparent"
             @click="emit('back')"
           >
-            <ArrowLeft
-              :class="mobile ? 'size-6' : 'size-4 transform-[translateX(1px)]'"
-            />
+            <ArrowLeft class="size-6" />
           </Button>
         </Tooltip>
         <MoviePoster
@@ -56,13 +50,27 @@
           v-else-if="status === 'loading' && !mobile"
           class="h-4 w-32 rounded-sm"
         />
+        <Tooltip v-if="!mobile" label="关闭播放器" side="bottom">
+          <Button
+            aria-label="关闭播放器"
+            variant="ghost"
+            size="icon"
+            class="ml-auto size-7"
+            @click="emit('back')"
+          >
+            <X class="size-4" />
+          </Button>
+        </Tooltip>
       </header>
     </template>
     <template #video>
       <video
         ref="video"
-        class="relative z-0 min-h-0 w-full flex-1 object-contain"
-        :class="{ 'touch-none': immersive }"
+        class="relative z-0 min-h-0 object-contain"
+        :class="[
+          mobile ? 'h-full w-auto max-w-full' : 'w-full flex-1',
+          { 'touch-none': immersive },
+        ]"
         playsinline
         :style="{ transform: `scale(${scale})` }"
         @click="handleVideoClick"
@@ -82,7 +90,17 @@
       </p>
     </template>
     <template #controls>
-      <div ref="controls" class="w-full">
+      <div ref="controls" class="relative w-full">
+        <button
+          v-if="scale !== 1"
+          v-show="showControls"
+          type="button"
+          class="absolute bottom-full left-1/2 min-h-11 -translate-x-1/2 rounded-xl bg-popover px-4 py-2 text-sm text-popover-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+          :class="mobile ? 'mb-0' : 'mb-4'"
+          @click="handleResetScale"
+        >
+          还原画面
+        </button>
         <PlayerControls
           v-show="showControls"
           :name="entry?.name ?? ''"
@@ -129,7 +147,7 @@
 <script setup lang="ts">
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useTitle } from '@vueuse/core';
-import { ArrowLeft } from 'lucide-vue-next';
+import { ArrowLeft, X } from 'lucide-vue-next';
 import { Button } from '@ym-video/ui/components/button';
 import { Skeleton } from '@ym-video/ui/components/skeleton';
 import Tooltip from '@ym-video/ui/common/tooltip.vue';
@@ -322,6 +340,12 @@ const { gestureLabel, scale, suppressClick, seekPreview, adjustingVolume } =
     handleScheduleHide,
   );
 
+// 恢复默认画面大小，并重新开始控件隐藏计时。
+const handleResetScale = () => {
+  scale.value = 1;
+  handleShowControls();
+};
+
 // 画面横滑与进度滑块拖动都属于进度调整。
 const seeking = computed(
   () => progressDragging.value || seekPreview.value !== undefined,
@@ -434,7 +458,8 @@ onScopeDispose(() => {
 .player-header.desktop-title-bar {
   height: var(--title-bar-height);
   padding-top: 0;
-  padding-left: calc((var(--title-bar-height) - 1.75rem) / 2);
+  padding-right: 6px;
+  padding-left: 12px;
 }
 
 .player-immersive .player-header {
@@ -446,6 +471,5 @@ onScopeDispose(() => {
   padding: 2px;
   padding-top: calc(2px + env(safe-area-inset-top, 0px));
   pointer-events: auto;
-  background: linear-gradient(to bottom, rgb(0 0 0 / 65%), transparent);
 }
 </style>

@@ -36,7 +36,7 @@ export const useShortcuts = (
     if (
       (event.target instanceof HTMLElement &&
         event.target.closest(
-          'input,textarea,button,select,a,[data-slot="slider"],[data-slot="select-content"],[data-slot="dropdown-menu-content"],[data-slot="sheet-content"],[data-slot="dialog-content"],[contenteditable="true"]',
+          'input,textarea,button,select,a,[data-slot="slider"],[data-slot="select-content"],[data-slot="dropdown-menu-content"],[data-slot="sheet-content"]:not([data-player-sheet]),[data-slot="dialog-content"],[contenteditable="true"]',
         )) ||
       event.ctrlKey ||
       event.altKey

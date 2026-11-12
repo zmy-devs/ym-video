@@ -11,7 +11,7 @@
     <SheetContent
       :portal-container="container"
       :show-close-button="false"
-      class="w-44 gap-0 data-[state=open]:duration-300"
+      class="w-64 gap-0 data-[state=open]:duration-300"
       :aria-describedby="undefined"
     >
       <SheetTitle class="sr-only">倍速</SheetTitle>
@@ -19,13 +19,12 @@
         <ul class="flex flex-col gap-2 p-4">
           <li v-for="speed in speeds" :key="speed">
             <Button
-              class="h-11 w-full justify-between"
+              class="w-full h-11"
               :variant="speed === rate ? 'default' : 'outline'"
               :aria-pressed="speed === rate"
               @click="handleSelect(speed)"
             >
               <span>{{ formatRate(speed) }}x</span>
-              <Check v-if="speed === rate" class="size-4" />
             </Button>
           </li>
         </ul>
