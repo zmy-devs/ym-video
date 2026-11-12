@@ -9,7 +9,6 @@
   >
     <form class="grid gap-6" novalidate @submit.prevent="handleSave">
       <Field
-        id="source-name"
         v-slot="{ control }"
         label="名称（备注）"
         :error="nameError"
@@ -27,7 +26,6 @@
         />
       </Field>
       <Field
-        id="source-url"
         v-slot="{ control }"
         label="接口 URL"
         :error="urlError"
@@ -69,6 +67,8 @@ import { useLibraryStore } from '@/stores/library-store';
 import { successToast } from '@ym-video/ui/lib/toast';
 import { eventBus } from '@/utils/event-bus';
 import { isMobile } from '@/platform';
+import { sourceFormSchema } from '@/schemas/source';
+import { useRequest } from '@/composables/use-request';
 
 // 根组件只挂载一个实例，通过事件区分新增与编辑。
 const open = ref(false);
@@ -107,23 +107,36 @@ const nameError = ref('');
 // 地址、网络和分类验证错误显示在 URL 字段。
 const urlError = ref('');
 
-// 验证期间阻止重复提交，但允许关闭并取消请求。
-const pending = ref(false);
-
-// 关闭或卸载弹窗时丢弃尚未完成的验证。
-let controller: AbortController | undefined;
-
-watch(
-  open,
-  () => {
-    controller?.abort();
-    controller = undefined;
-    pending.value = false;
+// 表单关闭或重新提交时取消本次接口验证。
+const {
+  execute: saveSource,
+  cancel,
+  pending,
+} = useRequest(
+  async (signal, input: { name: string; url: string }, id: string) => {
+    try {
+      if (id) {
+        await library.updateSource(id, input.name, input.url, signal);
+      } else {
+        await library.addSource(input.name, input.url, signal);
+      }
+      if (signal.aborted) {
+        return;
+      }
+      open.value = false;
+      successToast(id ? '播放源已更新' : '播放源已添加');
+      if (id === library.selected && route.path.startsWith('/category')) {
+        await router.push('/category');
+      }
+    } catch (cause) {
+      if (!signal.aborted) {
+        urlError.value =
+          cause instanceof Error ? cause.message : '验证失败，请重试';
+      }
+    }
   },
-  { flush: 'sync' },
 );
-
-onScopeDispose(() => controller?.abort());
+watch(open, cancel, { flush: 'sync' });
 
 // 每次打开从数据层读取最新值，不复用上一条记录的草稿。
 const handleShow = (id?: string) => {
@@ -162,61 +175,23 @@ const handleCloseFocus = (event: Event) => {
   eventBus.emit('source-switcher:focus');
 };
 
-// 新增和编辑共用校验流程，失败保留输入以便修正。
-const handleSave = async () => {
+// 提交时由 Zod 校验并规范化输入，再验证接口分类。
+const handleSave = () => {
   if (pending.value) {
     return;
   }
-
-  name.value = name.value.trim();
   nameError.value = '';
   urlError.value = '';
-
-  if (!name.value || name.value.length > 80) {
-    nameError.value = '名称需为 1～80 个字符';
-    document.getElementById('source-name')?.focus();
+  const result = sourceFormSchema.safeParse({
+    name: name.value,
+    url: url.value,
+  });
+  if (!result.success) {
+    const errors = result.error.flatten().fieldErrors;
+    nameError.value = errors.name?.[0] ?? '';
+    urlError.value = errors.url?.[0] ?? '';
     return;
   }
-
-  // 每次提交独立持有取消信号，旧请求不能影响重新打开的表单。
-  const requestController = new AbortController();
-
-  controller = requestController;
-  pending.value = true;
-
-  try {
-    if (sourceId.value) {
-      await library.updateSource(
-        sourceId.value,
-        name.value,
-        url.value,
-        requestController.signal,
-      );
-    } else {
-      await library.addSource(name.value, url.value, requestController.signal);
-    }
-
-    if (!requestController.signal.aborted) {
-      open.value = false;
-      successToast(sourceId.value ? '播放源已更新' : '播放源已添加');
-
-      if (
-        sourceId.value === library.selected &&
-        route.path.startsWith('/category')
-      ) {
-        await router.push('/category');
-      }
-    }
-  } catch (cause) {
-    if (!requestController.signal.aborted) {
-      urlError.value =
-        cause instanceof Error ? cause.message : '验证失败，请重试';
-    }
-  } finally {
-    if (controller === requestController) {
-      pending.value = false;
-      controller = undefined;
-    }
-  }
+  return saveSource(result.data, sourceId.value);
 };
 </script>

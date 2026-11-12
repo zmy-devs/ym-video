@@ -1,3 +1,14 @@
+import {
+  historyEntrySchema,
+  historyOperationSchema,
+  historySnapshotSchema,
+} from './schema.ts';
+export {
+  historyEntrySchema,
+  historyOperationSchema,
+  historySnapshotSchema,
+} from './schema.ts';
+
 // 历史记录中的单集播放信息。
 export interface Episode {
   label: string;
@@ -181,145 +192,13 @@ export const projectHistory = (
   operations: HistoryOperation[],
 ) => operations.reduce(applyHistoryOperation, snapshot);
 
-// 接口和缓存边界均按未知输入校验。
-const isObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const isText = (value: unknown, max = 512): value is string =>
-  typeof value === 'string' && value.length <= max;
-
-const isTime = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isFinite(value) && value >= 0;
-
-const isVersion = (value: unknown): value is string =>
-  isText(value, 128) && value.length > 0;
-
-const isHttpUrl = (value: string) => {
-  try {
-    // 历史数据仅用于展示及浏览器直连媒体。
-    const url = new URL(value);
-    return (
-      ['http:', 'https:'].includes(url.protocol) &&
-      !url.username &&
-      !url.password
-    );
-  } catch {
-    return false;
-  }
-};
-
-export const isHistoryEntry = (value: unknown): value is HistoryEntry => {
-  if (
-    !isObject(value) ||
-    !isVersion(value.sourceId) ||
-    !isVersion(value.vodId)
-  ) {
-    return false;
-  }
-
-  let expectedId: string;
-  try {
-    expectedId = `${encodeURIComponent(value.sourceId)}:${encodeURIComponent(value.vodId)}`;
-  } catch {
-    return false;
-  }
-
-  if (
-    value.id !== expectedId ||
-    !['name', 'year', 'area', 'lang', 'category', 'remarks'].every((key) =>
-      isText(value[key]),
-    ) ||
-    !isText(value.pic, 4096) ||
-    (value.pic !== '' && !isHttpUrl(value.pic)) ||
-    !Number.isInteger(value.episode) ||
-    Number(value.episode) < 0 ||
-    !isTime(value.watchedAt) ||
-    !Array.isArray(value.episodes) ||
-    value.episodes.length > 2000 ||
-    Number(value.episode) >= value.episodes.length ||
-    !isObject(value.progress)
-  ) {
-    return false;
-  }
-
-  const episodes = value.episodes;
-  return (
-    episodes.every(
-      (episode) =>
-        isObject(episode) &&
-        isText(episode.label) &&
-        isText(episode.url, 4096) &&
-        isHttpUrl(episode.url),
-    ) &&
-    Object.entries(value.progress).every(
-      ([episode, progress]) =>
-        /^(0|[1-9]\d*)$/.test(episode) &&
-        Number(episode) < episodes.length &&
-        isObject(progress) &&
-        isTime(progress.currentTime) &&
-        isTime(progress.duration),
-    )
-  );
-};
-
-export const isHistoryOperation = (
-  value: unknown,
-): value is HistoryOperation => {
-  if (
-    !isObject(value) ||
-    !isVersion(value.id) ||
-    !isVersion(value.epoch) ||
-    !isTime(value.at)
-  ) {
-    return false;
-  }
-
-  if (value.type === 'clear') {
-    return value.id !== value.epoch;
-  }
-
-  if (!isVersion(value.generation)) {
-    return false;
-  }
-
-  if (value.type === 'remove') {
-    return (
-      isText(value.movieId, 4096) &&
-      value.movieId.length > 0 &&
-      value.id !== value.generation
-    );
-  }
-
-  return (
-    value.type === 'save' &&
-    isHistoryEntry(value.entry) &&
-    Object.hasOwn(value.entry.progress, String(value.entry.episode))
-  );
-};
-
-// 回包及 IndexedDB 快照不能绕过与请求相同的输入边界。
+// 类型收窄与数据解析共用同一套 Zod 契约。
+export const isHistoryEntry = (value: unknown): value is HistoryEntry =>
+  historyEntrySchema.safeParse(value).success;
+export const isHistoryOperation = (value: unknown): value is HistoryOperation =>
+  historyOperationSchema.safeParse(value).success;
 export const isHistorySnapshot = (value: unknown): value is HistorySnapshot =>
-  isObject(value) &&
-  isVersion(value.ownerId) &&
-  isVersion(value.epoch) &&
-  Number.isSafeInteger(value.revision) &&
-  Number(value.revision) >= 0 &&
-  Array.isArray(value.records) &&
-  value.records.every(
-    (record) =>
-      isObject(record) &&
-      isText(record.id, 4096) &&
-      isVersion(record.generation) &&
-      (record.entry === null ||
-        (isHistoryEntry(record.entry) && record.entry.id === record.id)) &&
-      isObject(record.stamp) &&
-      isTime(record.stamp.at) &&
-      isVersion(record.stamp.id) &&
-      isObject(record.episodeStamps) &&
-      Object.values(record.episodeStamps).every(
-        (stamp) => isObject(stamp) && isTime(stamp.at) && isVersion(stamp.id),
-      ),
-  );
+  historySnapshotSchema.safeParse(value).success;
 
 // 较新的服务器快照胜出，相同版本只接受同一清空版本的快照。
 export const mergeHistorySnapshots = (

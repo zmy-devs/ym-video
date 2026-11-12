@@ -1,10 +1,10 @@
+import {
+  sourceFormSchema,
+  customSourcesSchema,
+} from '../src/schemas/source.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import {
-  isCustomSourceList,
-  normalizeSourceUrl,
-  parseCategories,
-} from '../src/lib/source.ts';
+import { parseCategories } from '../src/lib/source.ts';
 
 // 上游可能使用数字或数字字符串表示分类 ID。
 const valid = {
@@ -56,7 +56,7 @@ test('不接受空分类、错误字段、重复 ID 或无法展示的分类层�
 
 test('接口规范化去掉旧筛选和片段，保留接口需要的参数', () => {
   assert.equal(
-    normalizeSourceUrl(
+    sourceFormSchema.shape.url.parse(
       ' https://EXAMPLE.com:443/api?token=abc&ac=detail&pg=2&t=1&wd=test&ids=3#top ',
     ),
     'https://example.com/api?token=abc',
@@ -67,7 +67,10 @@ test('接口规范化去掉旧筛选和片段，保留接口需要的参数', ()
     'javascript:alert(1)',
     'file:///api',
     'https://user:pass@example.com',
-  ].forEach((url) => assert.throws(() => normalizeSourceUrl(url)));
+    'https://example.com/' + '中'.repeat(300),
+  ].forEach((url) =>
+    assert.throws(() => sourceFormSchema.shape.url.parse(url)),
+  );
 });
 
 test('本地源只恢复合法的自定义记录，拒绝重复和损坏数据', () => {
@@ -78,15 +81,28 @@ test('本地源只恢复合法的自定义记录，拒绝重复和损坏数据',
     url: 'https://example.com/api',
   };
 
-  assert.equal(isCustomSourceList([source]), true);
-  assert.equal(isCustomSourceList([]), true);
-  assert.equal(isCustomSourceList([{ ...source, id: 'baofeng' }]), false);
-  assert.equal(isCustomSourceList([{ ...source, name: ' ' }]), false);
-  assert.equal(isCustomSourceList([{ ...source, url: 'file:///api' }]), false);
-  assert.equal(isCustomSourceList([source, source]), false);
+  assert.equal(customSourcesSchema.safeParse([source]).success, true);
+  assert.equal(customSourcesSchema.safeParse([]).success, true);
   assert.equal(
-    isCustomSourceList([source, { ...source, id: 'custom:other' }]),
+    customSourcesSchema.safeParse([{ ...source, id: 'baofeng' }]).success,
     false,
   );
-  assert.equal(isCustomSourceList({ sources: [source] }), false);
+  assert.equal(
+    customSourcesSchema.safeParse([{ ...source, name: ' ' }]).success,
+    false,
+  );
+  assert.equal(
+    customSourcesSchema.safeParse([{ ...source, url: 'file:///api' }]).success,
+    false,
+  );
+  assert.equal(customSourcesSchema.safeParse([source, source]).success, false);
+  assert.equal(
+    customSourcesSchema.safeParse([source, { ...source, id: 'custom:other' }])
+      .success,
+    false,
+  );
+  assert.equal(
+    customSourcesSchema.safeParse({ sources: [source] }).success,
+    false,
+  );
 });

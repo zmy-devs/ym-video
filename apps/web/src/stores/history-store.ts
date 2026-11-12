@@ -25,7 +25,8 @@ import {
   HISTORY_ERROR_MESSAGE_MAP,
   type HistoryErrorType,
   type HistoryStatus,
-} from '@/map';
+} from '@/map/history';
+import { useRequest } from '@/composables/use-request';
 import { storageError } from '@ym-video/ui/lib/toast';
 
 // 留出 HTTP JSON 包装开销，避免超过 API 的请求大小上限。
@@ -100,10 +101,6 @@ export const useHistoryStore = defineStore('history', () => {
   let accountGeneration = 0;
   // 同一账号初始化与请求合并，切换时立即取消。
   let accountTask: Promise<void> | undefined;
-  let refreshController: AbortController | undefined;
-  let refreshPromise: Promise<void> | undefined;
-  let syncController: AbortController | undefined;
-  let syncPromise: Promise<void> | undefined;
   // 标签页只广播变更通知，数据以持久化事务为准。
   const historyChannel =
     typeof BroadcastChannel === 'undefined'
@@ -111,8 +108,6 @@ export const useHistoryStore = defineStore('history', () => {
       : new BroadcastChannel('ym-video-history');
   onScopeDispose(() => {
     accountGeneration += 1;
-    refreshController?.abort();
-    syncController?.abort();
     historyChannel?.close();
   });
 
@@ -176,12 +171,8 @@ export const useHistoryStore = defineStore('history', () => {
 
     accountGeneration += 1;
     const generation = accountGeneration;
-    refreshController?.abort();
-    syncController?.abort();
-    refreshController = undefined;
-    syncController = undefined;
-    refreshPromise = undefined;
-    syncPromise = undefined;
+    refreshRequest.cancel();
+    syncRequest.cancel();
     ownerId.value = nextOwnerId;
     base.value = nextOwnerId ? emptyHistory(nextOwnerId) : null;
     operations.value = [];
@@ -224,26 +215,12 @@ export const useHistoryStore = defineStore('history', () => {
     return task;
   };
 
-  // 登录账号切换后先读取云端，再补交该账号的离线操作。
-  const refresh = () => {
-    const currentOwner = ownerId.value;
-    if (!currentOwner || !loaded.value || !navigator.onLine) {
-      return Promise.resolve();
-    }
-    if (refreshPromise) {
-      return refreshPromise;
-    }
-
-    const generation = accountGeneration;
-    const controller = new AbortController();
-    refreshController = controller;
-    const task = (async () => {
+  // 读取云端快照后补交离线操作，同一轮刷新共用一个任务。
+  const refreshRequest = useRequest(
+    async (signal, currentOwner: string, generation: number) => {
       try {
-        const snapshot = await fetchHistory(currentOwner, controller.signal);
-        if (
-          generation !== accountGeneration ||
-          controller.signal.aborted
-        ) {
+        const snapshot = await fetchHistory(currentOwner, signal);
+        if (generation !== accountGeneration || signal.aborted) {
           return;
         }
         const local = await commitHistorySync(currentOwner, snapshot, []);
@@ -257,23 +234,27 @@ export const useHistoryStore = defineStore('history', () => {
         updateStatus();
         requestSync();
       } catch (cause) {
-        if (controller.signal.aborted || generation !== accountGeneration) {
+        if (signal.aborted || generation !== accountGeneration) {
           return;
         }
         setError(getErrorType(cause));
       }
-    })();
-    refreshPromise = task;
-    task.finally(() => {
-      if (refreshPromise === task) {
-        refreshPromise = undefined;
-      }
-    });
-    return task;
+    },
+  );
+  const refresh = () => {
+    const currentOwner = ownerId.value;
+    if (!currentOwner || !loaded.value || !navigator.onLine) {
+      return Promise.resolve();
+    }
+    return (
+      refreshRequest.task.value ??
+      refreshRequest.execute(currentOwner, accountGeneration)
+    );
   };
 
   // 分批提交本地队列，服务端返回快照后原子清除已确认操作。
   const flush = async (
+    signal: AbortSignal,
     expectedOwner = ownerId.value,
     generation = accountGeneration,
   ) => {
@@ -286,11 +267,10 @@ export const useHistoryStore = defineStore('history', () => {
       return;
     }
 
-    const controller = new AbortController();
-    syncController = controller;
     try {
       while (
         navigator.onLine &&
+        !signal.aborted &&
         generation === accountGeneration
       ) {
         const local = await readLocalHistory(currentOwner);
@@ -309,15 +289,8 @@ export const useHistoryStore = defineStore('history', () => {
         if (!batch.length) {
           throw new HistoryServiceError('oversized-entry');
         }
-        const snapshot = await syncHistory(
-          currentOwner,
-          batch,
-          controller.signal,
-        );
-        if (
-          controller.signal.aborted ||
-          generation !== accountGeneration
-        ) {
+        const snapshot = await syncHistory(currentOwner, batch, signal);
+        if (signal.aborted || generation !== accountGeneration) {
           return;
         }
         const committed = await commitHistorySync(
@@ -336,45 +309,40 @@ export const useHistoryStore = defineStore('history', () => {
         updateStatus();
       }
     } catch (cause) {
-      if (controller.signal.aborted || generation !== accountGeneration) {
+      if (signal.aborted || generation !== accountGeneration) {
         return;
       }
       setError(getErrorType(cause));
     }
   };
 
-  // 合并同一轮请求，队列追加期间结束时再检查一次。
-  const requestSync = () => {
-    if (syncPromise) {
-      return syncPromise;
-    }
-
-    const currentOwner = ownerId.value;
-    const generation = accountGeneration;
-    const task = (async () => {
+  // 同账号的同步请求串行执行，统一请求函数负责取消与任务释放。
+  const syncRequest = useRequest(
+    async (signal, currentOwner: string | null, generation: number) => {
       try {
         if (currentOwner && navigator.locks) {
           await navigator.locks.request<void>(
             `ym-video-history:${currentOwner}`,
-            async () => {
-              await flush(currentOwner, generation);
-            },
+            { signal },
+            () => flush(signal, currentOwner, generation),
           );
         } else {
-          await flush(currentOwner, generation);
+          await flush(signal, currentOwner, generation);
         }
       } catch (cause) {
-        if (generation !== accountGeneration) {
-          return;
+        if (!signal.aborted && generation === accountGeneration) {
+          setError(getErrorType(cause));
         }
-        setError(getErrorType(cause));
       }
-    })();
-    syncPromise = task;
-    task.finally(() => {
-      if (syncPromise === task) {
-        syncPromise = undefined;
-      }
+    },
+  );
+  const requestSync = () => {
+    if (syncRequest.task.value) {
+      return syncRequest.task.value;
+    }
+    const generation = accountGeneration;
+    const task = syncRequest.execute(ownerId.value, generation);
+    task.then(() => {
       if (
         generation === accountGeneration &&
         syncStatus.value !== 'error' &&
@@ -403,8 +371,8 @@ export const useHistoryStore = defineStore('history', () => {
 
     // 新设备尚无该影片时读取一次云端进度，避免用零进度覆盖已有记录。
     const cachedMovie = entries.value.some((entry) => entry.id === movieId);
-    if (!cachedMovie && refreshPromise) {
-      await refreshPromise;
+    if (!cachedMovie && refreshRequest.task.value) {
+      await refreshRequest.task.value;
     }
     if (ownerId.value !== currentOwner) {
       throw new Error('账号已切换，请重新打开影片');

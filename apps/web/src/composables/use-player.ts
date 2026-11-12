@@ -3,7 +3,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { useEventListener, watchImmediate } from '@vueuse/core';
 import type { HistoryEntry, Movie } from '@/types';
 import type { HistoryToken } from '@ym-video/history';
-import { getMovies } from '@/services/api';
+import { getMovies } from '@/services/catalog-client';
 import { useHistoryStore } from '@/stores/history-store';
 import { useLibraryStore } from '@/stores/library-store';
 import { isMovieComplete, movieKey } from '@/lib/movie';

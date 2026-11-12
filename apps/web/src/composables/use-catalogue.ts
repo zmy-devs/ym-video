@@ -1,8 +1,9 @@
-import { onScopeDispose, ref, type WatchSource } from 'vue';
+import { ref, type WatchSource } from 'vue';
 import { watchImmediate } from '@vueuse/core';
 import type { Movie, Source } from '@/types';
-import { getMovies } from '@/services/api';
+import { getMovies } from '@/services/catalog-client';
 import { retryRequest } from '@ym-video/account/request-retry';
+import { useRequest } from './use-request';
 import { errorToast } from '@ym-video/ui/lib/toast';
 
 // 首页、分类与搜索共用分页和请求取消行为。
@@ -31,13 +32,66 @@ export const useCatalogue = (
     keyword?: string;
   } = {};
 
-  // 用于取消已失效请求。
-  let controller: AbortController | undefined;
+  // 请求取消和生命周期清理由统一组合式函数负责。
+  const { execute: loadPage, cancel } = useRequest(
+    async (signal, source: Source, reset: boolean, preserve: boolean) => {
+      // 成功后才提交的目标页码。
+      const targetPage = reset ? 1 : page.value + 1;
 
-  // 成功后才推进页码，失败后重试同一页。
-  const load = async (reset = false, preserve = false) => {
+      // 本次请求使用的查询条件。
+      const query = { ...current, source };
+      if (reset && !preserve) {
+        movies.value = [];
+        page.value = 0;
+        pageCount.value = 0;
+      }
+      status.value = 'loading';
+      error.value = '';
+      try {
+        // 本次异步操作返回结果。
+        const result = await retryRequest(
+          () =>
+            getMovies(
+              query.source,
+              { t: query.category, wd: query.keyword, pg: targetPage },
+              signal,
+            ),
+          signal,
+        );
+        if (signal.aborted) {
+          return;
+        }
+        // 追加分页前已展示的影片。
+        const existing = reset ? [] : movies.value;
+        movies.value = [
+          ...new Map(
+            [...existing, ...result.movies].map((movie) => [movie.id, movie]),
+          ).values(),
+        ];
+        page.value = targetPage;
+        pageCount.value = result.pageCount;
+        status.value = 'ready';
+      } catch (cause) {
+        if (!signal.aborted) {
+          status.value = preserve && movies.value.length ? 'ready' : 'error';
+          error.value = '';
+
+          if (!preserve || !movies.value.length) {
+            error.value =
+              cause instanceof Error ? cause.message : '加载失败，请重试';
+          }
+          errorToast('影片加载失败，请刷新后重试', {
+            id: 'catalogue-load-error',
+          });
+        }
+      }
+    },
+  );
+
+  // 翻页保留当前请求，刷新与切源替换它。
+  const load = (reset = false, preserve = false) => {
     if (!current.source) {
-      controller?.abort();
+      cancel();
       movies.value = [];
       page.value = 0;
       pageCount.value = 0;
@@ -45,68 +99,13 @@ export const useCatalogue = (
       error.value = '';
       return;
     }
-    if (!reset && status.value === 'loading') {
+    if (
+      !reset &&
+      (status.value === 'loading' || page.value >= pageCount.value)
+    ) {
       return;
     }
-    if (!reset && page.value >= pageCount.value) {
-      return;
-    }
-    controller?.abort();
-    controller = new AbortController();
-
-    // 捕获本次请求的取消信号。
-    const signal = controller.signal;
-
-    // 成功后才提交的目标页码。
-    const targetPage = reset ? 1 : page.value + 1;
-
-    // 本次请求使用的查询条件。
-    const query = { ...current, source: current.source };
-    if (reset && !preserve) {
-      movies.value = [];
-      page.value = 0;
-      pageCount.value = 0;
-    }
-    status.value = 'loading';
-    error.value = '';
-    try {
-      // 本次异步操作返回结果。
-      const result = await retryRequest(
-        () =>
-          getMovies(
-            query.source,
-            { t: query.category, wd: query.keyword, pg: targetPage },
-            signal,
-          ),
-        signal,
-      );
-      if (signal.aborted) {
-        return;
-      }
-      // 追加分页前已展示的影片。
-      const existing = reset ? [] : movies.value;
-      movies.value = [
-        ...new Map(
-          [...existing, ...result.movies].map((movie) => [movie.id, movie]),
-        ).values(),
-      ];
-      page.value = targetPage;
-      pageCount.value = result.pageCount;
-      status.value = 'ready';
-    } catch (cause) {
-      if (!signal.aborted) {
-        status.value = preserve && movies.value.length ? 'ready' : 'error';
-        error.value = '';
-
-        if (!preserve || !movies.value.length) {
-          error.value =
-            cause instanceof Error ? cause.message : '加载失败，请重试';
-        }
-        errorToast('影片加载失败，请刷新后重试', {
-          id: 'catalogue-load-error',
-        });
-      }
-    }
+    return loadPage(current.source, reset, preserve);
   };
 
   // 查询条件变化时旧页数据立即失效。
@@ -114,7 +113,6 @@ export const useCatalogue = (
     current = value;
     load(true);
   });
-  onScopeDispose(() => controller?.abort());
 
   // 手动刷新保留当前内容，成功后用第一页替换列表与分页信息。
   const refresh = () => load(true, true);

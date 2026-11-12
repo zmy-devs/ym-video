@@ -232,7 +232,11 @@ importers:
         specifier: 3.1.4
         version: 3.1.4(typescript@5.9.2)
 
-  packages/history: {}
+  packages/history:
+    dependencies:
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
 
   packages/ui:
     dependencies:

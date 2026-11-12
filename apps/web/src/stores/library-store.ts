@@ -1,9 +1,10 @@
-import { computed, onScopeDispose, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import type { Category, CustomSource, Source } from '@/types';
-import { getCategories, getSources } from '@/services/api';
+import { getCategories, getSources } from '@/services/catalog-client';
 import { StorageSerializers, useStorage } from '@vueuse/core';
-import { isCustomSourceList, normalizeSourceUrl } from '@/lib/source';
+import { customSourcesSchema } from '@/schemas/source';
+import { useRequest } from '@/composables/use-request';
 import { retryRequest } from '@ym-video/account/request-retry';
 import { errorToast, storageError } from '@ym-video/ui/lib/toast';
 
@@ -27,7 +28,7 @@ export const useLibraryStore = defineStore('library', () => {
       serializer: {
         read: (raw) => {
           const value: unknown = JSON.parse(raw);
-          return isCustomSourceList(value) ? value : [];
+          return customSourcesSchema.safeParse(value).data ?? [];
         },
         write: JSON.stringify,
       },
@@ -66,46 +67,42 @@ export const useLibraryStore = defineStore('library', () => {
     categories.value.filter((item) => item.parentId === 0),
   );
 
-  // 用于取消已失效请求。
-  let controller: AbortController | undefined;
-
-  // 切源中止旧分类请求，旧结果不覆盖新源。
-  const loadCategories = async () => {
-    controller?.abort();
-    controller = new AbortController();
-
-    // 捕获本次请求的取消信号。
-    const signal = controller.signal;
-    categories.value = [];
-    categoryError.value = '';
-    if (!source.value) {
-      categoryStatus.value = 'idle';
-      return;
-    }
-    categoryStatus.value = 'loading';
-
-    // 重试期间固定当前源，切源后旧任务不能继续请求新接口。
-    const currentSource = source.value;
-
-    try {
-      // 本次异步操作返回结果。
-      const result = await retryRequest(
-        () => getCategories(currentSource, signal),
-        signal,
-      );
-      if (!signal.aborted) {
-        categories.value = result;
-        categoryStatus.value = 'ready';
+  // 分类请求替换时统一取消旧任务与重试等待。
+  const { execute: loadCategories, cancel: cancelCategories } = useRequest(
+    async (signal) => {
+      categories.value = [];
+      categoryError.value = '';
+      if (!source.value) {
+        categoryStatus.value = 'idle';
+        return;
       }
-    } catch (cause) {
-      if (!signal.aborted) {
-        categoryStatus.value = 'error';
-        categoryError.value =
-          cause instanceof Error ? cause.message : '分类加载失败';
-        errorToast('分类加载失败，请刷新后重试', { id: 'category-load-error' });
+      categoryStatus.value = 'loading';
+
+      // 重试期间固定当前源，切源后旧任务不能继续请求新接口。
+      const currentSource = source.value;
+
+      try {
+        // 本次异步操作返回结果。
+        const result = await retryRequest(
+          () => getCategories(currentSource, signal),
+          signal,
+        );
+        if (!signal.aborted) {
+          categories.value = result;
+          categoryStatus.value = 'ready';
+        }
+      } catch (cause) {
+        if (!signal.aborted) {
+          categoryStatus.value = 'error';
+          categoryError.value =
+            cause instanceof Error ? cause.message : '分类加载失败';
+          errorToast('分类加载失败，请刷新后重试', {
+            id: 'category-load-error',
+          });
+        }
       }
-    }
-  };
+    },
+  );
 
   // 无效的旧设置回退到暴风源或首个可用源。
   const init = async () => {
@@ -150,33 +147,18 @@ export const useLibraryStore = defineStore('library', () => {
   // 新增与编辑共用验证，失败或取消时保留原记录。
   const saveSource = async (
     name: string,
-    value: string,
+    url: string,
     signal: AbortSignal,
     id?: string,
   ) => {
-    // 保存时固定输入快照，避免请求期间的输入变化影响结果。
-    const url = normalizeSourceUrl(value);
-
-    const sourceName = name.trim();
-
-    if (!sourceName || sourceName.length > 80) {
-      throw new Error('名称需为 1～80 个字符');
-    }
-
     if (id && !customSources.value.some((item) => item.id === id)) {
       throw new Error('该播放源已不存在');
-    }
-
-    if (
-      customSources.value.some((item) => item.id !== id && item.url === url)
-    ) {
-      throw new Error('该接口地址已添加');
     }
 
     // 自定义源使用独立命名空间，历史记录也能稳定定位对应接口。
     const source: CustomSource = {
       id: id ?? `custom:${crypto.randomUUID()}`,
-      name: sourceName,
+      name,
       url,
     };
 
@@ -208,7 +190,7 @@ export const useLibraryStore = defineStore('library', () => {
     }
 
     if (selected.value === source.id) {
-      controller?.abort();
+      cancelCategories();
       categories.value = verifiedCategories;
       categoryStatus.value = 'ready';
       categoryError.value = '';
@@ -251,9 +233,6 @@ export const useLibraryStore = defineStore('library', () => {
     error.value = sources.value.length ? '' : '暂无可用播放源，请添加播放源';
     status.value = sources.value.length ? 'ready' : 'error';
   };
-
-  // 销毁数据层时停止请求与重试等待。
-  onScopeDispose(() => controller?.abort());
 
   return {
     selected,

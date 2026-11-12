@@ -11,7 +11,7 @@ import {
   UPDATE_STATUS_MESSAGE_MAP,
   type UpdateErrorType,
   type UpdateStatus,
-} from '@/map';
+} from '@/map/update';
 import { errorToast, infoToast, storageError } from '@ym-video/ui/lib/toast';
 
 // 更新任务与已下载资源由应用共享，设置弹窗关闭后继续保留。

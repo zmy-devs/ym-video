@@ -1,11 +1,6 @@
 import { isTauri, requestDesktopResource } from '@/lib/desktop';
 import type { Source } from '../types.ts';
-import { createCatalogClient } from './catalog-client.ts';
 import { builtInSources } from '../lib/built-in-sources.ts';
-
-// 收窄来自上游和本地存储的未知对象。
-export const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 // 统一客户端从内置配置或自定义源构造完整请求地址。
 const buildResourceURL = (source: Source, query: URLSearchParams) => {
@@ -27,7 +22,7 @@ const buildResourceURL = (source: Source, query: URLSearchParams) => {
 };
 
 // 资源源始终由客户端直接访问，不再经过 API Worker 代理。
-const requestResource = async (
+export const requestResource = async (
   source: Source,
   query: URLSearchParams,
   signal?: AbortSignal,
@@ -90,12 +85,3 @@ const requestResource = async (
     throw cause;
   }
 };
-
-// 两个平台共用目录解析，资源传输由原生壳处理。
-const catalog = createCatalogClient({
-  requestResource,
-});
-
-export const getSources = catalog.getSources;
-export const getMovies = catalog.getMovies;
-export const getCategories = catalog.getCategories;

@@ -5,8 +5,8 @@ export {
   commitHistorySync,
   enqueueHistoryOperation,
   readLocalHistory,
-  HistoryServiceError,
-} from './history-client.ts';
+} from './history-storage.ts';
+export { HistoryServiceError } from './history-client.ts';
 
 // 客户端使用原生账号传输同步本机观看历史队列。
 const client = createHistoryClient(apiFetch);
