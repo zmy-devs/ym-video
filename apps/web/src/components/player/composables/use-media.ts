@@ -1,7 +1,7 @@
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useEventListener, useStorage } from '@vueuse/core';
 import Hls from 'hls.js';
-import { FilteredPlaylistLoader } from '../../services/hls.ts';
+import { FilteredPlaylistLoader } from '../services/hls.ts';
 import { errorToast, infoToast, storageError } from '@ym-video/ui/lib/toast';
 
 // 播放阶段互斥，失败消息只属于错误阶段。

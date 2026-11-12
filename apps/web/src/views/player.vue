@@ -5,7 +5,6 @@
       data-player-sheet
       :show-overlay="false"
       :show-close-button="false"
-      :aria-describedby="undefined"
       class="dark h-full w-full gap-0 border-0 p-0"
       @open-auto-focus="handleSheetFocus"
       @close-auto-focus="handleSheetClosed"
@@ -36,8 +35,8 @@
 import { onMounted, onScopeDispose, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Sheet, SheetContent, SheetTitle } from '@ym-video/ui/components/sheet';
-import PlayerPage from '../components/player/player-page.vue';
-import { usePlayer } from '@/composables/use-player';
+import PlayerPage from '../components/player/index.vue';
+import { usePlayer } from '@/components/player/composables/use-player.ts';
 import { useThemeStore } from '@/stores/theme-store';
 import { isDesktop, isMobile } from '@/platform';
 import { platformCapabilities } from '@/platform-capabilities';

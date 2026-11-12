@@ -853,7 +853,7 @@ return document.querySelector('video').playbackRate;
   const fullscreenButton = await call<Record<string, string>>(
     4444,
     '/session/' + nativeSession + '/element',
-    { using: 'css selector', value: 'button[aria-label="全屏"]' },
+    { using: 'css selector', value: 'button[data-control="全屏"]' },
   );
 
   await call(
@@ -893,7 +893,7 @@ return document.querySelector('video').playbackRate;
     4444,
     nativeSession,
     `
-document.querySelector('[aria-label="下一集"]').click();
+document.querySelector('[data-control="下一集"]').click();
 `,
   );
 
@@ -911,7 +911,7 @@ return document.querySelector('.player-label')?.textContent.includes('第二集'
     4444,
     nativeSession,
     `
-document.querySelector('button[aria-label="返回"]').click();
+document.querySelector('button[data-action="player-back"]').click();
 `,
   );
 

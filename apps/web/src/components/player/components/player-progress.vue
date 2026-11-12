@@ -7,7 +7,6 @@
     >
       <input
         type="range"
-        aria-label="播放进度"
         class="player-progress w-full h-1.5 block cursor-pointer appearance-none rounded-full shadow-[var(--player-shadow)] disabled:cursor-default focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4"
         :style="{ '--progress': `${progressPercent}%` }"
         :value="currentTime"
@@ -45,7 +44,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { getProgress, formatTime } from '../../utils/player.ts';
+import { getProgress, formatTime } from '../utils/time.ts';
 
 // 当前媒体的真实进度与有效时长。
 const props = defineProps<{

@@ -1,8 +1,11 @@
-import { getProgress } from '../src/utils/player.ts';
+import { getProgress } from '../src/components/player/utils/time.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { movieKey, parseEpisodes, parseMovie } from '../src/lib/movie.ts';
-import { filterManifest, resolveMediaUrl } from '../src/lib/m3u8.ts';
+import {
+  filterManifest,
+  resolveMediaUrl,
+} from '../src/components/player/utils/m3u8.ts';
 import { isMovieComplete } from '../src/lib/movie.ts';
 
 test('同号影片在不同源之间隔离，包含分隔符的 ID 不碰撞', () => {

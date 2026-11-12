@@ -34,7 +34,6 @@
           <button
             v-else-if="status === 'paused' && !seeking"
             type="button"
-            aria-label="播放"
             class="absolute flex items-center justify-center text-white drop-shadow-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
             @click="emit('toggle')"
           >

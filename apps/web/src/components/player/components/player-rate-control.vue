@@ -12,7 +12,6 @@
       :portal-container="container"
       :show-close-button="false"
       class="w-64 gap-0 data-[state=open]:duration-300"
-      :aria-describedby="undefined"
     >
       <SheetTitle class="sr-only">倍速</SheetTitle>
       <ScrollArea class="min-h-0 flex-1">
@@ -21,7 +20,6 @@
             <Button
               class="w-full h-11"
               :variant="speed === rate ? 'default' : 'outline'"
-              :aria-pressed="speed === rate"
               @click="handleSelect(speed)"
             >
               <span>{{ formatRate(speed) }}x</span>

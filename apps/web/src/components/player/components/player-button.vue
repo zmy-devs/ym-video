@@ -1,9 +1,10 @@
 <template>
   <Tooltip :label="label" side="top" :container="container">
     <button
+      type="button"
       :ref="forwardRef"
+      :data-control="label"
       v-bind="$attrs"
-      :aria-label="label"
       class="size-9 flex shrink-0 items-center justify-center rounded-full bg-[var(--player-control)] text-white/80 shadow-[var(--player-shadow)] transition-colors hover:enabled:bg-[#808080] focus-visible:outline-white disabled:cursor-default disabled:opacity-40 [&_svg]:size-5 [&_svg]:shrink-0"
       :disabled="disabled"
       @click="emit('click', $event)"

@@ -128,7 +128,7 @@ import { useLibraryStore } from '@/stores/library-store';
 import { useHistoryStore } from '@/stores/history-store';
 import { playerPath } from '@/lib/movie';
 import { getCategorySelection } from '@/lib/category';
-import { getProgress } from '../utils/player.ts';
+import { getProgress } from '../components/player/utils/time.ts';
 import type { HistoryEntry } from '@/types';
 
 // 影视侧栏在进入播放器时缓存，返回后恢复导航与滚动状态。
