@@ -1,6 +1,6 @@
 [package]
 name = "ym-video-mobile"
-version = "6.1.6"
+publish = false
 edition = "2021"
 rust-version = "1.90"
 

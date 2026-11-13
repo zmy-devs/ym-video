@@ -1,6 +1,6 @@
 [package]
 name = "ym-video"
-version = "6.1.6"
+publish = false
 edition = "2024"
 rust-version = "1.90"
 

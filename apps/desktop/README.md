@@ -47,6 +47,8 @@ NSIS 安装程序会在需要时安装 WebView2 Runtime。`build:win` 生成 `ym
 
 ## 签名与发布
 
+应用版本读取根 `package.json` 的 `version` 字段，与 Android 共用。Tauri 应用 crate 设为私有包，产品版本由 Tauri 配置引用根清单提供。
+
 首次构建安装包时自动在用户目录 `.tauri/ym-video.key` 生成更新签名密钥，公钥保存在 Tauri 配置中。请备份私钥，后续版本使用同一密钥。
 
 将根 `.env.example` 复制为根 `.env`，填写发布令牌。可通过 `TAURI_SIGNING_PRIVATE_KEY` 指定私钥文件，通过 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` 提供密码。构建脚本把本地配置传入 Tauri 子进程。

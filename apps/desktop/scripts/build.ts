@@ -147,12 +147,12 @@ if (command === 'start') {
   tauri(args);
 
   if (command === 'bundle') {
-    // package.json 声明的桌面发布版本。
+    // 根 package.json 声明的客户端发布版本。
     const {
       version,
     }: {
       version: string;
-    } = JSON.parse(readFileSync(join(directory, 'package.json'), 'utf8'));
+    } = JSON.parse(readFileSync(join(directory, '../../package.json'), 'utf8'));
 
     // Tauri 生成的 NSIS 安装包目录。
     const bundle = join(directory, 'src-tauri/target/release/bundle/nsis');

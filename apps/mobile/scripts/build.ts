@@ -123,8 +123,9 @@ if (command === 'dev') {
   prepareAndroid();
   tauri(['android', 'dev', '--host', '127.0.0.1']);
 } else if (command === 'build') {
-  const desktopPackage: { version: string } = JSON.parse(
-    readFileSync(join(directory, '../desktop/package.json'), 'utf8'),
+  // 两端安装包和更新清单共用根 package.json 的产品版本。
+  const { version }: { version: string } = JSON.parse(
+    readFileSync(join(directory, '../../package.json'), 'utf8'),
   );
   prepareAndroid();
 
@@ -165,7 +166,7 @@ if (command === 'dev') {
   const output = join(directory, '../../dist');
   mkdirSync(output, { recursive: true });
   // 版本产物与更新清单共用固定的 APK 文件名。
-  const filename = `ym-video-${desktopPackage.version}-android-arm64.apk`;
+  const filename = `ym-video-${version}-android-arm64.apk`;
 
   copyFileSync(apk, join(output, filename));
 
@@ -176,18 +177,18 @@ if (command === 'dev') {
   );
 
   // 当前发布版本在共用说明中的章节标题。
-  const heading = `## ${desktopPackage.version}`;
+  const heading = `## ${version}`;
 
   // 更新界面展示对应版本的说明内容。
   const section = notes.includes(heading)
     ? notes.split(heading)[1].split('\n## ')[0].trim()
-    : `发布 ${desktopPackage.version}`;
+    : `发布 ${version}`;
 
   // 客户端只从对应版本的 Gitee APK 直链下载。
   const manifest = {
-    version: desktopPackage.version,
+    version,
     notes: section,
-    url: `https://gitee.com/zmy-devs/ym-video/releases/download/v${desktopPackage.version}/${filename}`,
+    url: `https://gitee.com/zmy-devs/ym-video/releases/download/v${version}/${filename}`,
   };
 
   writeFileSync(

@@ -85,7 +85,7 @@ const installed = query([
 
 // 首次安装使用工作区声明的应用版本。
 const pkg: { version: string } = JSON.parse(
-  readFileSync(join(directory, '../desktop/package.json'), 'utf8'),
+  readFileSync(join(directory, '../../package.json'), 'utf8'),
 );
 
 // 基础版本沿用手机已安装版本，支持连续执行多轮本地升级。

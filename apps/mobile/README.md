@@ -18,6 +18,8 @@ Android 开发模式加载 `apps/web` 的 `mobile` Vite 构建模式，并通过
 
 ## 构建
 
+应用版本读取根 `package.json` 的 `version` 字段，与 Windows 共用。Tauri 自动从产品版本生成 Android `versionCode`；APK 文件名与更新清单也使用同一版本。
+
 ```sh
 pnpm build:android
 pnpm release:android

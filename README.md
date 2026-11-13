@@ -75,6 +75,8 @@ pnpm dev:admin
 
 ## 客户端发布
 
+Windows 与 Android 的产品版本统一由根 `package.json` 的 `version` 字段管理。两端 Tauri 配置、安装包名、更新清单及发布校验都读取这个字段；升级版本只需修改此处，并在 `docs/release-note.md` 添加对应版本说明。
+
 将根 `.env.example` 复制为 `.env`，填写 GitHub/Gitee 发布令牌及原生签名配置。`pnpm build:win` 和 `pnpm build:android` 将安装包及更新清单汇总到根 `dist/`，版本说明统一维护在 `docs/release-note.md`。
 
 `pnpm release:check` 校验两端产物；`pnpm release` 将两端产物一同上传到 GitHub 和 Gitee。也可通过 `pnpm release:desktop`、`pnpm release:android` 单独发布。

@@ -311,7 +311,7 @@ const publishGitee = async (
 // 完整读取并校验平台产物，全部通过后才允许远程发布。
 const readRelease = async (target: 'desktop' | 'android') => {
   const pkg: { version: string } = JSON.parse(
-    await readFile(join(directory, 'apps/desktop/package.json'), 'utf8'),
+    await readFile(join(directory, 'package.json'), 'utf8'),
   );
   const android = target === 'android';
   const name = android ? 'android.json' : 'latest.json';
