@@ -95,7 +95,10 @@
       >
         <Server />
         <span class="truncate">{{ source.name }}</span>
-        <Check v-if="source.id === library.selected" class="ml-auto shrink-0" />
+        <Check
+          v-if="source.id === library.selected"
+          class="ml-auto shrink-0 text-primary"
+        />
       </DropdownMenuItem>
       <DropdownMenuSeparator
         v-if="library.platformSources.length && library.customSources.length"
@@ -116,7 +119,7 @@
           <span class="truncate">{{ source.name }}</span>
           <Check
             v-if="source.id === library.selected"
-            class="absolute top-1/2 right-2 -translate-y-1/2 text-current group-hover:opacity-0 group-focus-within:opacity-0"
+            class="absolute top-1/2 right-2 -translate-y-1/2 text-primary group-hover:opacity-0 group-focus-within:opacity-0"
           />
         </DropdownMenuItem>
         <div

@@ -16,7 +16,8 @@
         :key="item.path"
         as-child
         :active="route.path === item.path"
-        :tooltip="item.description"
+        :tooltip="open ? '' : item.name"
+        class="data-[active=true]:text-primary"
       >
         <RouterLink :to="item.path">
           <component :is="item.icon" />
@@ -63,6 +64,7 @@
           as-child
           :active="activeCategoryId === item.id"
           :tooltip="open ? '' : item.name"
+          class="data-[active=true]:text-primary"
         >
           <RouterLink :to="`/category/${item.id}`">
             <Film />
@@ -141,7 +143,7 @@ defineOptions({ name: 'SideBar' });
 // 当前页面决定导航选中态。
 const route = useRoute();
 
-// 分类的提示只在侧栏收缩时展示。
+// 导航和分类的提示只在侧栏收起时展示。
 const open = ref(true);
 
 // 播放源分类与加载状态。
@@ -208,13 +210,11 @@ const navigation = [
     path: '/overview',
     name: '概览',
     icon: Home,
-    description: '概览 · 浏览最近更新的影视',
   },
   {
     path: '/history',
     name: '观看历史',
     icon: History,
-    description: '观看历史 · 继续上次观看',
   },
 ];
 </script>

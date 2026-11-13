@@ -2,7 +2,7 @@
   <SidebarItem
     id="search-trigger"
     :active="route.path === '/search'"
-    tooltip="搜索影视资源"
+    tooltip="搜索"
     shortcut="Ctrl + K"
     @click="eventBus.emit('search:show')"
   >

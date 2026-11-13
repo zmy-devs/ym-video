@@ -6,13 +6,13 @@
           <Button
             id="account-menu-trigger"
             :title="userName"
-            :variant="props.mobile ? 'outline' : 'ghost'"
+            variant="outline"
             size="icon-lg"
             :class="[
-              props.mobile ? 'size-11 rounded-full' : '-mx-1 rounded-xl',
+              props.mobile ? 'size-11' : '-mx-1',
               props.mobile &&
                 '!border-input border-border !bg-white/60 backdrop-blur-xl dark:!border-input dark:!bg-background/60',
-              'data-[state=open]:bg-accent',
+              'rounded-full data-[state=open]:bg-accent',
             ]"
           >
             <span

@@ -48,17 +48,17 @@ export const useThemePreferences = () => {
     },
   );
 
-  // 用户选择的控件强调色。
+  // 用户选择的控件强调色，默认使用黄色。
   const color = useStorage<keyof typeof themeColors>(
     'ym-video:theme-color',
-    'default',
+    'yellow',
     undefined,
     {
       onError: () => storageError('本地设置'),
       serializer: {
         read: (raw) => {
           const value: unknown = JSON.parse(raw);
-          return isThemeColor(value) ? value : 'default';
+          return isThemeColor(value) ? value : 'yellow';
         },
         write: JSON.stringify,
       },
