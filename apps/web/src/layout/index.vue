@@ -104,7 +104,7 @@
         route.name !== 'register' &&
         route.name !== 'player'
       "
-      class="desktop-title-bar-standalone fixed inset-x-0 top-0 z-60"
+      class="desktop-title-bar-standalone fixed inset-x-0 top-0 z-30"
     />
     <RouterView
       v-if="
@@ -143,11 +143,11 @@
     <RouterView v-if="route.name === 'player'" v-slot="{ Component }">
       <component :is="Component" />
     </RouterView>
-    <WindowControls v-if="isDesktop" :hidden="route.name === 'player'" />
+    <WindowControls v-if="isDesktop" />
   </template>
 
   <OfflineOverlay v-if="!online" class="z-60" />
-  <LoadingOverlay v-else-if="loading" class="z-60" />
+  <LoadingOverlay v-else-if="loading" :class="isDesktop ? 'z-30' : 'z-60'" />
 </template>
 
 <script setup lang="ts">

@@ -1,8 +1,8 @@
 <template>
   <div
-    v-if="!fullscreen && !hidden"
+    v-if="!fullscreen"
     data-slot="window-controls"
-    class="h-title-bar fixed top-0 right-0 z-70 flex"
+    class="h-title-bar fixed top-0 right-0 z-40 flex"
   >
     <button
       type="button"
@@ -38,9 +38,6 @@ import { useEventListener } from '@vueuse/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Copy, Minus, Square, X } from 'lucide-vue-next';
 import { errorToast } from '@ym-video/ui/lib/toast';
-
-// 页面可隐藏窗口按钮，标题栏拖动监听持续生效。
-defineProps<{ hidden?: boolean }>();
 
 // 自制控件操作当前桌面窗口。
 const appWindow = getCurrentWindow();
