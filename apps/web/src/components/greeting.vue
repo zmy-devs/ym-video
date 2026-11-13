@@ -1,8 +1,12 @@
 <template>
   <h1 :class="className">
-    <template v-if="prefix">{{ prefix }}，</template>{{ greeting
-    }}<template v-if="name">，{{ name }}</template
-    ><span v-if="emoji" class="ml-2">{{ emoji }}</span>
+    <template v-if="prefix">{{ prefix }}，</template>
+
+    {{ greeting }}
+
+    <template v-if="name">，{{ name }}</template>
+
+    <span v-if="emoji" class="ml-2">{{ emoji }}</span>
   </h1>
 </template>
 
