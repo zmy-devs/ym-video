@@ -59,11 +59,9 @@
         :class="pageRoute.name === 'settings' && 'pt-mobile-header'"
       >
         <Transition
-          enter-active-class="transition-[opacity,transform] duration-180 ease-out"
-          leave-active-class="transition-[opacity,transform] duration-180 ease-out"
-          enter-from-class="translate-x-4 opacity-0"
-          leave-to-class="-translate-x-4 opacity-0"
-          mode="out-in"
+          enter-active-class="motion-safe:transition-opacity motion-safe:duration-150 motion-safe:ease-out"
+          enter-from-class="motion-safe:opacity-0"
+          @leave="handlePageLeave"
           @after-enter="handlePageEnter"
         >
           <KeepAlive :key="history.ownerId ?? undefined">
@@ -75,11 +73,9 @@
           </KeepAlive>
         </Transition>
         <Transition
-          enter-active-class="transition-[opacity,transform] duration-180 ease-out"
-          leave-active-class="transition-[opacity,transform] duration-180 ease-out"
-          enter-from-class="translate-x-4 opacity-0"
-          leave-to-class="-translate-x-4 opacity-0"
-          mode="out-in"
+          enter-active-class="motion-safe:transition-opacity motion-safe:duration-150 motion-safe:ease-out"
+          enter-from-class="motion-safe:opacity-0"
+          @leave="handlePageLeave"
           @after-enter="handlePageEnter"
         >
           <component
@@ -240,6 +236,9 @@ const online = useOnline();
 
 // 页面滚动与缓存位置共同驱动标题栏外观。
 const { scrolled, handleScroll, handlePageEnter } = useMobileScroll();
+
+// 离场页面立即移入缓存，淡入只作用于当前进入的页面。
+const handlePageLeave = (_element: Element, done: () => void) => done();
 
 // 内容滚动后使用暗色状态栏外观，顶部跟随应用主题。
 useMobileStatusBar(scrolled);

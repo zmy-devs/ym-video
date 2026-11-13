@@ -16,6 +16,7 @@
             type="text"
             role="searchbox"
             enterkeyhint="search"
+            aria-label="搜索影片"
             placeholder="搜索影片"
             autocomplete="off"
             class="h-full rounded-full text-base"
@@ -35,10 +36,7 @@
       </Button>
     </MobileHeader>
     <ScrollArea class="min-h-0 flex-1" @scroll.capture="handleScroll">
-      <div
-        class="pb-mobile-safe-bottom flex flex-col px-4 pt-mobile-header"
-        :style="{ minHeight: `${viewport.height}px` }"
-      >
+      <div class="pb-mobile-safe-bottom flex flex-col px-4 pt-mobile-header">
         <CatalogueResults
           v-if="submitted"
           :key="submitted"
@@ -82,7 +80,10 @@
           :icon="PackageOpen"
           label="暂无搜索历史"
           description="输入片名，开始搜索你想看的影片"
-          class="flex-1"
+          class="flex-none"
+          :style="{
+            minHeight: `calc(${viewport.height}px - var(--mobile-header-height))`,
+          }"
         />
       </div>
     </ScrollArea>
@@ -131,7 +132,7 @@ const { recent, remember, clear } = useSearchHistory();
 // 页面元素用于聚焦输入框及重置结果滚动位置。
 const page = useTemplateRef<HTMLDivElement>('page');
 
-// 页面初始尺寸作为布局基准，软键盘开合保留空状态的位置。
+// 空状态沿用页面初始高度，底部安全区与软键盘变化只影响滚动区域。
 const viewport = ref({
   width: window.innerWidth,
   height: window.innerHeight,
@@ -175,7 +176,7 @@ useEventListener(window, 'resize', () => {
 // 首次进入搜索时聚焦输入，返回结果列表时保留浏览状态。
 onActivated(() => {
   if (!submitted.value) {
-    page.value?.querySelector('input')?.focus();
+    page.value?.querySelector('input')?.focus({ preventScroll: true });
   }
 });
 
