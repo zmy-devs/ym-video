@@ -8,7 +8,7 @@
   >
     <template #header>
       <header
-        class="h-10 flex shrink-0 items-center justify-between border-b bg-sidebar px-3"
+        class="h-10 flex shrink-0 items-center justify-between border-b bg-sidebar pl-3 pr-1.5"
       >
         <DialogTitle
           class="flex items-center gap-1.5 text-sm font-medium leading-none"
@@ -16,8 +16,8 @@
           <Settings2 class="size-4" /><span>设置</span>
         </DialogTitle>
         <DialogClose v-if="!pending" as-child>
-          <Button variant="ghost" size="icon-xs">
-            <X />
+          <Button variant="ghost" size="icon-sm" aria-label="关闭设置">
+            <X class="size-4" />
           </Button>
         </DialogClose>
       </header>

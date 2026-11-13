@@ -75,10 +75,7 @@
           >
             {{ title }}
           </h1>
-          <div
-            v-if="hasFilters && !isMobile"
-            class="mb-6 flex gap-2 overflow-x-auto"
-          >
+          <div v-if="hasFilters && !isMobile" class="mb-6 flex flex-wrap gap-2">
             <Button
               v-for="item in selection.children"
               :key="item.id"

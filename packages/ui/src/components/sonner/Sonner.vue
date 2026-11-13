@@ -20,9 +20,7 @@ const props = withDefaults(defineProps<ToasterProps>(), {
 
 <template>
   <Sonner
-    :class="
-      cn('toaster group [&_[data-sonner-toast]]:rounded-full!', props.class)
-    "
+    :class="cn('toaster group', props.class)"
     :style="{
       '--normal-bg': 'var(--popover)',
       '--normal-text': 'var(--popover-foreground)',

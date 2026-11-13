@@ -29,7 +29,7 @@
             data-slot="player-loading"
             class="pointer-events-none absolute inset-0 flex items-center justify-center"
           >
-            <LoaderCircle class="size-10 animate-spin drop-shadow-md" />
+            <Spinner class="size-6" />
           </div>
           <button
             v-else-if="status === 'paused' && !seeking"
@@ -74,8 +74,9 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { CircleAlert, LoaderCircle, Play } from 'lucide-vue-next';
+import { CircleAlert, Play } from 'lucide-vue-next';
 import CommonEmpty from '@ym-video/ui/common/empty.vue';
+import { Spinner } from '@ym-video/ui/components/spinner';
 import { TooltipProvider } from '@ym-video/ui/components/tooltip';
 
 // PC 与 Mobile 共用视频区的状态渲染和控制层定位。
