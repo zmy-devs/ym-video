@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.ymvideo.mobilecontrols"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 24

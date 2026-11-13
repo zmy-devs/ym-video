@@ -143,16 +143,25 @@ if (command === 'dev') {
     throw new Error('Android 签名密钥文件不存在');
   }
   process.env.ANDROID_KEYSTORE_PATH = absoluteKeystorePath;
-  tauri([
-    'android',
-    'build',
-    '--apk',
-    '--target',
-    'aarch64',
-    '--',
-    '-I',
-    join(directory, 'scripts/android-signing.gradle'),
-  ]);
+
+  // 由生成的 Gradle 工程加载签名配置，开发构建可不提供签名密钥。
+  const gradlePath = join(directory, 'src-tauri/gen/android/build.gradle.kts');
+
+  // Android 根工程现有的 Gradle 配置。
+  const gradleSource = readFileSync(gradlePath, 'utf8');
+
+  // 根工程到版本库内签名脚本的固定相对路径。
+  const signingScript =
+    'apply(from = file("../../../scripts/android-signing.gradle"))';
+
+  if (!gradleSource.includes(signingScript)) {
+    writeFileSync(
+      gradlePath,
+      `${gradleSource.trimEnd()}\n\nif (System.getenv("ANDROID_KEYSTORE_PATH") != null) {\n    ${signingScript}\n}\n`,
+    );
+  }
+
+  tauri(['android', 'build', '--apk', '--target', 'aarch64']);
 
   // ARM64 构建只读取本次 universal release 产物。
   const apk = join(
