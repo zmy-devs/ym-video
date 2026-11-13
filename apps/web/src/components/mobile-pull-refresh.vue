@@ -11,23 +11,28 @@
     @click.capture="handleClick"
   >
     <slot />
-    <div
+    <Button
+      as="div"
+      variant="outline"
+      size="icon-lg"
       data-slot="pull-refresh-indicator"
-      class="pointer-events-none absolute top-[var(--mobile-header-height)] left-1/2 z-40 -ml-5 flex size-10 items-center justify-center rounded-full bg-popover text-primary shadow-md"
+      aria-hidden="true"
+      class="pointer-events-none absolute top-[var(--mobile-header-height)] left-1/2 z-40 -ml-5 rounded-full bg-popover dark:bg-popover"
       :class="
-        !pulling &&
-        'transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-opacity'
+        pulling
+          ? 'transition-none'
+          : 'transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-opacity'
       "
       :style="indicatorStyle"
     >
       <RotateCw
-        class="size-5"
+        class="size-5 text-primary"
         :class="
           refreshing && 'motion-safe:animate-spin motion-reduce:animate-pulse'
         "
         :style="!refreshing && { transform: `rotate(${distance * 5}deg)` }"
       />
-    </div>
+    </Button>
     <span class="sr-only" role="status">
       {{ refreshing ? '正在刷新' : '' }}
     </span>
@@ -38,6 +43,7 @@
 import { computed, onDeactivated, ref, useTemplateRef, watch } from 'vue';
 import { useEventListener } from '@vueuse/core';
 import { RotateCw } from 'lucide-vue-next';
+import { Button } from '@ym-video/ui/components/button';
 
 // 页面提供刷新任务，组件负责触顶手势和圆形加载反馈。
 const props = defineProps<{
