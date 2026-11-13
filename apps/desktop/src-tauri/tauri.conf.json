@@ -4,6 +4,7 @@
   "version": "../../../package.json",
   "identifier": "com.2514765066.ym-video",
   "build": {
+    "additionalWatchFolders": ["../../../assets"],
     "beforeDevCommand": "pnpm --filter @ym-video/web run dev:desktop",
     "devUrl": "http://localhost:3000",
     "beforeBuildCommand": "pnpm --filter @ym-video/web run build:desktop",
