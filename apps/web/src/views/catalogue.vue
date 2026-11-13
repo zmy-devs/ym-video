@@ -44,7 +44,12 @@
                 :key="item.id"
                 class="w-[40vw] shrink-0 snap-start"
               >
-                <MovieCard :movie="item" :entry="item" />
+                <MovieCard
+                  :movie="item"
+                  :entry="item"
+                  mobile-actions
+                  @long-press="handleLongPress(item)"
+                />
               </div>
             </div>
           </div>
@@ -100,11 +105,16 @@
         </section>
       </div>
     </ScrollArea>
+    <MobileHistoryActionDrawer
+      v-if="isMobile && isOverview"
+      v-model:open="actionOpen"
+      :entry="selectedEntry"
+    />
   </MobilePullRefresh>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, useTemplateRef } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Button } from '@ym-video/ui/components/button';
 import { ScrollArea } from '@ym-video/ui/components/scroll-area';
@@ -112,12 +122,14 @@ import MovieCard from '@/components/movie-card/index.vue';
 import WelcomeGreeting from '../components/greeting.vue';
 import CatalogueResults from '@/components/catalogue-results.vue';
 import MobileCategoryNavigation from '@/components/mobile-category-navigation.vue';
+import MobileHistoryActionDrawer from '@/components/mobile-history-action-drawer.vue';
 import MobilePullRefresh from '@/components/mobile-pull-refresh.vue';
 import { useLibraryStore } from '@/stores/library-store';
 import { useHistoryStore } from '@/stores/history-store';
 import { useCachedScroll } from '@/composables/use-cached-scroll';
 import { getCategorySelection } from '@/lib/category';
 import { isMobile } from '@/platform';
+import type { HistoryEntry } from '@/types';
 
 // 每页沿用创建时的路由信息，缓存的概览不会跟随其他页面变成分类或搜索。
 const route = { ...useRoute() };
@@ -133,6 +145,24 @@ const library = useLibraryStore();
 
 // 当前设备的观看历史。
 const history = useHistoryStore();
+
+// 概览最近观看的卡片共用一个历史操作抽屉。
+const selectedEntry = ref<HistoryEntry | null>(null);
+
+// 长按卡片时显示所选记录的操作。
+const actionOpen = ref(false);
+
+// 移动端最近观看沿用历史页的长按操作。
+const handleLongPress = (entry: HistoryEntry) => {
+  selectedEntry.value = entry;
+  actionOpen.value = true;
+};
+
+watch(actionOpen, (open) => {
+  if (!open) {
+    selectedEntry.value = null;
+  }
+});
 
 // 目录初始化和分类切换期间暂停下拉操作。
 const loading = computed(
