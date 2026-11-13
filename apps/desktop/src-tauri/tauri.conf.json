@@ -15,6 +15,7 @@
         "label": "main",
         "title": "Ym Video",
         "create": false,
+        "center": true,
         "width": 1280,
         "height": 800,
         "minWidth": 800,
