@@ -47,6 +47,34 @@ const prepareAndroid = () => {
   const drawable = join(androidResources, 'drawable');
   mkdirSync(drawable, { recursive: true });
   copyFileSync(icon, join(drawable, 'ym_video_icon.png'));
+
+  // 开屏图标留出系统遮罩所需的安全区域。
+  copyFileSync(
+    join(directory, 'resources/android/splash-icon.xml'),
+    join(drawable, 'ym_video_splash.xml'),
+  );
+
+  // 调试版通过 Android 资源覆盖显示独立的应用名称。
+  const debugValues = join(
+    directory,
+    'src-tauri/gen/android/app/src/debug/res/values',
+  );
+  mkdirSync(debugValues, { recursive: true });
+  copyFileSync(
+    join(directory, 'resources/android/debug-strings.xml'),
+    join(debugValues, 'strings.xml'),
+  );
+
+  // Android 12 起直接展示应用图标，日夜主题共用透明图标底色。
+  for (const variant of ['values-v31', 'values-night-v31']) {
+    const resources = join(androidResources, variant);
+    mkdirSync(resources, { recursive: true });
+    copyFileSync(
+      join(directory, 'resources/android/themes.xml'),
+      join(resources, 'themes.xml'),
+    );
+  }
+
   const manifest = join(
     directory,
     'src-tauri/gen/android/app/src/main/AndroidManifest.xml',
@@ -55,6 +83,10 @@ const prepareAndroid = () => {
     const source = readFileSync(manifest, 'utf8');
     const updated = source
       .replace(/\s+android:windowSoftInputMode="[^"]+"/g, '')
+      .replace(
+        /android:usesCleartextTraffic="[^"]+"/,
+        'android:usesCleartextTraffic="true"',
+      )
       .replace(
         'android:icon="@mipmap/ic_launcher"\n        android:label="@string/app_name"',
         'android:icon="@drawable/ym_video_icon"\n        android:roundIcon="@drawable/ym_video_icon"\n        android:label="@string/app_name"',

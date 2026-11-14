@@ -28,6 +28,7 @@
     "active": true,
     "icon": ["../build/generated/icon.png"],
     "android": {
+      "debugApplicationIdSuffix": ".dev",
       "minSdkVersion": 24
     }
   }

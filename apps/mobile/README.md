@@ -12,9 +12,15 @@ pnpm --filter @ym-video/mobile test:update
 
 Android 开发模式加载 `apps/web` 的 `mobile` Vite 构建模式，并通过共享 `packages/native-core` 处理账号请求、历史同步和资源请求。
 
+调试版名称为 `Ym Video Dev`，包名为 `com.zhangmingyang.ymvideo.dev`；正式版名称为 `Ym Video`，包名为 `com.zhangmingyang.ymvideo`。两者可同时安装在真机上，本地设置、登录状态和缓存各自独立。调试版包名后缀由 `bundle.android.debugApplicationIdSuffix` 配置，应用名称使用 Android `debug` 资源覆盖。
+
 播放器通过 `.cargo/config.toml` 的 Wry Android 类扩展，对所有 HTTPS 片源的过期证书按会话放行；域名不匹配、不受信任等其他证书错误继续拦截。原生证书规则修改后需要重新构建和安装 APK。
 
+播放器支持 HTTP 与 HTTPS 片源，调试版和正式版均允许 HTTP 明文流量。
+
 先启动模拟器或连接设备。`pnpm dev:android` 会通过 ADB 将设备的 `3002`、`8788` 端口转发到本机，原生账号请求访问 `http://127.0.0.1:8788`。浏览器开发页的 `/api` 请求由 Vite 转发到同一个本地服务，资源接口由 Vite 在本机转发。
+
+真机调试期间保持 `pnpm dev:api`、`pnpm dev:android` 两个进程运行，并保持 USB 调试连接。
 
 ## 构建
 
@@ -44,6 +50,6 @@ pnpm dev:api
 pnpm test:update:android:local
 ```
 
-命令生成两个使用同一调试签名的 APK：基础包沿用手机当前版本，更新包递增一个修订号。基础包安装到手机后，进入设置点击“检查更新”，APK 将通过 USB 从电脑下载，再由系统安装器完成覆盖升级。重新打开后核对版本号、本地设置和登录状态。
+命令生成两个包名为 `com.zhangmingyang.ymvideo.dev`、使用同一调试签名的 APK：基础包沿用手机当前调试版版本，首次安装使用工作区版本，更新包递增一个修订号。基础包安装到手机后，进入 `Ym Video Dev` 的设置点击“检查更新”，APK 将通过 USB 从电脑下载，再由系统安装器完成覆盖升级。重新打开后核对版本号、本地设置和登录状态。
 
 本机服务只监听 `127.0.0.1:18789`，APK 保存在 `apps/mobile/build/local-update`。测试期间保持命令运行，结束时按 Ctrl+C。调试构建通过 `YM_VIDEO_ANDROID_LOCAL_UPDATE=1` 使用本机清单；正式构建使用 Gitee 更新入口。

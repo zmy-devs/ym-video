@@ -24,6 +24,17 @@ const output = join(directory, 'build/local-update');
 // 使用工作区已安装的 Tauri CLI。
 const cli = join(directory, 'node_modules/@tauri-apps/cli/tauri.js');
 
+// 调试包名与启动 Activity 沿用 Tauri 配置。
+const tauriConfig: {
+  identifier: string;
+  bundle: { android: { debugApplicationIdSuffix: string } };
+} = JSON.parse(
+  readFileSync(join(directory, 'src-tauri/tauri.conf.json'), 'utf8'),
+);
+
+// 调试版覆盖升级使用独立的 Android 应用标识。
+const applicationId = `${tauriConfig.identifier}${tauriConfig.bundle.android.debugApplicationIdSuffix}`;
+
 // 手机通过 USB 访问电脑回环地址，不依赖局域网地址。
 const port = 18789;
 
@@ -73,14 +84,14 @@ if (!serial || !devices.includes(serial)) {
   throw new Error('请连接一台 Android 设备，多设备时设置 ANDROID_SERIAL');
 }
 
-// 查询手机当前安装的应用信息。
+// 查询手机当前安装的调试版信息。
 const installed = query([
   '-s',
   serial,
   'shell',
   'dumpsys',
   'package',
-  'com.zhangmingyang.ymvideo',
+  applicationId,
 ]);
 
 // 首次安装使用工作区声明的应用版本。
@@ -117,7 +128,7 @@ const buildApk = (
   destination: string,
   buildFrontend: boolean,
 ) => {
-  // 版本只通过 Tauri 的合并配置指定。
+  // 测试版本与前端构建命令通过 Tauri 的合并配置指定。
   const config = join(output, `tauri-${version}.conf.json`);
   writeFileSync(
     config,
@@ -216,7 +227,7 @@ try {
     'am',
     'start',
     '-n',
-    'com.zhangmingyang.ymvideo/.MainActivity',
+    `${applicationId}/${tauriConfig.identifier}.MainActivity`,
   ]);
 } catch (cause) {
   close();
