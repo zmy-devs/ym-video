@@ -310,17 +310,6 @@ onUnmounted(() => theme.setPlayerMode(false));
 useEventListener(window, 'focus', () => history.refresh());
 useEventListener(window, 'online', () => history.refresh());
 
-const historyRetryTimer = setInterval(() => {
-  if (
-    navigator.onLine &&
-    history.ownerId &&
-    (history.syncStatus === 'pending' || history.syncStatus === 'error')
-  ) {
-    history.refresh();
-  }
-}, 30_000);
-onUnmounted(() => clearInterval(historyRetryTimer));
-
 // 输入框保留系统编辑菜单，其他区域使用应用自己的右键菜单。
 useEventListener(document, 'contextmenu', (event) => {
   if (

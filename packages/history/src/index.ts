@@ -38,7 +38,6 @@ export type HistoryErrorType =
   | 'server'
   | 'request'
   | 'storage'
-  | 'invalid-entry'
   | 'oversized-entry'
   | 'invalid-response'
   | 'unknown';

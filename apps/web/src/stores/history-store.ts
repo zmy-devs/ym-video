@@ -3,7 +3,6 @@ import { defineStore } from 'pinia';
 import {
   emptyHistory,
   HISTORY_ENTRY_MAX_BYTES,
-  isHistoryOperation,
   projectHistory,
 } from '@ym-video/history';
 import type {
@@ -220,9 +219,6 @@ export const useHistoryStore = defineStore('history', () => {
     async (signal, currentOwner: string, generation: number) => {
       try {
         const snapshot = await fetchHistory(currentOwner, signal);
-        if (generation !== accountGeneration || signal.aborted) {
-          return;
-        }
         const local = await commitHistorySync(currentOwner, snapshot, []);
         if (generation !== accountGeneration) {
           return;
@@ -263,56 +259,42 @@ export const useHistoryStore = defineStore('history', () => {
       updateStatus();
       return;
     }
-    if (generation !== accountGeneration) {
-      return;
-    }
-
-    try {
-      while (
-        navigator.onLine &&
-        !signal.aborted &&
-        generation === accountGeneration
-      ) {
-        const local = await readLocalHistory(currentOwner);
-        if (generation !== accountGeneration) {
-          return;
-        }
-        if (!local.operations.length) {
-          base.value = local.snapshot;
-          operations.value = [];
-          syncStatus.value = 'synced';
-          syncErrorType.value = null;
-          return;
-        }
-
-        const batch = makeSyncBatch(currentOwner, local.operations);
-        if (!batch.length) {
-          throw new HistoryServiceError('oversized-entry');
-        }
-        const snapshot = await syncHistory(currentOwner, batch, signal);
-        if (signal.aborted || generation !== accountGeneration) {
-          return;
-        }
-        const committed = await commitHistorySync(
-          currentOwner,
-          snapshot,
-          batch.map((operation) => operation.id),
-        );
-        if (generation !== accountGeneration) {
-          return;
-        }
-        base.value = committed.snapshot;
-        operations.value = committed.operations;
-        syncStatus.value = 'pending';
-        syncErrorType.value = null;
-        announceChange(currentOwner);
-        updateStatus();
-      }
-    } catch (cause) {
+    while (
+      navigator.onLine &&
+      !signal.aborted &&
+      generation === accountGeneration
+    ) {
+      const local = await readLocalHistory(currentOwner);
       if (signal.aborted || generation !== accountGeneration) {
         return;
       }
-      setError(getErrorType(cause));
+      if (!local.operations.length) {
+        base.value = local.snapshot;
+        operations.value = [];
+        syncStatus.value = 'synced';
+        syncErrorType.value = null;
+        return;
+      }
+
+      const batch = makeSyncBatch(currentOwner, local.operations);
+      if (!batch.length) {
+        throw new HistoryServiceError('oversized-entry');
+      }
+      const snapshot = await syncHistory(currentOwner, batch, signal);
+      const committed = await commitHistorySync(
+        currentOwner,
+        snapshot,
+        batch.map((operation) => operation.id),
+      );
+      if (generation !== accountGeneration) {
+        return;
+      }
+      base.value = committed.snapshot;
+      operations.value = committed.operations;
+      syncStatus.value = 'pending';
+      syncErrorType.value = null;
+      announceChange(currentOwner);
+      updateStatus();
     }
   };
 
@@ -365,10 +347,6 @@ export const useHistoryStore = defineStore('history', () => {
       throw new Error('请先登录后查看观看历史');
     }
     await setAccount(currentOwner);
-    if (ownerId.value !== currentOwner) {
-      throw new Error('账号已切换，请重新打开影片');
-    }
-
     // 新设备尚无该影片时读取一次云端进度，避免用零进度覆盖已有记录。
     const cachedMovie = entries.value.some((entry) => entry.id === movieId);
     if (!cachedMovie && refreshRequest.task.value) {
@@ -470,10 +448,6 @@ export const useHistoryStore = defineStore('history', () => {
       },
     };
 
-    if (!isHistoryOperation(operation)) {
-      setError('invalid-entry');
-      return false;
-    }
     if (
       new TextEncoder().encode(JSON.stringify(operation.entry)).byteLength >
       HISTORY_ENTRY_MAX_BYTES

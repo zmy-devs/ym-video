@@ -14,7 +14,6 @@ export const HISTORY_ERROR_MESSAGE_MAP: Record<HistoryErrorType, string> = {
   server: '服务暂时不可用，请稍后重试',
   request: '观看历史同步失败，请重试',
   storage: '本机观看历史无法读取或保存',
-  'invalid-entry': '影片信息不完整，观看历史未保存',
   'oversized-entry': '影片信息过大，观看历史未保存',
   'invalid-response': '云端观看历史格式错误',
   unknown: '观看历史同步失败，请重试',

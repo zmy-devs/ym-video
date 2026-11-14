@@ -1,42 +1,16 @@
-import { z } from 'zod';
-import {
-  emptyHistory,
-  historyOperationSchema,
-  historySnapshotSchema,
-  mergeHistorySnapshots,
-} from '@ym-video/history';
+import { emptyHistory, mergeHistorySnapshots } from '@ym-video/history';
 import type { HistoryOperation, HistorySnapshot } from '@ym-video/history';
-
-// 云端确认快照按账号隔离。
-interface CachedHistory {
-  ownerId: string;
-  snapshot: HistorySnapshot;
-}
-
-// IndexedDB 队列读取时验证账号、键与持久化序号。
-const queuedOperationSchema = z
-  .object({
-    key: z.string(),
-    ownerId: z.string(),
-    order: z.int().nonnegative(),
-    operation: historyOperationSchema,
-  })
-  .refine(
-    (value) => value.key === operationKey(value.ownerId, value.operation.id),
-  );
-type QueuedOperation = z.infer<typeof queuedOperationSchema>;
-
-const cachedHistorySchema = z.object({
-  ownerId: z.string(),
-  snapshot: historySnapshotSchema,
-});
+import {
+  cachedHistorySchema,
+  queuedOperationSchema,
+  type CachedHistory,
+  type QueuedOperation,
+} from '@/schemas/history';
 
 // 缓存边界核对账号归属，损坏数据使用该账号的空快照。
 const readSnapshot = (value: unknown, ownerId: string): HistorySnapshot => {
   const result = cachedHistorySchema.safeParse(value);
-  return result.success &&
-    result.data.ownerId === ownerId &&
-    result.data.snapshot.ownerId === ownerId
+  return result.success && result.data.ownerId === ownerId
     ? result.data.snapshot
     : emptyHistory(ownerId);
 };
@@ -188,18 +162,19 @@ export const enqueueHistoryOperation = (
         const order =
           items.reduce((maximum, item) => Math.max(maximum, item.order), -1) +
           1;
-        store.put({
+        const queued: QueuedOperation = {
           key: operationKey(ownerId, operation.id),
           ownerId,
           order,
           operation,
-        });
-
-        const queued = store.index('ownerId').getAll(ownerId);
-        queued.onsuccess = () => {
-          const operations = readQueuedOperations(queued.result, ownerId);
-          setResult(sortQueuedOperations(operations));
         };
+        store.put(queued);
+        setResult(
+          sortQueuedOperations([
+            ...items.filter((item) => item.key !== queued.key),
+            queued,
+          ]),
+        );
       };
     },
   );
