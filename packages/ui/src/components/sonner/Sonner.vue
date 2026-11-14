@@ -11,10 +11,16 @@ import {
 import { cn } from '@ym-video/ui/lib/utils';
 import { Toaster as Sonner } from 'vue-sonner';
 
-// 提示默认展示 2 秒，移动布局顶部不额外留白。
+// 提示默认展示 2 秒，操作按钮跟随主题色，移动布局顶部不额外留白。
 const props = withDefaults(defineProps<ToasterProps>(), {
   duration: 2000,
   mobileOffset: () => ({ top: 0 }),
+  toastOptions: () => ({
+    actionButtonStyle: {
+      background: 'var(--primary)',
+      color: 'var(--primary-foreground)',
+    },
+  }),
 });
 </script>
 

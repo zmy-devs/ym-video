@@ -2,11 +2,7 @@
   <TooltipProvider>
     <AppLayout />
     <AppDialogs />
-    <Toaster
-      :theme="theme.resolved"
-      position="top-center"
-      :class="isMobile ? '[&_[data-sonner-toast]]:rounded-full!' : undefined"
-    />
+    <Toaster :theme="theme.resolved" position="top-center" />
   </TooltipProvider>
 </template>
 
@@ -16,7 +12,6 @@ import { Toaster } from '@ym-video/ui/components/sonner';
 import AppLayout from '@/layout/index.vue';
 import AppDialogs from '@/components/dialogs/index.vue';
 import { useThemeStore } from '@/stores/theme-store';
-import { isMobile } from '@/platform';
 
 // 全局提示跟随当前主题。
 const theme = useThemeStore();
