@@ -26,9 +26,9 @@
     >
       <span>检查更新</span>
       <span
-        v-if="mobileActionLabel"
+        v-if="update.status !== 'idle'"
         class="ml-auto text-sm text-muted-foreground"
-        >{{ mobileActionLabel }}</span
+        >{{ actionLabel }}</span
       >
       <ChevronRight class="size-5 stroke-muted-foreground" />
     </ButtonGroupItem>
@@ -67,29 +67,16 @@
             }}
           </p>
         </div>
-        <Button v-if="update.status === 'idle'" size="sm" @click="update.check">
-          检查更新
-        </Button>
         <Button
-          v-else-if="
-            ['downloaded', 'installing', 'installer-opened'].includes(
-              update.status,
-            )
-          "
           size="sm"
-          :disabled="update.status === 'installing'"
-          @click="update.install"
+          :disabled="
+            ['checking', 'downloading', 'installing'].includes(update.status)
+          "
+          @click="handleUpdate"
         >
-          {{ installLabel }}
+          {{ actionLabel }}
         </Button>
       </div>
-      <p
-        v-if="update.message"
-        role="status"
-        class="px-4 text-sm text-muted-foreground"
-      >
-        {{ update.message }}
-      </p>
     </div>
   </section>
 </template>
@@ -118,8 +105,20 @@ const releaseUrl = computed(() =>
     : 'https://gitee.com/zmy-devs/ym-video/releases',
 );
 
-// 按平台和安装阶段提示下一步操作。
-const installLabel = computed(() => {
+// 两端在同一操作位置展示更新阶段和下载进度。
+const actionLabel = computed(() => {
+  if (update.status === 'idle') {
+    return '检查更新';
+  }
+
+  if (update.status === 'checking') {
+    return '正在检查…';
+  }
+
+  if (update.status === 'downloading') {
+    return update.progress === null ? '下载中…' : `下载中${update.progress}%`;
+  }
+
   if (update.status === 'installing') {
     return '正在安装…';
   }
@@ -131,24 +130,7 @@ const installLabel = computed(() => {
   return isDesktop ? '安装并重启' : '安装更新';
 });
 
-// 移动端保留检查更新标题，行尾展示进度或安装操作。
-const mobileActionLabel = computed(() => {
-  if (update.status === 'idle') {
-    return '';
-  }
-
-  if (update.status === 'checking') {
-    return '正在检查…';
-  }
-
-  if (update.status === 'downloading') {
-    return update.progress === null ? '正在下载…' : `${update.progress}%`;
-  }
-
-  return installLabel.value;
-});
-
-// 移动端操作行按任务阶段发起检查或安装。
+// 更新操作按任务阶段发起检查或安装。
 const handleUpdate = async () => {
   if (update.status === 'idle') {
     await update.check();

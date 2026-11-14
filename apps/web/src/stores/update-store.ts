@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import { getVersion } from '@tauri-apps/api/app';
 import { isTauri } from '@tauri-apps/api/core';
@@ -6,7 +6,6 @@ import { isDesktop } from '@/platform';
 import { useStorage } from '@vueuse/core';
 import { checkClientUpdate } from '@/services/update';
 import type { ClientUpdate, UpdateStatus } from '@/types/update';
-import { UPDATE_STATUS_MESSAGE_MAP } from '@/map/update';
 import { errorToast, infoToast, storageError } from '@ym-video/ui/lib/toast';
 
 // 更新任务与已下载资源由应用共享，设置弹窗关闭后继续保留。
@@ -24,9 +23,6 @@ export const useUpdateStore = defineStore('client-update', () => {
   // 当前安装的客户端版本。
   const version = ref('');
 
-  // 更新服务返回的可用版本。
-  const latestVersion = ref('');
-
   // 版本检查与下载的当前状态。
   const status = ref<UpdateStatus>('idle');
 
@@ -38,17 +34,6 @@ export const useUpdateStore = defineStore('client-update', () => {
 
   // 应用更新任务是否已经初始化。
   let initialized = false;
-
-  // 状态文案从集中映射读取，并填入版本和进度。
-  const message = computed(() => {
-    if (status.value === 'downloading' && progress.value === null) {
-      return `正在下载 v${latestVersion.value}…`;
-    }
-
-    return UPDATE_STATUS_MESSAGE_MAP[status.value]
-      .replace('{version}', latestVersion.value)
-      .replace('{progress}', String(progress.value));
-  });
 
   // 下载资源由应用持有，失败或退出时统一释放。
   const closeUpdate = async () => {
@@ -68,7 +53,6 @@ export const useUpdateStore = defineStore('client-update', () => {
 
     status.value = 'checking';
     progress.value = null;
-    latestVersion.value = '';
 
     try {
       update = await checkClientUpdate();
@@ -80,8 +64,6 @@ export const useUpdateStore = defineStore('client-update', () => {
 
         return;
       }
-
-      latestVersion.value = update.version;
 
       status.value = 'downloading';
 
@@ -179,10 +161,8 @@ export const useUpdateStore = defineStore('client-update', () => {
   return {
     autoUpdate,
     version,
-    latestVersion,
     status,
     progress,
-    message,
     check,
     install,
     setAutoUpdate,
