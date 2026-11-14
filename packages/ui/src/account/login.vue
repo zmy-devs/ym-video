@@ -5,9 +5,9 @@
     <Card
       class="w-full max-w-md rounded-2xl px-6 py-8 shadow-xl sm:px-10 sm:py-10"
     >
-      <form class="grid gap-7" novalidate @submit.prevent="handleSubmit">
+      <form class="grid gap-7" novalidate @submit="handleLogin">
         <header class="grid justify-items-center gap-3 text-center">
-          <img :src="icon" class="size-16 rounded-xl" />
+          <img :src="icon" alt="Ym Video" class="size-16 rounded-xl" />
           <div class="grid gap-1.5">
             <h1 id="login-heading" class="text-2xl font-bold">
               {{ loginTitle }}
@@ -19,46 +19,48 @@
         </header>
 
         <div class="grid gap-5">
-          <Field
-            id="login-email"
-            v-slot="{ control }"
-            label="邮箱"
-            :error="emailError"
-            :disabled="pending"
-          >
-            <Input
-              v-bind="control"
-              v-model="email"
-              name="email"
-              type="email"
-              autocomplete="email"
-              maxlength="254"
-              :placeholder="emailPlaceholder"
+          <VeeField v-slot="{ componentField, errors }" name="email">
+            <Field
+              id="login-email"
+              v-slot="{ control }"
+              label="邮箱"
+              :error="errors[0]"
               :disabled="pending"
-              required
-              @update:model-value="handleInput"
-            />
-          </Field>
+            >
+              <Input
+                v-bind="{ ...componentField, ...control }"
+                name="email"
+                type="email"
+                autocomplete="email"
+                maxlength="254"
+                :placeholder="emailPlaceholder"
+                :disabled="pending"
+                required
+                @update:model-value="error = ''"
+              />
+            </Field>
+          </VeeField>
 
-          <Field
-            id="login-password"
-            v-slot="{ control }"
-            label="密码"
-            :error="passwordError"
-            :disabled="pending"
-          >
-            <Input
-              v-bind="control"
-              v-model="password"
-              name="password"
-              type="password"
-              autocomplete="current-password"
-              placeholder="请输入密码"
+          <VeeField v-slot="{ componentField, errors }" name="password">
+            <Field
+              id="login-password"
+              v-slot="{ control }"
+              label="密码"
+              :error="errors[0]"
               :disabled="pending"
-              required
-              @update:model-value="handleInput"
-            />
-          </Field>
+            >
+              <Input
+                v-bind="{ ...componentField, ...control }"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                placeholder="请输入密码"
+                :disabled="pending"
+                required
+                @update:model-value="error = ''"
+              />
+            </Field>
+          </VeeField>
 
           <p v-if="error" class="text-sm text-destructive">{{ error }}</p>
 
@@ -76,9 +78,9 @@
 
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from 'vue';
+import { Field as VeeField, useForm } from 'vee-validate';
 import { useRoute, useRouter } from 'vue-router';
 import type { RouteRecordName } from 'vue-router';
-import { z } from 'zod';
 import { LoaderCircle } from 'lucide-vue-next';
 import { Button } from '@ym-video/ui/components/button';
 import { Card } from '@ym-video/ui/components/card';
@@ -86,7 +88,7 @@ import { Input } from '@ym-video/ui/components/input';
 import Field from '@ym-video/ui/common/field.vue';
 import type { AccountClient } from '@ym-video/account/client';
 import { getLoginRedirect } from '@ym-video/account/navigation';
-import { emailSchema } from '@ym-video/account/schema';
+import { loginSchema } from '@ym-video/account/schema';
 import { retryRequest } from '@ym-video/account/request-retry';
 
 // 两个应用共用表单与认证流程，应用只声明目标角色和首页。
@@ -133,14 +135,15 @@ const router = useRouter();
 // 登录后刷新当前应用所持有的认证会话。
 const session = props.client.useSession();
 
-// 仅通过邮箱登录，不在浏览器存储账号凭证。
-const email = ref('');
-
-// 密码只保存在当前表单内存中。
-const password = ref('');
-
-// 提交期间阻止重复请求。
-const pending = ref(false);
+// 表单统一校验账号字段，凭据只保存在当前页面内存中。
+const {
+  handleSubmit,
+  setFieldValue,
+  isSubmitting: pending,
+} = useForm({
+  validationSchema: loginSchema,
+  initialValues: { email: '', password: '' },
+});
 
 // 离开登录页时取消持续重试的请求。
 const loginController = new AbortController();
@@ -149,49 +152,17 @@ onUnmounted(() => loginController.abort());
 // 当前登录失败原因。
 const error = ref('');
 
-// 邮箱校验错误显示在邮箱标题位置。
-const emailError = ref('');
-
-// 密码校验错误显示在密码标题位置。
-const passwordError = ref('');
-
-// 修改输入时清除上一轮字段与服务反馈。
-const handleInput = () => {
-  emailError.value = '';
-  passwordError.value = '';
-  error.value = '';
-};
-
 // 通过 Better Auth 建立 Cookie 会话，并按角色进入对应应用。
-const handleSubmit = async () => {
-  if (pending.value) {
-    return;
-  }
-
-  const result = z
-    .object({
-      email: emailSchema,
-      password: z.string().min(1, '请输入密码'),
-    })
-    .safeParse({ email: email.value, password: password.value });
-
-  if (!result.success) {
-    const errors = result.error.flatten().fieldErrors;
-    emailError.value = errors.email?.[0] ?? '';
-    passwordError.value = errors.password?.[0] ?? '';
-    return;
-  }
-
-  handleInput();
-  pending.value = true;
+const handleLogin = handleSubmit(async (values) => {
+  error.value = '';
 
   try {
     // 网络和临时服务故障持续重试，凭据错误交由表单提示。
     const response = await retryRequest(
       async () => {
         const value = await props.client.signIn.email({
-          email: result.data.email,
-          password: result.data.password,
+          email: values.email,
+          password: values.password,
           fetchOptions: { signal: loginController.signal, retry: 0 },
         });
 
@@ -199,7 +170,7 @@ const handleSubmit = async () => {
           value.error &&
           ([0, 408].includes(value.error.status) || value.error.status >= 500)
         ) {
-          throw value.error;
+          throw new Error(value.error.message || '登录请求失败');
         }
 
         return value;
@@ -222,7 +193,7 @@ const handleSubmit = async () => {
       return;
     }
 
-    password.value = '';
+    setFieldValue('password', '', false);
 
     await session.value.refetch();
 
@@ -252,8 +223,6 @@ const handleSubmit = async () => {
     if (!loginController.signal.aborted) {
       error.value = '无法连接账号服务，请稍后重试';
     }
-  } finally {
-    pending.value = false;
   }
-};
+});
 </script>

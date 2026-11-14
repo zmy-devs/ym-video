@@ -115,7 +115,7 @@ const run = async () => {
           new Event('submit', { bubbles: true, cancelable: true }),
         );
     submit();
-    await nextTick();
+    await until(() => !!document.body.textContent?.includes('名称需为'));
     assert(
       requests === 0 && document.body.textContent?.includes('名称需为'),
       '空表单由 Zod 拦截',
@@ -124,7 +124,7 @@ const run = async () => {
     fill(1, 'file:///api');
     await nextTick();
     submit();
-    await nextTick();
+    await until(() => !!document.body.textContent?.includes('HTTP 或 HTTPS'));
     assert(
       requests === 0 && document.body.textContent?.includes('HTTP 或 HTTPS'),
       '无效协议不发请求',

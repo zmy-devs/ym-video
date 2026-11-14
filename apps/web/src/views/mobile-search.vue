@@ -1,30 +1,35 @@
 <template>
   <div ref="page" class="flex h-full flex-col bg-background dark:bg-black">
     <MobileHeader :scrolled="scrolled">
-      <form
-        role="search"
-        class="min-w-0 flex-1"
-        @submit.prevent="handleSearch(keyword)"
-      >
-        <InputGroup
-          :focus-ring="false"
-          class="h-11 rounded-full !bg-white/60 text-foreground backdrop-blur-xl dark:!bg-card/60"
-        >
-          <InputGroupInput
-            id="search-keyword"
-            v-model="keyword"
-            type="text"
-            role="searchbox"
-            enterkeyhint="search"
-            aria-label="搜索影片"
-            placeholder="搜索影片"
-            autocomplete="off"
-            class="h-full rounded-full text-base"
-          />
-          <InputGroupAddon>
-            <Search class="size-5 text-foreground" />
-          </InputGroupAddon>
-        </InputGroup>
+      <form role="search" class="min-w-0 flex-1" @submit="handleSubmitSearch">
+        <VeeField v-slot="{ componentField, errors }" name="keyword">
+          <Field class="gap-0" :data-invalid="!!errors.length">
+            <InputGroup
+              :focus-ring="false"
+              class="h-11 rounded-full !bg-white/60 text-foreground backdrop-blur-xl dark:!bg-card/60"
+            >
+              <InputGroupInput
+                id="search-keyword"
+                v-bind="componentField"
+                type="text"
+                role="searchbox"
+                enterkeyhint="search"
+                aria-label="搜索影片"
+                :aria-invalid="!!errors.length"
+                :aria-describedby="errors.length ? 'search-error' : undefined"
+                placeholder="搜索影片"
+                autocomplete="off"
+                class="h-full rounded-full text-base"
+              />
+              <InputGroupAddon>
+                <Search class="size-5 text-foreground" />
+              </InputGroupAddon>
+            </InputGroup>
+            <span v-if="errors.length" id="search-error" class="sr-only">{{
+              errors[0]
+            }}</span>
+          </Field>
+        </VeeField>
       </form>
       <Button
         variant="outline"
@@ -92,11 +97,13 @@
 
 <script setup lang="ts">
 import { onActivated, onScopeDispose, ref, useTemplateRef, watch } from 'vue';
+import { Field as VeeField, useForm } from 'vee-validate';
 import { useEventListener } from '@vueuse/core';
 import { useRouter } from 'vue-router';
 import { PackageOpen, Search, Trash2, X } from 'lucide-vue-next';
 import { Badge } from '@ym-video/ui/components/badge';
 import { Button } from '@ym-video/ui/components/button';
+import { Field } from '@ym-video/ui/components/field';
 import {
   InputGroup,
   InputGroupAddon,
@@ -106,6 +113,7 @@ import { ScrollArea } from '@ym-video/ui/components/scroll-area';
 import Empty from '@ym-video/ui/common/empty.vue';
 import CatalogueResults from '@/components/catalogue-results.vue';
 import MobileHeader from '@/layout/mobile-header.vue';
+import { searchFormSchema } from '@/schemas/search';
 import { useCachedScroll } from '@/composables/use-cached-scroll';
 import { useSearchHistory } from '@/composables/use-search-history';
 import { useLibraryStore } from '@/stores/library-store';
@@ -120,8 +128,11 @@ const library = useLibraryStore();
 // 关闭搜索返回进入前的页面。
 const router = useRouter();
 
-// 当前输入和已提交的查询分开，编辑时保留上次结果。
-const keyword = ref('');
+// 搜索输入交给表单管理，编辑时保留上次结果。
+const { values, handleSubmit, setFieldValue } = useForm({
+  validationSchema: searchFormSchema,
+  initialValues: { keyword: '' },
+});
 
 // 本次结果列表使用的已提交关键词。
 const submitted = ref('');
@@ -139,27 +150,26 @@ const viewport = ref({
 });
 
 // 提交后在当前搜索框下展示结果，并收起软键盘。
-const handleSearch = (value: string) => {
-  // 去除输入首尾空格后执行查询。
-  const query = value.trim();
-
-  if (!query) {
-    return;
-  }
-
-  keyword.value = query;
+const handleSearch = (query: string) => {
+  setFieldValue('keyword', query, false);
   submitted.value = query;
   remember(query);
   page.value?.querySelector('input')?.blur();
   resetScroll();
 };
 
+// 表单提交使用经过 schema 规范化的关键词。
+const handleSubmitSearch = handleSubmit(({ keyword }) => handleSearch(keyword));
+
 // 清空输入时重新展示最近搜索入口。
-watch(keyword, (value) => {
-  if (!value.trim()) {
-    submitted.value = '';
-  }
-});
+watch(
+  () => values.keyword,
+  (value) => {
+    if (!value.trim()) {
+      submitted.value = '';
+    }
+  },
+);
 
 // 屏幕旋转改变宽度时同步内容高度。
 useEventListener(window, 'resize', () => {
@@ -188,7 +198,7 @@ onScopeDispose(
       from.name !== 'search' &&
       from.name !== 'player'
     ) {
-      keyword.value = '';
+      setFieldValue('keyword', '', false);
       submitted.value = '';
       resetScroll();
     }

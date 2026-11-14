@@ -10,26 +10,26 @@
       v-if="!createdCode"
       class="grid gap-6"
       novalidate
-      @submit.prevent="handleCreate"
+      @submit="handleCreate"
     >
-      <Field
-        id="invitation-name"
-        v-slot="{ control }"
-        label="分享名称"
-        :error="error"
-        :disabled="pending"
-      >
-        <Input
-          v-bind="control"
-          v-model="name"
-          required
-          maxlength="80"
-          autocomplete="off"
-          placeholder="例如：分享给小明"
+      <VeeField v-slot="{ componentField, errors }" name="name">
+        <Field
+          id="invitation-name"
+          v-slot="{ control }"
+          label="分享名称"
+          :error="errors[0]"
           :disabled="pending"
-          @update:model-value="error = ''"
-        />
-      </Field>
+        >
+          <Input
+            v-bind="{ ...componentField, ...control }"
+            required
+            maxlength="80"
+            autocomplete="off"
+            placeholder="例如：分享给小明"
+            :disabled="pending"
+          />
+        </Field>
+      </VeeField>
       <DialogFooter>
         <Button type="submit" :disabled="pending">
           <LoaderCircle v-if="pending" class="animate-spin" />
@@ -60,6 +60,7 @@
 
 <script setup lang="ts">
 import { nextTick, onScopeDispose, computed, ref, watch } from 'vue';
+import { Field as VeeField, useForm } from 'vee-validate';
 import { Check, Copy, LoaderCircle } from 'lucide-vue-next';
 import { Button } from '@ym-video/ui/components/button';
 import { Input } from '@ym-video/ui/components/input';
@@ -67,14 +68,25 @@ import Dialog from '@ym-video/ui/common/dialog.vue';
 import { DialogFooter } from '@ym-video/ui/components/dialog';
 import Field from '@ym-video/ui/common/field.vue';
 import { createInvitation } from '@/services/admin';
+import { invitationFormSchema } from '@/schemas/invitation';
 import { errorToast } from '@ym-video/ui/lib/toast';
 import { eventBus } from '@/utils/event-bus';
 
 // 弹窗先填写备注，再生成并展示邀请码。
 const open = ref(false);
 
-// 分享名称仅作为后台备注保存。
-const name = ref('');
+// 表单统一管理邀请备注、字段反馈和提交状态。
+const {
+  values,
+  handleSubmit,
+  resetForm,
+  setFieldError,
+  isSubmitting: pending,
+} = useForm({
+  validationSchema: invitationFormSchema,
+  initialValues: { name: '' },
+  keepValuesOnUnmount: true,
+});
 
 // 邀请码决定是否进入复制步骤。
 const createdCode = ref('');
@@ -82,18 +94,12 @@ const createdCode = ref('');
 // 创建成功后展示当前邀请的分享说明。
 const description = computed(() =>
   createdCode.value
-    ? `${name.value} · 邀请码仅可注册一次。`
+    ? `${values.name.trim()} · 邀请码仅可注册一次。`
     : '填写分享名称作为备注，方便识别邀请。',
 );
 
 // 复制成功后在按钮内反馈，重新打开弹窗时重置。
 const copied = ref(false);
-
-// 提交期间阻止重复生成和中途关闭。
-const pending = ref(false);
-
-// 校验或请求失败时在字段标题处提示并保留备注。
-const error = ref('');
 
 // 离开页面后忽略未完成的创建结果。
 let controller: AbortController | undefined;
@@ -104,13 +110,11 @@ watch(
     if (!isOpen) {
       controller?.abort();
       controller = undefined;
-      pending.value = false;
       return;
     }
-    name.value = '';
+    resetForm();
     createdCode.value = '';
     copied.value = false;
-    error.value = '';
   },
   { flush: 'sync' },
 );
@@ -134,19 +138,7 @@ const handleCloseFocus = (event: Event) => {
 };
 
 // 只有名称有效且点击下一步后，才请求生成邀请码。
-const handleCreate = async () => {
-  if (pending.value || createdCode.value) {
-    return;
-  }
-  name.value = name.value.trim();
-  if (!name.value || name.value.length > 80) {
-    error.value = '分享名称需为 1～80 个字符';
-    document.getElementById('invitation-name')?.focus();
-    return;
-  }
-  pending.value = true;
-  error.value = '';
-
+const handleCreate = handleSubmit(async (input) => {
   // 切页或卸载后不能把旧邀请码展示到新草稿。
   const requestController = new AbortController();
 
@@ -154,7 +146,7 @@ const handleCreate = async () => {
   try {
     // 服务端保存名称后返回可复制的单次邀请码。
     const invitation = await createInvitation(
-      name.value,
+      input.name,
       requestController.signal,
     );
 
@@ -167,15 +159,17 @@ const handleCreate = async () => {
     }
   } catch (cause) {
     if (!requestController.signal.aborted) {
-      error.value = cause instanceof Error ? cause.message : '生成失败，请重试';
+      setFieldError(
+        'name',
+        cause instanceof Error ? cause.message : '生成失败，请重试',
+      );
     }
   } finally {
     if (controller === requestController) {
-      pending.value = false;
       controller = undefined;
     }
   }
-};
+});
 
 // 复制结果仅更新当前邀请码，剪贴板不可用时仍可手动复制。
 const handleCopy = async () => {

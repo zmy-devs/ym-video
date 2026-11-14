@@ -37,5 +37,32 @@ export const registrationSchema = accountSchema
     message: '两次输入的密码不一致',
   });
 
+// 登录只要求提供密码，具体凭据由账号服务验证。
+export const loginSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, '请输入密码'),
+});
+
+// 用户名编辑与账号服务使用相同的规范化规则。
+export const usernameFormSchema = z.object({
+  username: usernameSchema.transform((value) => value.toLowerCase()),
+});
+
+// 密码修改保留原始输入，并统一检查两次新密码。
+export const passwordChangeSchema = z
+  .object({
+    currentPassword: z.string().min(1, '请输入当前密码'),
+    newPassword: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((value) => value.newPassword !== value.currentPassword, {
+    path: ['newPassword'],
+    message: '新密码不能与当前密码相同',
+  })
+  .refine((value) => value.newPassword === value.confirmPassword, {
+    path: ['confirmPassword'],
+    message: '两次输入的密码不一致',
+  });
+
 // 邀请注册接口使用同一份经过校验的字段契约。
 export type RegistrationInput = z.infer<typeof registrationSchema>;

@@ -8,7 +8,13 @@
       </Tooltip>
       <template v-else>{{ label }}</template>
     </FieldLabel>
-    <slot :control="{ id }" />
+    <slot
+      :control="{
+        id,
+        'aria-invalid': !!error,
+        'aria-describedby': descriptionId,
+      }"
+    />
     <FieldDescription v-if="description" :id="`${id}-description`">
       {{ description }}
     </FieldDescription>
@@ -16,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { useId } from 'vue';
+import { computed, useId } from 'vue';
 import {
   Field,
   FieldDescription,
@@ -35,4 +41,13 @@ const props = defineProps<{
 
 // 由字段管理标签与输入框的关联。
 const id = props.id ?? useId();
+
+// 当前反馈与输入框通过描述标识关联。
+const descriptionId = computed(() => {
+  if (props.error) {
+    return `${id}-error`;
+  }
+
+  return props.description ? `${id}-description` : undefined;
+});
 </script>
