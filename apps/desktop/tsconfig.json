@@ -8,7 +8,9 @@
     "noEmit": true,
     "types": ["node"],
     "skipLibCheck": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   },
   "include": ["scripts/**/*.ts"]
 }
