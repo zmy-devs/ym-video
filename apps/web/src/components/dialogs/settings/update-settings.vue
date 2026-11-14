@@ -12,6 +12,12 @@
         />
       </SwitchRoot>
     </ButtonGroupItem>
+    <ButtonGroupItem as-child>
+      <a :href="releaseUrl" target="_blank" rel="noopener noreferrer">
+        <span>更新内容</span>
+        <ChevronRight class="size-5 stroke-muted-foreground" />
+      </a>
+    </ButtonGroupItem>
     <ButtonGroupItem
       :disabled="
         ['checking', 'downloading', 'installing'].includes(update.status)
@@ -104,6 +110,13 @@ defineProps<{ mobile?: boolean }>();
 
 // 设置页直接展示应用级更新任务。
 const update = useUpdateStore();
+
+// 查看当前安装版本的发布说明，版本读取完成前打开发布列表。
+const releaseUrl = computed(() =>
+  update.version
+    ? `https://gitee.com/zmy-devs/ym-video/releases/tag/v${encodeURIComponent(update.version)}`
+    : 'https://gitee.com/zmy-devs/ym-video/releases',
+);
 
 // 按平台和安装阶段提示下一步操作。
 const installLabel = computed(() => {
