@@ -32,6 +32,7 @@
     "pinia": "2.1.7",
     "reka-ui": "^2.9.0",
     "tauri-plugin-android-installer-api": "0.1.0",
+    "vee-validate": "5.0.0-beta.1",
     "vue": "3.5.24",
     "vue-router": "4.4.5",
     "zod": "^4.6.7"

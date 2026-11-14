@@ -16,14 +16,15 @@
   },
   "dependencies": {
     "@vueuse/core": "14.1.0",
+    "@ym-video/account": "workspace:*",
+    "@ym-video/ui": "workspace:*",
+    "lucide-vue-next": "^0.468.0",
     "pinia": "2.1.7",
+    "reka-ui": "^2.9.0",
+    "vee-validate": "5.0.0-beta.1",
     "vue": "3.5.24",
     "vue-router": "4.4.5",
-    "reka-ui": "^2.9.0",
-    "lucide-vue-next": "^0.468.0",
-    "zod": "^4.6.7",
-    "@ym-video/ui": "workspace:*",
-    "@ym-video/account": "workspace:*"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.3",
@@ -31,7 +32,7 @@
     "@vitejs/plugin-vue": "6.0.1",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.2",
-    "vue-tsc": "3.1.4",
-    "vite": "7.2.2"
+    "vite": "7.2.2",
+    "vue-tsc": "3.1.4"
   }
 }
