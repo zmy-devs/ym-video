@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { groupHistory } from '../src/lib/history.ts';
+import { groupHistory } from '../src/utils/history.ts';
 import {
   applyHistoryOperation,
   emptyHistory,
@@ -145,7 +145,7 @@ test('资源缩减集数后清理越界进度，迟到的旧资源快照仍可�
   ]);
 });
 
-test('历史操作校验影片标识、媒体 URL 和当前集进度', () => {
+test('历史操作校验影片标识和进度，并保留媒体协议', () => {
   const valid = createSave('op-valid', 100, createEntry(0, 10));
   assert.equal(isHistoryOperation(valid), true);
   assert.equal(
@@ -160,10 +160,10 @@ test('历史操作校验影片标识、媒体 URL 和当前集进度', () => {
       ...valid,
       entry: {
         ...valid.entry,
-        episodes: [{ label: '非法协议', url: 'javascript:alert(1)' }],
+        episodes: [{ label: '本机视频', url: 'file:///videos/episode.mp4' }],
       },
     }),
-    false,
+    true,
   );
 });
 

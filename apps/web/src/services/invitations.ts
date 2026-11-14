@@ -1,4 +1,4 @@
-import { apiFetch } from '@/lib/desktop';
+import { apiFetch } from '@/lib/api';
 import type { RegistrationInput } from '@ym-video/account/schema';
 
 // 提交已校验的注册字段，接口失败保留服务端说明。

@@ -55,7 +55,7 @@ import ButtonGroupItem from '@ym-video/ui/common/button-group-item.vue';
 import MoviePoster from './movie-card/poster.vue';
 import Drawer from '@ym-video/ui/common/drawer.vue';
 import { useMobileDrawer } from '@/composables/use-mobile-drawer';
-import { playerPath } from '@/lib/movie';
+import { playerPath } from '@/utils/movie';
 import { useHistoryStore } from '@/stores/history-store';
 import { useLibraryStore } from '@/stores/library-store';
 import type { HistoryEntry } from '@/types';

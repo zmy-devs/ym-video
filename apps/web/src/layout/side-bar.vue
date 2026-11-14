@@ -131,8 +131,8 @@ import SearchBox from '@/components/search-box.vue';
 import MoviePoster from '@/components/movie-card/poster.vue';
 import { useLibraryStore } from '@/stores/library-store';
 import { useHistoryStore } from '@/stores/history-store';
-import { playerPath } from '@/lib/movie';
-import { getCategorySelection } from '@/lib/category';
+import { playerPath } from '@/utils/movie';
+import { getCategorySelection } from '@/utils/category';
 import { getProgress } from '../components/player/utils/time.ts';
 import type { HistoryEntry } from '@/types';
 

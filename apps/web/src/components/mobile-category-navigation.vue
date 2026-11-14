@@ -34,7 +34,7 @@
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Button } from '@ym-video/ui/components/button';
-import { getCategorySelection } from '@/lib/category';
+import { getCategorySelection } from '@/utils/category';
 import { useLibraryStore } from '@/stores/library-store';
 
 const route = useRoute();

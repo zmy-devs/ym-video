@@ -1,7 +1,5 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
 
-export { isTauri };
-
 // 浏览器开发页经 Vite 同源转发，原生壳由 Rust 访问本地 API。
 const developmentOrigin = isTauri()
   ? 'http://127.0.0.1:8788'
@@ -66,30 +64,24 @@ const requestNative = async <T>(
 };
 
 // 资源源请求独立于账号 API，返回的数据在业务边界继续收窄。
-export const requestDesktopResource = (url: string, signal?: AbortSignal) =>
+export const requestNativeResource = (url: string, signal?: AbortSignal) =>
   requestNative<unknown>('request_resource', { url }, signal);
 
 // 为 Better Auth 和业务接口提供统一的 Response 契约。
 export const apiFetch: typeof fetch = async (input, init) => {
-  if (!isTauri()) {
-    const address =
-      input instanceof Request ? input : new URL(String(input), apiOrigin);
-    return window.fetch(address, { credentials: 'include', ...init });
-  }
-
   // 转换为绝对地址后的请求输入。
   const address =
     input instanceof Request ? input : new URL(String(input), apiOrigin);
 
   // 调用方提供的方法、请求体和取消信号。
-  const request = new Request(address, init);
+  const request = new Request(address, { credentials: 'include', ...init });
 
-  // 用于验证来源和读取查询条件的请求地址。
-  const url = new URL(request.url);
-
-  if (url.origin !== apiOrigin) {
-    throw new Error('API 地址无效');
+  if (!isTauri()) {
+    return window.fetch(request);
   }
+
+  // 原生 API 以路径接收请求，来源由原生入口控制。
+  const url = new URL(request.url);
 
   // 本次网络请求返回的响应。
   const response = await requestNative<{

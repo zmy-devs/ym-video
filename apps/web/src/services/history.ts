@@ -1,4 +1,4 @@
-import { apiFetch } from '@/lib/desktop';
+import { apiFetch } from '@/lib/api';
 import { createHistoryClient } from './history-client.ts';
 
 export {

@@ -28,7 +28,7 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
 } from '@ym-video/ui/components/context-menu';
-import { playerPath } from '@/lib/movie';
+import { playerPath } from '@/utils/movie';
 import { useHistoryStore } from '@/stores/history-store';
 import type { HistoryEntry } from '@/types';
 

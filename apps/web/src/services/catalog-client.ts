@@ -1,12 +1,10 @@
-import { parseMovie } from '../lib/movie.ts';
-import type { Category, Movie, Source } from '../types.ts';
-import { parseCategories } from '../lib/source.ts';
-import { builtInSources } from '../lib/built-in-sources.ts';
+import { parseMovie } from '../utils/movie.ts';
+import type { Category, Movie, Source } from '../types/index.ts';
+import { categoriesSchema } from '../schemas/source.ts';
+import { movieListSchema } from '../schemas/movie.ts';
+import { builtInSources } from '../constants/sources.ts';
 
 import { requestResource } from './resource-client.ts';
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 // 目录请求统一处理影片解析、分类和分页。
 export const getSources = async (): Promise<Source[]> => {
@@ -26,19 +24,19 @@ export const getMovies = async (
   });
 
   const body = await requestResource(source, params, signal);
-  if (!isRecord(body) || !Array.isArray(body.list)) {
+  const result = movieListSchema.safeParse(body);
+
+  if (!result.success) {
     throw new Error('影片列表格式错误，请切换资源源');
   }
 
-  const movies = body.list.flatMap((item: unknown) => {
+  const movies = result.data.list.flatMap((item) => {
     const movie = parseMovie(item, source.id);
     return movie ? [movie] : [];
   });
-  const pageCount = Number(body.pagecount);
-
   return {
     movies,
-    pageCount: Number.isFinite(pageCount) ? Math.max(0, pageCount) : 0,
+    pageCount: result.data.pagecount,
   };
 };
 
@@ -51,5 +49,11 @@ export const getCategories = async (
     new URLSearchParams({ ac: 'list' }),
     signal,
   );
-  return parseCategories(body);
+  const result = categoriesSchema.safeParse(body);
+
+  if (!result.success) {
+    throw new Error('分类数据格式错误，请检查接口地址');
+  }
+
+  return result.data;
 };

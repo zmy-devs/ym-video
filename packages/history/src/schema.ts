@@ -8,15 +8,8 @@ import type {
 const text = z.string().max(512);
 const version = z.string().min(1).max(128);
 const time = z.number().nonnegative();
-const httpUrl = z
-  .url({ protocol: /^https?$/ })
-  .max(4096)
-  .pipe(
-    z.string().refine((value) => {
-      const url = new URL(value);
-      return !url.username && !url.password;
-    }),
-  );
+// 聚合资源地址按原值保存，具体协议交给播放平台处理。
+const mediaAddress = z.string().min(1).max(4096);
 const stamp = z.object({ at: time, id: version });
 
 // 客户端缓存与 API 使用相同的影片及逐集进度契约。
@@ -26,13 +19,13 @@ export const historyEntrySchema: z.ZodType<HistoryEntry> = z
     sourceId: version,
     vodId: version,
     name: text,
-    pic: z.union([z.literal(''), httpUrl]),
+    pic: z.string().max(4096),
     year: text,
     area: text,
     lang: text,
     category: text,
     remarks: text,
-    episodes: z.array(z.object({ label: text, url: httpUrl })).max(2000),
+    episodes: z.array(z.object({ label: text, url: mediaAddress })).max(2000),
     episode: z.int().nonnegative(),
     progress: z.record(
       z.string().regex(/^(0|[1-9]\d*)$/),

@@ -1,5 +1,46 @@
 import { z } from 'zod';
 
+// 分类编号兼容采集站返回的整数和数字字符串。
+const categoryIdSchema = z
+  .union([z.number(), z.string().regex(/^\d+$/)])
+  .transform(Number)
+  .pipe(z.number().int().nonnegative());
+
+// 分类入口统一验证字段、编号和父子关系。
+export const categoriesSchema = z
+  .object({
+    class: z
+      .array(
+        z.object({
+          type_id: categoryIdSchema.refine((value) => value > 0),
+          type_pid: categoryIdSchema,
+          type_name: z.string().trim().min(1),
+        }),
+      )
+      .min(1),
+  })
+  .transform((body) =>
+    body.class.map((item) => ({
+      id: item.type_id,
+      parentId: item.type_pid,
+      name: item.type_name,
+    })),
+  )
+  .refine((categories) => {
+    const ids = new Set(categories.map((item) => item.id));
+    const parents = new Set(
+      categories.filter((item) => item.parentId === 0).map((item) => item.id),
+    );
+
+    return (
+      ids.size === categories.length &&
+      parents.size > 0 &&
+      categories.every(
+        (item) => item.parentId === 0 || parents.has(item.parentId),
+      )
+    );
+  }, '分类层级不可用，请检查接口地址');
+
 // 表单提交与本地存储共用接口地址规则。
 const sourceUrlSchema = z
   .url({ protocol: /^https?$/, error: '请输入有效的 HTTP 或 HTTPS 接口地址' })

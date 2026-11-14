@@ -1,22 +1,11 @@
 import type { Episode, Movie } from '@ym-video/history';
-
-export type { Episode, Movie } from '@ym-video/history';
+import { movieSchema } from '../schemas/movie.ts';
 
 // 影片在同一来源内的稳定标识。
 export const movieKey = (sourceId: string, vodId: string) =>
   `${encodeURIComponent(sourceId)}:${encodeURIComponent(vodId)}`;
 
-// 只接受 HTTP 媒体和海报地址。
-export const httpUrl = (value: string) => {
-  try {
-    const url = new URL(value);
-    return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
-  } catch {
-    return '';
-  }
-};
-
-// 优先选择包含 HLS 的线路，并丢弃无效或危险协议的地址。
+// 优先选择 HLS 线路，保留上游协议和查询参数。
 export const parseEpisodes = (value: string): Episode[] => {
   const lines = value.split('$$$');
   const selected =
@@ -28,20 +17,12 @@ export const parseEpisodes = (value: string): Episode[] => {
       return [];
     }
 
-    const url = httpUrl(part.slice(separator + 1).trim());
+    const url = part.slice(separator + 1).trim();
     return url
       ? [{ label: part.slice(0, separator).trim() || '播放', url }]
       : [];
   });
 };
-
-// 影片介绍转为可直接展示的纯文本。
-export const plainText = (value: string) =>
-  value
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;|\u00a0/g, ' ')
-    .replace(/&amp;/g, '&')
-    .trim();
 
 // 将综艺更新期数中的连续日期转换为易读格式。
 export const formatRemarks = (value: string) =>
@@ -61,31 +42,29 @@ export const parseMovie = (
   sourceId: string,
   options: { playUrl?: string } = {},
 ): Movie | null => {
-  if (!isRecord(value) || !['string', 'number'].includes(typeof value.vod_id)) {
+  const result = movieSchema.safeParse(value);
+
+  if (!result.success) {
     return null;
   }
 
-  const vodId = String(value.vod_id);
+  // 已校验的字段直接转换为客户端影片数据。
+  const movie = result.data;
+  const vodId = movie.vod_id;
   return {
     id: movieKey(sourceId, vodId),
     vodId,
     sourceId,
-    name: text(value.vod_name) || '未命名影片',
-    pic: httpUrl(text(value.vod_pic)),
-    year: text(value.vod_year),
-    area: text(value.vod_area),
-    lang: text(value.vod_lang),
-    category: text(value.type_name),
-    remarks: text(value.vod_remarks),
-    episodes: parseEpisodes(options.playUrl ?? text(value.vod_play_url)),
+    name: movie.vod_name || '未命名影片',
+    pic: movie.vod_pic,
+    year: movie.vod_year,
+    area: movie.vod_area,
+    lang: movie.vod_lang,
+    category: movie.type_name,
+    remarks: movie.vod_remarks,
+    episodes: parseEpisodes(options.playUrl ?? movie.vod_play_url),
   };
 };
-
-// 收窄来自上游接口的影片对象与字符串字段。
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const text = (value: unknown) => (typeof value === 'string' ? value : '');
 
 // 只复用明确完结且包含有效选集的影片，状态不明时继续检查更新。
 export const isMovieComplete = (movie: Pick<Movie, 'remarks' | 'episodes'>) => {

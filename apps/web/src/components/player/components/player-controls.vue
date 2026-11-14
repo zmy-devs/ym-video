@@ -69,7 +69,7 @@ import PlayerPipButton from './player-pip-button.vue';
 import PlayerProgress from './player-progress.vue';
 import PlayerRateControl from './player-rate-control.vue';
 import PlayerVolume from './player-volume.vue';
-import { formatRemarks } from '../../../lib/movie.ts';
+import { formatRemarks } from '../../../utils/movie.ts';
 
 // 控制栏显示影片信息并反映真实媒体状态。
 const props = defineProps<{

@@ -1,12 +1,12 @@
 import { computed, onBeforeUnmount, onScopeDispose, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { useEventListener, watchImmediate } from '@vueuse/core';
-import type { HistoryEntry, Movie } from '@/types.ts';
+import type { HistoryEntry, Movie } from '@/types/index.ts';
 import type { HistoryToken } from '@ym-video/history';
 import { getMovies } from '@/services/catalog-client';
 import { useHistoryStore } from '@/stores/history-store.ts';
 import { useLibraryStore } from '@/stores/library-store.ts';
-import { isMovieComplete, movieKey } from '@/lib/movie.ts';
+import { isMovieComplete, movieKey } from '@/utils/movie.ts';
 import { useRequest } from '@/composables/use-request';
 import { useMedia } from './use-media.ts';
 

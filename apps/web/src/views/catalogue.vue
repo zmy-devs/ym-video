@@ -127,7 +127,7 @@ import MobilePullRefresh from '@/components/mobile-pull-refresh.vue';
 import { useLibraryStore } from '@/stores/library-store';
 import { useHistoryStore } from '@/stores/history-store';
 import { useCachedScroll } from '@/composables/use-cached-scroll';
-import { getCategorySelection } from '@/lib/category';
+import { getCategorySelection } from '@/utils/category';
 import { isMobile } from '@/platform';
 import type { HistoryEntry } from '@/types';
 

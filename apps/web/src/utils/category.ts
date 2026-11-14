@@ -1,4 +1,4 @@
-import type { Category } from '../types.ts';
+import type { Category } from '../types/index.ts';
 
 // 与桌面端一致，只展示真实子分类；进入大类时默认请求首个子类。
 export const getCategorySelection = (

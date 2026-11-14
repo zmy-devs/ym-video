@@ -1,6 +1,7 @@
-import { isTauri, requestDesktopResource } from '@/lib/desktop';
-import type { Source } from '../types.ts';
-import { builtInSources } from '../lib/built-in-sources.ts';
+import { isTauri } from '@tauri-apps/api/core';
+import { requestNativeResource } from '@/lib/api';
+import type { Source } from '../types/index.ts';
+import { builtInSources } from '../constants/sources.ts';
 
 // 统一客户端从内置配置或自定义源构造完整请求地址。
 const buildResourceURL = (source: Source, query: URLSearchParams) => {
@@ -28,15 +29,11 @@ export const requestResource = async (
   signal?: AbortSignal,
 ): Promise<unknown> => {
   if (isTauri()) {
-    return requestDesktopResource(buildResourceURL(source, query), signal);
+    return requestNativeResource(buildResourceURL(source, query), signal);
   }
 
   // 原生请求使用完整上游地址，浏览器开发页使用本地转发地址。
   let url = new URL(buildResourceURL(source, query));
-
-  if (window.location.protocol === 'https:' && url.protocol === 'http:') {
-    throw new Error('当前页面使用 HTTPS，请填写 HTTPS 接口地址');
-  }
 
   // 浏览器开发页通过 Vite 本地转发访问不返回 CORS 头的资源源。
   if (import.meta.env.DEV) {

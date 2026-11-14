@@ -1,24 +1,27 @@
 import { getProgress } from '../src/components/player/utils/time.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { movieKey, parseEpisodes, parseMovie } from '../src/lib/movie.ts';
+import { movieKey, parseEpisodes, parseMovie } from '../src/utils/movie.ts';
 import {
   filterManifest,
   resolveMediaUrl,
 } from '../src/components/player/utils/m3u8.ts';
-import { isMovieComplete } from '../src/lib/movie.ts';
+import { isMovieComplete } from '../src/utils/movie.ts';
 
 test('同号影片在不同源之间隔离，包含分隔符的 ID 不碰撞', () => {
   assert.notEqual(movieKey('baofeng', '12'), movieKey('liangzi', '12'));
   assert.notEqual(movieKey('a:b', 'c'), movieKey('a', 'b:c'));
 });
 
-test('多线路优先选择 HLS 并保留 URL 查询参数，丢弃危险协议', () => {
+test('多线路优先选择 HLS，地址按上游原值保留', () => {
   assert.deepEqual(
     parseEpisodes(
       '解析$https://example.com/watch$$$第一集$https://media.example.com/1.m3u8?token=a$b#第二集$javascript:alert(1)',
     ),
-    [{ label: '第一集', url: 'https://media.example.com/1.m3u8?token=a$b' }],
+    [
+      { label: '第一集', url: 'https://media.example.com/1.m3u8?token=a$b' },
+      { label: '第二集', url: 'javascript:alert(1)' },
+    ],
   );
   assert.deepEqual(parseEpisodes(''), []);
 });
@@ -45,7 +48,7 @@ test('统一校验并转换采集站影片记录', () => {
       vodId: '12',
       sourceId: 'source',
       name: '示例影片',
-      pic: '',
+      pic: 'javascript:alert(1)',
       year: '2026',
       area: '中国',
       lang: '中文',

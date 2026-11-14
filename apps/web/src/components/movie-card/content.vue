@@ -40,9 +40,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
-import type { HistoryEntry } from '@ym-video/history';
-import type { Movie } from '../../lib/movie.ts';
-import { formatRemarks, playerPath } from '../../lib/movie.ts';
+import type { HistoryEntry, Movie } from '@/types';
+import { formatRemarks, playerPath } from '../../utils/movie.ts';
 import MoviePoster from './poster.vue';
 import { Progress } from '@ym-video/ui/components/progress';
 

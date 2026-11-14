@@ -1,6 +1,6 @@
 import { createAccountClient } from '@ym-video/account/client';
 import { retryRequest } from '@ym-video/account/request-retry';
-import { apiFetch, apiOrigin } from '@/lib/desktop';
+import { apiFetch, apiOrigin } from '@/lib/api';
 
 // 开发代理与生产同域共用 Cookie 会话，不在本地保存登录令牌。
 export const authClient = createAccountClient(apiOrigin, apiFetch);
@@ -30,7 +30,7 @@ export const verifySession = (signal: AbortSignal) =>
       });
 
       if (result.error && ![401, 403].includes(result.error.status)) {
-        throw result.error;
+        throw new Error(result.error.message || '会话验证失败');
       }
 
       return result.data;

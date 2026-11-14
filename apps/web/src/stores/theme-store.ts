@@ -2,7 +2,7 @@ import { useThemePreferences } from '@ym-video/ui/composables/use-theme';
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useColorMode, watchImmediate } from '@vueuse/core';
-import { isTauri } from '@/lib/desktop';
+import { isTauri } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { isDesktop } from '@/platform';
 
@@ -33,26 +33,20 @@ export const useThemeStore = defineStore('theme', () => {
   };
 
   // 实际明暗主题决定 WebView 工具栏颜色。
-  watchImmediate(
-    resolved,
-    (nextTheme) => {
-      document
-        .querySelector('meta[name="theme-color"]')
-        ?.setAttribute('content', nextTheme === 'dark' ? '#0a0a0a' : '#fcfcfc');
-    },
-  );
+  watchImmediate(resolved, (nextTheme) => {
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', nextTheme === 'dark' ? '#0a0a0a' : '#fcfcfc');
+  });
 
   // 桌面自动模式交回系统控制，Android 状态栏由移动设备能力单独同步。
-  watchImmediate(
-    effectiveMode,
-    (nextMode) => {
-      if (isDesktop && isTauri()) {
-        getCurrentWindow()
-          .setTheme(nextMode === 'auto' ? null : nextMode)
-          .catch(console.error);
-      }
-    },
-  );
+  watchImmediate(effectiveMode, (nextMode) => {
+    if (isDesktop && isTauri()) {
+      getCurrentWindow()
+        .setTheme(nextMode === 'auto' ? null : nextMode)
+        .catch(console.error);
+    }
+  });
 
   return { mode, color, resolved, setMode, setColor, setPlayerMode };
 });

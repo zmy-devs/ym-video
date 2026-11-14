@@ -91,7 +91,7 @@ import MovieGridSkeleton from '@/components/movie-grid-skeleton.vue';
 import MobileHistoryActionDrawer from '@/components/mobile-history-action-drawer.vue';
 import MobilePullRefresh from '@/components/mobile-pull-refresh.vue';
 import { useHistoryStore } from '@/stores/history-store';
-import { groupHistory } from '@/lib/history';
+import { groupHistory } from '@/utils/history';
 import Empty from '@ym-video/ui/common/empty.vue';
 import { isMobile } from '@/platform';
 import type { HistoryEntry } from '@/types';

@@ -62,7 +62,8 @@ import {
   SelectValue,
 } from '@ym-video/ui/components/select';
 import { ScrollArea } from '@ym-video/ui/components/scroll-area';
-import { formatRemarks, type Episode } from '../../../lib/movie.ts';
+import { formatRemarks } from '../../../utils/movie.ts';
+import type { Episode } from '@/types';
 
 // 选集数据与当前播放集数来自页面，弹层挂在播放器内以兼容全屏。
 const props = defineProps<{

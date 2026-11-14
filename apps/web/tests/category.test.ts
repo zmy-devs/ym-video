@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { getCategorySelection } from '../src/lib/category.ts';
-import type { Category } from '../src/types.ts';
+import { getCategorySelection } from '../src/utils/category.ts';
+import type { Category } from '../src/types/index.ts';
 
 // 覆盖带子分类和没有子分类的两种上游结构。
 const categories: Category[] = [

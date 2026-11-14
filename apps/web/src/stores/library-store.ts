@@ -151,10 +151,6 @@ export const useLibraryStore = defineStore('library', () => {
     signal: AbortSignal,
     id?: string,
   ) => {
-    if (id && !customSources.value.some((item) => item.id === id)) {
-      throw new Error('该播放源已不存在');
-    }
-
     // 自定义源使用独立命名空间，历史记录也能稳定定位对应接口。
     const source: CustomSource = {
       id: id ?? `custom:${crypto.randomUUID()}`,
@@ -166,10 +162,6 @@ export const useLibraryStore = defineStore('library', () => {
     const verifiedCategories = await getCategories(source, signal);
 
     signal.throwIfAborted();
-
-    if (id && !customSources.value.some((item) => item.id === id)) {
-      throw new Error('该播放源已不存在');
-    }
 
     if (
       customSources.value.some((item) => item.id !== id && item.url === url)

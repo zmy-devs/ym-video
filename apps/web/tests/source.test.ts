@@ -1,10 +1,10 @@
 import {
   sourceFormSchema,
   customSourcesSchema,
+  categoriesSchema,
 } from '../src/schemas/source.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parseCategories } from '../src/lib/source.ts';
 
 // 上游可能使用数字或数字字符串表示分类 ID。
 const valid = {
@@ -15,7 +15,7 @@ const valid = {
 };
 
 test('分类同时支持整数和数字字符串，并保留父子关系', () => {
-  assert.deepEqual(parseCategories(valid), [
+  assert.deepEqual(categoriesSchema.parse(valid), [
     { id: 1, parentId: 0, name: '电影' },
     { id: 2, parentId: 1, name: '动作片' },
   ]);
@@ -51,7 +51,7 @@ test('不接受空分类、错误字段、重复 ID 或无法展示的分类层�
     },
   ];
 
-  invalid.forEach((body) => assert.throws(() => parseCategories(body)));
+  invalid.forEach((body) => assert.throws(() => categoriesSchema.parse(body)));
 });
 
 test('接口规范化去掉旧筛选和片段，保留接口需要的参数', () => {
