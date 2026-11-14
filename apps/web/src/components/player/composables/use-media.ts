@@ -1,13 +1,8 @@
-import { computed, onScopeDispose, ref, watch } from 'vue';
+import { onScopeDispose, ref, watch } from 'vue';
 import { useEventListener, useStorage } from '@vueuse/core';
 import Hls from 'hls.js';
 import { FilteredPlaylistLoader } from '../services/hls.ts';
 import { errorToast, infoToast, storageError } from '@ym-video/ui/lib/toast';
-
-// 播放阶段互斥，失败消息只属于错误阶段。
-type MediaState =
-  | { status: 'loading' | 'buffering' | 'playing' | 'paused' }
-  | { status: 'error'; message: string };
 
 // 管理媒体元素、HLS 生命周期和浏览器播放能力。
 export const useMedia = () => {
@@ -16,10 +11,8 @@ export const useMedia = () => {
   const container = ref<HTMLElement | null>(null);
 
   // 界面状态统一由媒体事件和当前加载任务更新。
-  const state = ref<MediaState>({ status: 'loading' });
-  const status = computed(() => state.value.status);
-  const error = computed(() =>
-    state.value.status === 'error' ? state.value.message : '',
+  const status = ref<'loading' | 'buffering' | 'playing' | 'paused' | 'error'>(
+    'loading',
   );
 
   // 控制栏展示当前时间、有效时长和播放倍速。
@@ -46,8 +39,8 @@ export const useMedia = () => {
   let resumeTime = 0;
 
   // 当前媒体加载失败后保留明确的重试入口。
-  const fail = (message: string) => {
-    state.value = { status: 'error', message };
+  const fail = () => {
+    status.value = 'error';
     video.value?.pause();
   };
 
@@ -62,7 +55,7 @@ export const useMedia = () => {
     video.value?.load();
     currentTime.value = 0;
     duration.value = 0;
-    state.value = { status: 'loading' };
+    status.value = 'loading';
   };
 
   // 自动播放被阻止时保留手动播放入口，旧任务结果不会覆盖新媒体。
@@ -85,11 +78,11 @@ export const useMedia = () => {
       }
 
       if (cause instanceof DOMException && cause.name === 'NotAllowedError') {
-        state.value = { status: 'paused' };
+        status.value = 'paused';
         return;
       }
 
-      fail('播放失败，请重试或更换播放源');
+      fail();
     }
   };
 
@@ -104,12 +97,7 @@ export const useMedia = () => {
       return;
     }
 
-    if (location.protocol === 'https:' && new URL(url).protocol !== 'https:') {
-      fail('该播放地址使用 HTTP，浏览器无法安全播放，请切换播放源');
-      return;
-    }
-
-    state.value = { status: 'buffering' };
+    status.value = 'buffering';
     element.volume = volume.value;
     element.playbackRate = rate.value;
 
@@ -121,11 +109,7 @@ export const useMedia = () => {
       });
       hls.on(Hls.Events.ERROR, (_, data) => {
         if (data.fatal) {
-          fail(
-            data.type === Hls.ErrorTypes.NETWORK_ERROR
-              ? '媒体加载失败，请检查网络或切换播放源'
-              : '该视频格式无法播放，请重试或切换播放源',
-          );
+          fail();
         }
       });
       hls.attachMedia(element);
@@ -239,27 +223,27 @@ export const useMedia = () => {
   });
   useEventListener(video, ['play', 'playing'], () => {
     if (mediaReady && status.value !== 'error') {
-      state.value = { status: 'playing' };
+      status.value = 'playing';
     }
   });
   useEventListener(video, ['pause', 'ended'], () => {
     if (mediaReady && status.value !== 'error') {
-      state.value = { status: 'paused' };
+      status.value = 'paused';
     }
   });
   useEventListener(video, 'waiting', () => {
     if (mediaReady && !video.value?.paused && status.value !== 'error') {
-      state.value = { status: 'buffering' };
+      status.value = 'buffering';
     }
   });
   useEventListener(video, 'canplay', () => {
     if (status.value === 'buffering') {
-      state.value = { status: video.value?.paused ? 'paused' : 'playing' };
+      status.value = video.value?.paused ? 'paused' : 'playing';
     }
   });
   useEventListener(video, 'error', () => {
     if (status.value !== 'loading' && video.value?.error) {
-      fail('视频无法加载或解码，请重试或切换播放源');
+      fail();
     }
   });
   useEventListener(document, 'fullscreenchange', () => {
@@ -271,7 +255,6 @@ export const useMedia = () => {
     video,
     container,
     status,
-    error,
     currentTime,
     duration,
     rate,

@@ -2,6 +2,10 @@ import { computed, onScopeDispose, ref } from 'vue';
 import { onLongPress, useEventListener, useSwipe } from '@vueuse/core';
 import type { useMedia } from './use-media.ts';
 
+// 长按倍速和滑动方向锁定使用固定的手势阈值。
+const holdDelay = 300;
+const swipeThreshold = 12;
+
 // 只监听视频画面，按钮、进度条和选集面板使用各自的触摸交互。
 export const useGestures = (
   media: ReturnType<typeof useMedia>,
@@ -59,7 +63,7 @@ export const useGestures = (
 
   // 横向滑动预览进度，左右半屏纵向分别调亮度和音量。
   const swipe = useSwipe(media.video, {
-    threshold: 12,
+    threshold: swipeThreshold,
     passive: false,
     onSwipeStart: () => {
       start = {
@@ -151,8 +155,8 @@ export const useGestures = (
       gestureLabel.value = `${media.rate.value} 倍速播放中…`;
     },
     {
-      delay: 300,
-      distanceThreshold: 12,
+      delay: holdDelay,
+      distanceThreshold: swipeThreshold,
       onMouseUp: () => {
         releaseRate();
         gestureLabel.value = '';
@@ -176,7 +180,6 @@ export const useGestures = (
       mode.value = 'zoom';
       suppressClick.value = true;
       gestureLabel.value = '';
-      keepControls();
 
       const distance = Math.hypot(
         first.clientX - second.clientX,

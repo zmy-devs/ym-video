@@ -1,10 +1,7 @@
 <template>
-  <Sheet v-if="mobile" v-model:open="open">
+  <Sheet v-if="isMobile" v-model:open="open">
     <SheetTrigger as-child>
-      <PlayerButton
-        :label="`播放速度：${formatRate(rate)}x`"
-        :container="container"
-      >
+      <PlayerButton :label="`播放速度：${formatRate(rate)}x`">
         <Gauge />
       </PlayerButton>
     </SheetTrigger>
@@ -31,15 +28,12 @@
   </Sheet>
   <DropdownMenu v-else v-model:open="open">
     <DropdownMenuTrigger as-child>
-      <PlayerButton
-        :label="`播放速度：${formatRate(props.rate)}x`"
-        :container="props.container"
-      >
+      <PlayerButton :label="`播放速度：${formatRate(rate)}x`">
         <Gauge />
       </PlayerButton>
     </DropdownMenuTrigger>
     <DropdownMenuContent
-      :portal-container="props.container"
+      :portal-container="container"
       side="top"
       align="center"
       class="w-35"
@@ -50,7 +44,7 @@
       <DropdownMenuItem
         v-for="speed in speeds"
         :key="speed"
-        @select="emit('rate', speed)"
+        @select="setRate(speed)"
       >
         <span>{{ formatRate(speed) }}x</span>
         <Check v-if="speed === rate" class="ml-auto text-current" />
@@ -77,26 +71,20 @@ import {
   DropdownMenuTrigger,
 } from '@ym-video/ui/components/dropdown-menu';
 import PlayerButton from './player-button.vue';
+import { usePlayerContext } from '../context.ts';
+import { isMobile } from '@/platform';
 
 // 全部可选倍速，常用倍速靠近列表底部。
 const speeds = [4, 3, 2, 1, 0.75, 0.5, 0.25];
 
-// 菜单状态供外层控制栏管理自动隐藏。
-const open = defineModel<boolean>('open', { required: true });
-
-// 当前倍速与播放器内部弹层挂载位置。
-const props = defineProps<{
-  rate: number;
-  container: HTMLElement | null;
-  mobile?: boolean;
-}>();
-
-// 用户选择的新倍速。
-const emit = defineEmits<{ rate: [speed: number] }>();
+// 倍速菜单直接读取媒体与打开状态。
+const { player, controls } = usePlayerContext();
+const { rate, container, setRate } = player;
+const { rateOpen: open } = controls;
 
 // 选择倍速后关闭移动端面板，继续观看视频。
 const handleSelect = (speed: number) => {
-  emit('rate', speed);
+  setRate(speed);
   open.value = false;
 };
 

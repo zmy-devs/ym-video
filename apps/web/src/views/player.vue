@@ -24,8 +24,6 @@
     :player="player"
     :data-theme-color="theme.color"
     :brightness="brightness"
-    :immersive="isMobile"
-    :mobile="isMobile"
     @back="handleBack"
     @brightness="handleBrightness"
   />

@@ -20,7 +20,7 @@ pnpm dev:desktop
 
 生产页面从安装包加载，账号与历史 API 连接 https://ym-video.zhangmingyang.dpdns.org。账号 Cookie 由共享 Rust 核心管理，并使用 Windows DPAPI 加密保存在应用数据目录。资源源请求由独立 HTTP 客户端处理。
 
-Windows 播放器对所有 HTTPS 片源的证书过期错误按会话放行，其他证书错误沿用 WebView2 校验。
+Windows 播放器支持 HTTP 与 HTTPS 片源，对所有 HTTPS 片源的证书过期错误按会话放行，其他证书错误沿用 WebView2 校验。
 
 ## 检查与构建
 

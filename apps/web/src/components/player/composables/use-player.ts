@@ -1,4 +1,4 @@
-import { computed, onBeforeUnmount, onScopeDispose, ref, watch } from 'vue';
+import { computed, onScopeDispose, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { useEventListener, watchImmediate } from '@vueuse/core';
 import type { HistoryEntry, Movie } from '@/types/index.ts';
@@ -30,33 +30,29 @@ export const usePlayer = () => {
     value.watchedAt = Math.max(Date.now(), value.watchedAt + 1);
   };
 
-  // 捕获当前媒体进度，元数据就绪前保留历史中的播放位置。
-  const captureProgress = () => {
+  // 保存时读取真实进度，元数据就绪前保留原有位置。
+  const save = () => {
     const value = entry.value;
-    const progress = media.getProgress();
 
-    if (!value || !progress) {
-      return;
+    if (!value) {
+      return Promise.resolve();
     }
 
+    // 只有播放位置或时长变化才推进观看时间。
+    const progress = media.getProgress();
     const key = String(value.episode);
     const previous = value.progress[key];
 
     if (
-      previous?.currentTime !== progress.currentTime ||
-      previous.duration !== progress.duration
+      progress &&
+      (previous?.currentTime !== progress.currentTime ||
+        previous.duration !== progress.duration)
     ) {
       markWatched(value);
       value.progress[key] = progress;
     }
-  };
 
-  // 保存当前账号的影片进度，后台同步由历史数据层负责。
-  const save = () => {
-    captureProgress();
-    return entry.value
-      ? history.save(entry.value, playbackToken)
-      : Promise.resolve();
+    return history.save(value, playbackToken);
   };
 
   // 使用当前集及其已保存位置启动媒体。
@@ -72,7 +68,7 @@ export const usePlayer = () => {
   };
 
   // 已完结影片使用本机历史，主动重载和连载影片获取最新详情。
-  const { execute: loadMovie, cancel: cancelMovie } = useRequest(
+  const { execute: loadMovie } = useRequest(
     async (signal, forceRefresh = false) => {
       episodeRequest++;
 
@@ -105,7 +101,8 @@ export const usePlayer = () => {
           );
 
           if (!source && sourceId.startsWith('custom:')) {
-            throw new Error('此设备未添加该播放源，请先添加对应接口');
+            media.fail();
+            return;
           }
 
           const result = await getMovies(
@@ -120,11 +117,8 @@ export const usePlayer = () => {
         signal.throwIfAborted();
 
         if (!movie?.episodes.length) {
-          throw new Error(
-            movie
-              ? '当前影片暂无可播放集数'
-              : '影片不存在或已下架，请返回选择其他影片',
-          );
+          media.fail();
+          return;
         }
 
         // 新详情保留有效集数范围内的历史进度。
@@ -157,9 +151,9 @@ export const usePlayer = () => {
         }
 
         startMedia();
-      } catch (cause) {
+      } catch {
         if (!signal.aborted) {
-          media.fail(cause instanceof Error ? cause.message : '影片加载失败');
+          media.fail();
         }
       }
     },
@@ -191,57 +185,39 @@ export const usePlayer = () => {
     }
   };
 
-  // 结束时先保存末尾进度，再自动播放下一集。
+  // 自动切集由切集流程保存，最后一集结束时保存末尾进度。
   const handleEnded = async () => {
-    await save();
-
-    if (entry.value) {
+    if (entry.value?.episodes[entry.value.episode + 1]) {
       await selectEpisode(entry.value.episode + 1);
+      return;
     }
+
+    await save();
   };
 
-  watch(media.currentTime, captureProgress);
   watchImmediate([() => route.params.sourceId, () => route.params.vodId], () =>
     loadMovie(),
   );
   watch(media.video, startMedia);
-  watch(
-    () => history.ownerId,
-    (ownerId) => {
-      if (playbackToken && playbackToken.ownerId !== ownerId) {
-        cancelMovie();
-        media.reset();
-        entry.value = null;
-        playbackToken = null;
-        media.fail('账号已切换，请重新打开影片');
-      }
-    },
-    { flush: 'sync' },
-  );
 
-  useEventListener(media.video, ['pause', 'seeked'], save);
+  // 暂停、结束、进入后台和离开播放页时保存。
+  useEventListener(media.video, 'pause', () => {
+    if (media.status.value === 'paused' && !media.video.value?.ended) {
+      save();
+    }
+  });
   useEventListener(media.video, 'ended', handleEnded);
   useEventListener(document, 'visibilitychange', () => {
     if (document.hidden) {
       save();
     }
   });
-  useEventListener(window, 'pagehide', save);
-
-  // 播放期间定期写入本地队列，离开路由时等待最后一次保存。
-  const interval = setInterval(() => {
-    if (media.status.value === 'playing') {
-      save();
-    }
-  }, 10_000);
 
   onBeforeRouteLeave(async () => {
     await save();
   });
-  onBeforeUnmount(save);
   onScopeDispose(() => {
     disposed = true;
-    clearInterval(interval);
   });
 
   return { ...media, media, entry, episode, loadMovie, selectEpisode };

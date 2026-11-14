@@ -2,13 +2,14 @@
   <Sheet v-model:open="open">
     <SheetContent
       :portal-container="container"
-      :show-close-button="!mobile"
+      :show-close-button="!isMobile"
       class="w-80 gap-0 data-[state=open]:duration-300"
+      :class="{ 'px-(--player-safe-x)': isMobile }"
       @open-auto-focus="handleOpenAutoFocus"
       @close-auto-focus="handleCloseAutoFocus"
     >
       <SheetHeader class="shrink-0 gap-4">
-        <SheetTitle :class="{ 'sr-only': mobile }">选集</SheetTitle>
+        <SheetTitle :class="{ 'sr-only': isMobile }">选集</SheetTitle>
         <Select v-model="page">
           <SelectTrigger class="w-full">
             <SelectValue />
@@ -63,21 +64,17 @@ import {
 } from '@ym-video/ui/components/select';
 import { ScrollArea } from '@ym-video/ui/components/scroll-area';
 import { formatRemarks } from '../../../utils/movie.ts';
-import type { Episode } from '@/types';
+import { usePlayerContext } from '../context.ts';
+import { isMobile } from '@/platform';
 
-// 选集数据与当前播放集数来自页面，弹层挂在播放器内以兼容全屏。
-const props = defineProps<{
-  episodes: Episode[];
-  selected: number;
-  container: HTMLElement | null;
-  mobile?: boolean;
-}>();
+// 当前影片和选集面板的打开状态来自播放器上下文。
+const { player, controls } = usePlayerContext();
+const { entry, container, selectEpisode } = player;
+const { episodesOpen: open } = controls;
 
-// 传递原始集数索引，避免分页后切错集。
-const emit = defineEmits<{ select: [index: number] }>();
-
-// 选集面板按需打开，不占用视频区域。
-const open = defineModel<boolean>('open', { required: true });
+// 选集面板只展示当前影片的完整集数和所选索引。
+const episodes = computed(() => entry.value?.episodes ?? []);
+const selected = computed(() => entry.value?.episode ?? 0);
 
 // 保存打开面板前的焦点，关闭时返回原控制按钮。
 const returnFocus = ref<HTMLElement | null>(null);
@@ -97,17 +94,17 @@ const pageStart = computed(() => Number(page.value) * pageSize);
 // 尾页按真实集数截断。
 const pages = computed(() =>
   Array.from(
-    { length: Math.ceil(props.episodes.length / pageSize) },
+    { length: Math.ceil(episodes.value.length / pageSize) },
     (_, index) => ({
       value: String(index),
-      label: `第 ${index * pageSize + 1}–${Math.min((index + 1) * pageSize, props.episodes.length)} 集`,
+      label: `第 ${index * pageSize + 1}–${Math.min((index + 1) * pageSize, episodes.value.length)} 集`,
     }),
   ),
 );
 
 // 仅处理当前页，并保留每集在完整列表中的真实索引。
 const visibleEpisodes = computed(() =>
-  props.episodes
+  episodes.value
     .slice(pageStart.value, pageStart.value + pageSize)
     .map((episode, index) => ({
       episode,
@@ -127,8 +124,10 @@ watch(open, (value) => {
 
 // 选集后收起面板，继续观看视频。
 const handleSelect = (index: number) => {
-  emit('select', index);
+  // 集数切换请求交给媒体业务，面板立即收起。
+  const selection = selectEpisode(index);
   open.value = false;
+  return selection;
 };
 
 // 打开面板后聚焦当前集，并滚动到可见位置。
@@ -153,7 +152,7 @@ const handleCloseAutoFocus = (event: Event) => {
   }
 };
 
-watchImmediate([() => props.selected, () => props.episodes, open], () => {
-  page.value = String(Math.floor(props.selected / pageSize));
+watchImmediate([selected, episodes, open], () => {
+  page.value = String(Math.floor(selected.value / pageSize));
 });
 </script>

@@ -1,18 +1,16 @@
 <template>
-  <div class="flex items-center gap-2">
+  <div v-if="entry" class="flex items-center gap-2">
     <PlayerButton
       label="上一集"
-      :container="container"
-      :disabled="!hasPrevious"
-      @click="emit('previous')"
+      :disabled="entry.episode === 0"
+      @click="selectEpisode(entry.episode - 1)"
     >
       <SkipBack />
     </PlayerButton>
     <PlayerButton
       label="下一集"
-      :container="container"
-      :disabled="!hasNext"
-      @click="emit('next')"
+      :disabled="entry.episode >= entry.episodes.length - 1"
+      @click="selectEpisode(entry.episode + 1)"
     >
       <SkipForward />
     </PlayerButton>
@@ -22,14 +20,8 @@
 <script setup lang="ts">
 import { SkipBack, SkipForward } from 'lucide-vue-next';
 import PlayerButton from './player-button.vue';
+import { usePlayerContext } from '../context.ts';
 
-// 当前集前后相邻的可播放选项。
-defineProps<{
-  hasPrevious: boolean;
-  hasNext: boolean;
-  container: HTMLElement | null;
-}>();
-
-// 集数切换交由播放器业务处理。
-const emit = defineEmits<{ previous: []; next: [] }>();
+// 相邻集操作直接使用当前影片的集数和切换入口。
+const { entry, selectEpisode } = usePlayerContext().player;
 </script>

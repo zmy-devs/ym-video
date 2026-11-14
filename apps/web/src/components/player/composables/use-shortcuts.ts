@@ -1,6 +1,23 @@
 import { onScopeDispose, ref } from 'vue';
-import { useEventListener } from '@vueuse/core';
+import { useEventListener, useTimeoutFn } from '@vueuse/core';
 import type { useMedia } from './use-media.ts';
+
+// 右方向键长按的判定时间。
+const holdDelay = 300;
+
+// 播放器处理的快捷键集合。
+const shortcutKeys = new Set([
+  ' ',
+  'ArrowLeft',
+  'ArrowRight',
+  'ArrowUp',
+  'ArrowDown',
+  'f',
+]);
+
+// 编辑区和弹层内保留各自的键盘交互。
+const inputSelector =
+  'input,textarea,button,select,a,[data-slot="slider"],[data-slot="select-content"],[data-slot="dropdown-menu-content"],[data-slot="sheet-content"]:not([data-player-sheet]),[data-slot="dialog-content"],[contenteditable="true"]';
 
 // 播放器快捷键与长按倍速独立于影片请求和历史保存。
 export const useShortcuts = (
@@ -9,13 +26,24 @@ export const useShortcuts = (
 ) => {
   // 长按右方向键期间展示临时倍速提示。
   const holdingRate = ref(false);
-  let pressTimer: ReturnType<typeof setTimeout> | undefined;
+
+  // 保存长按前的倍速，松手后恢复。
   let heldRate: number | undefined;
+
+  // 长按判定随播放器卸载自动停止。
+  const press = useTimeoutFn(
+    () => {
+      heldRate = media.rate.value;
+      holdingRate.value = true;
+      media.setRate(heldRate * 3);
+    },
+    holdDelay,
+    { immediate: false },
+  );
 
   // 松开按键或离开窗口后恢复用户选择的倍速。
   const releaseRate = () => {
-    clearTimeout(pressTimer);
-    pressTimer = undefined;
+    press.stop();
     holdingRate.value = false;
 
     if (heldRate !== undefined) {
@@ -35,20 +63,14 @@ export const useShortcuts = (
 
     if (
       (event.target instanceof HTMLElement &&
-        event.target.closest(
-          'input,textarea,button,select,a,[data-slot="slider"],[data-slot="select-content"],[data-slot="dropdown-menu-content"],[data-slot="sheet-content"]:not([data-player-sheet]),[data-slot="dialog-content"],[contenteditable="true"]',
-        )) ||
+        event.target.closest(inputSelector)) ||
       event.ctrlKey ||
       event.altKey
     ) {
       return;
     }
 
-    if (
-      ![' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'f'].includes(
-        event.key,
-      )
-    ) {
+    if (!shortcutKeys.has(event.key)) {
       return;
     }
 
@@ -75,16 +97,16 @@ export const useShortcuts = (
         media.toggleFullscreen();
         break;
       case 'ArrowRight':
-        pressTimer = setTimeout(() => {
-          heldRate = media.rate.value;
-          holdingRate.value = true;
-          media.setRate(heldRate * 3);
-        }, 300);
+        press.start();
         break;
     }
   });
   useEventListener(window, 'keyup', (event) => {
-    if (event.key === 'ArrowRight' && pressTimer && !releaseRate()) {
+    if (
+      event.key === 'ArrowRight' &&
+      (press.isPending.value || holdingRate.value) &&
+      !releaseRate()
+    ) {
       media.seek(media.currentTime.value + 5);
     }
   });

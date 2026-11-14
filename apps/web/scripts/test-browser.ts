@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +13,56 @@ const directory = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const mode = process.argv[2] === 'mobile' ? 'mobile' : 'desktop';
 const pages = process.argv.slice(3);
 if (!pages.length) pages.push(`${mode}-update`);
+
+// 媒体回归通过本机 HTTP 提供实际 MP4 和 HLS，素材保存在依赖缓存内。
+if (pages.some((page) => page === 'media' || page === 'playback')) {
+  const mediaDirectory = join(directory, 'node_modules/.cache/player-media');
+  mkdirSync(mediaDirectory, { recursive: true });
+
+  for (const args of [
+    [
+      '-f',
+      'lavfi',
+      '-i',
+      'color=c=black:s=320x180:r=10',
+      '-t',
+      '4',
+      '-an',
+      '-c:v',
+      'libx264',
+      '-pix_fmt',
+      'yuv420p',
+      '-g',
+      '10',
+      '-movflags',
+      '+faststart',
+      join(mediaDirectory, 'video.mp4'),
+    ],
+    [
+      '-i',
+      join(mediaDirectory, 'video.mp4'),
+      '-c',
+      'copy',
+      '-f',
+      'hls',
+      '-hls_time',
+      '1',
+      '-hls_list_size',
+      '0',
+      '-hls_segment_filename',
+      join(mediaDirectory, 'segment-%02d.mpegts'),
+      join(mediaDirectory, 'stream.m3u8'),
+    ],
+  ]) {
+    const generated = spawnSync(
+      'ffmpeg',
+      ['-hide_banner', '-loglevel', 'error', '-y', ...args],
+      { encoding: 'utf8', windowsHide: true },
+    );
+    assert(!generated.error, generated.error?.message);
+    assert.equal(generated.status, 0, generated.stderr);
+  }
+}
 
 // 浏览器测试独立于已运行的桌面程序，不覆盖其可执行文件。
 const vite = await createServer({

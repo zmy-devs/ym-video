@@ -1,7 +1,7 @@
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <PlayerButton :label="`音量：${percentage}%`" :container="container">
+      <PlayerButton :label="`音量：${percentage}%`">
         <component :is="volumeIcon" />
       </PlayerButton>
     </PopoverTrigger>
@@ -36,18 +36,15 @@ import {
 } from '@ym-video/ui/components/popover';
 import { Slider } from '@ym-video/ui/components/slider';
 import PlayerButton from './player-button.vue';
+import { usePlayerContext } from '../context.ts';
 
-// 音量沿用播放器的零到一数值，浮窗挂载到播放器容器。
-const props = defineProps<{ volume: number; container: HTMLElement | null }>();
-
-// 通知控制栏浮窗状态，避免全屏操作时自动隐藏。
-const open = defineModel<boolean>('open', { required: true });
-
-// 所有音量变更继续交给播放器保存并应用到媒体元素。
-const emit = defineEmits<{ volume: [value: number] }>();
+// 音量浮窗直接共享媒体值与自身的打开状态。
+const { player, controls } = usePlayerContext();
+const { volume, container, setVolume } = player;
+const { volumeOpen: open } = controls;
 
 // 滑块和数值使用零到一百的整数百分比。
-const percentage = computed(() => Math.round(props.volume * 100));
+const percentage = computed(() => Math.round(volume.value * 100));
 
 // 按静音、低音量和高音量切换按钮与浮窗中的图标。
 const volumeIcon = computed(() => {
@@ -68,7 +65,7 @@ const handleVolumeChange = (values: number[] | undefined) => {
   const value = values?.[0];
 
   if (value !== undefined) {
-    emit('volume', value / 100);
+    setVolume(value / 100);
   }
 };
 </script>

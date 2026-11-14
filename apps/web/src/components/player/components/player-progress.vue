@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-1 pb-2">
+  <div class="flex flex-col gap-1">
     <div
       class="h-1.5 relative flex items-center"
       @pointermove="handlePreview"
@@ -45,20 +45,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { getProgress, formatTime } from '../utils/time.ts';
+import { usePlayerContext } from '../context.ts';
+import { isMobile } from '@/platform';
 
-// 当前媒体的真实进度与有效时长。
-const props = defineProps<{
-  currentTime: number;
-  duration: number;
-  previewTime?: number;
-  mobile?: boolean;
-}>();
-
-// 鼠标拖动和键盘跳转统一交给播放器。
-const emit = defineEmits<{
-  seek: [seconds: number];
-  dragging: [active: boolean];
-}>();
+// 进度条直接读取媒体时间、画面手势和拖动协调状态。
+const { player, gestures, progress } = usePlayerContext();
+const { currentTime, duration } = player;
 
 // 移动端滑块先预览目标时间，松手后再更新真实进度。
 const dragTime = ref<number>();
@@ -66,7 +58,7 @@ const dragTime = ref<number>();
 // 移动端滑块捕获指针，拖出进度条后仍能正确结束调整。
 const handleDragStart = (event: PointerEvent) => {
   if (
-    !props.mobile ||
+    !isMobile ||
     event.button !== 0 ||
     !(event.currentTarget instanceof HTMLInputElement)
   ) {
@@ -74,8 +66,8 @@ const handleDragStart = (event: PointerEvent) => {
   }
 
   event.currentTarget.setPointerCapture(event.pointerId);
-  dragTime.value = props.currentTime;
-  emit('dragging', true);
+  dragTime.value = currentTime.value;
+  progress.dragging.value = true;
 };
 
 // 松手提交目标时间，取消则保留原进度，再交回播放状态控制。
@@ -85,16 +77,16 @@ const handleDragEnd = (event: PointerEvent) => {
   }
 
   if (event.type === 'pointerup') {
-    emit('seek', dragTime.value);
+    player.seek(dragTime.value);
   }
 
   dragTime.value = undefined;
-  emit('dragging', false);
+  progress.dragging.value = false;
 };
 
 // 进度填充始终反映真实播放位置，预览只移动时间刻度。
 const progressPercent = computed(() =>
-  getProgress(props.currentTime, props.duration),
+  getProgress(currentTime.value, duration.value),
 );
 
 // 鼠标悬停时预览的目标时间。
@@ -102,12 +94,12 @@ const hoverTime = ref<number>();
 
 // 触摸手势与鼠标悬停共用进度条上的竖线和时间刻度。
 const markerTime = computed(
-  () => props.previewTime ?? dragTime.value ?? hoverTime.value,
+  () => gestures.seekPreview.value ?? dragTime.value ?? hoverTime.value,
 );
 
 // 刻度位置随目标时间在整段媒体中的比例变化。
 const markerPercent = computed(() =>
-  getProgress(markerTime.value ?? 0, props.duration),
+  getProgress(markerTime.value ?? 0, duration.value),
 );
 
 // 把指针位置转换为进度条上的有效比例。
@@ -121,7 +113,7 @@ const handlePreview = (event: PointerEvent) => {
   // 当前进度条在视口中的范围。
   const bounds = event.currentTarget.getBoundingClientRect();
   hoverTime.value =
-    (props.duration * getProgress(event.clientX - bounds.left, bounds.width)) /
+    (duration.value * getProgress(event.clientX - bounds.left, bounds.width)) /
     100;
 };
 
@@ -130,11 +122,11 @@ const handleSeek = (event: Event) => {
   if (event.target instanceof HTMLInputElement) {
     if (dragTime.value !== undefined) {
       dragTime.value = event.target.valueAsNumber;
-      event.target.value = String(props.currentTime);
+      event.target.value = String(currentTime.value);
       return;
     }
 
-    emit('seek', event.target.valueAsNumber);
+    return progress.seek(event.target.valueAsNumber);
   }
 };
 </script>

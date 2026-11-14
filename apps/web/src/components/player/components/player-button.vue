@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { useForwardExpose } from 'reka-ui';
 import Tooltip from '@ym-video/ui/common/tooltip.vue';
+import { usePlayerContext } from '../context.ts';
 
 // 外层触发器的属性和焦点引用传给真实按钮。
 defineOptions({ inheritAttrs: false });
@@ -27,9 +28,11 @@ const { forwardRef } = useForwardExpose();
 // 播放控制统一使用 36px 圆形按钮与 20px 图标，全屏提示挂在播放器内部。
 defineProps<{
   label: string;
-  container: HTMLElement | null;
   disabled?: boolean;
 }>();
+
+// 所有播放按钮的提示挂在当前播放器内。
+const { container } = usePlayerContext().player;
 
 // 保留原始点击事件，让倍速菜单触发器能读取鼠标与默认处理状态。
 const emit = defineEmits<{ click: [event: MouseEvent] }>();
