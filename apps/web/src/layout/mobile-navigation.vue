@@ -24,7 +24,9 @@
         :key="item.path"
         :to="item.name === 'category' ? categoryPath : item.path"
         class="flex min-w-0 self-stretch flex-col items-center justify-center gap-0.5 rounded-full px-1 py-0 transition-colors"
-        :class="route.name === item.name && 'bg-muted/60 text-primary shadow-xs'"
+        :class="
+          route.name === item.name && 'bg-muted/60 text-primary shadow-xs'
+        "
       >
         <component :is="item.icon" class="size-6 shrink-0" />
         <span class="max-w-full truncate text-[10px] leading-3">{{

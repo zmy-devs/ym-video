@@ -3,10 +3,7 @@
     v-if="props.mobileActions && isMobile && entry"
     ref="card"
     class="min-w-0"
-    @click.capture="handleLongPressClick"
     @contextmenu.prevent
-    @pointerdown="handlePressStart"
-    @pointercancel="longPressCancelled = true"
   >
     <MovieCardContent
       :movie="movie"
@@ -29,8 +26,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, useTemplateRef } from 'vue';
-import { onLongPress } from '@vueuse/core';
+import { computed, useTemplateRef } from 'vue';
+import { useLongPress } from '@/composables/use-long-press';
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -63,38 +60,6 @@ const sourceName = computed(
 );
 
 // 移动卡片作为 VueUse 长按监听目标。
-const card = useTemplateRef('card');
-// 长按产生的下一次链接点击由卡片拦截。
-let longPressTriggered = false;
-// 系统滚动取消触点后丢弃尚未触发的长按。
-const longPressCancelled = ref(false);
-
-// 新触点重新开始本轮长按判定。
-const handlePressStart = () => {
-  longPressTriggered = false;
-  longPressCancelled.value = false;
-};
-
-// 移动容差与计时由 VueUse 管理，滚动超过 10px 自动取消。
-onLongPress(
-  card,
-  (event) => {
-    if (event.button === 0 && !longPressCancelled.value) {
-      longPressTriggered = true;
-      emits('long-press');
-    }
-  },
-  { delay: 450, distanceThreshold: 10 },
-);
-
-// 长按后阻止随后产生的链接点击，普通点击仍进入播放器。
-const handleLongPressClick = (event: MouseEvent) => {
-  if (!longPressTriggered) {
-    return;
-  }
-
-  event.preventDefault();
-  event.stopPropagation();
-  longPressTriggered = false;
-};
+const card = useTemplateRef<HTMLElement>('card');
+useLongPress(card, () => emits('long-press'));
 </script>

@@ -105,7 +105,7 @@ import {
 import { ScrollArea } from '@ym-video/ui/components/scroll-area';
 import Empty from '@ym-video/ui/common/empty.vue';
 import CatalogueResults from '@/components/catalogue-results.vue';
-import MobileHeader from '@/components/mobile-header.vue';
+import MobileHeader from '@/layout/mobile-header.vue';
 import { useCachedScroll } from '@/composables/use-cached-scroll';
 import { useSearchHistory } from '@/composables/use-search-history';
 import { useLibraryStore } from '@/stores/library-store';

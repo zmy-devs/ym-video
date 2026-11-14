@@ -87,65 +87,73 @@
       class="w-56"
       @close-auto-focus="handleMenuCloseFocus"
     >
-      <SourceMenuLabel v-if="library.platformSources.length" />
-      <DropdownMenuItem
-        v-for="source in library.platformSources"
-        :key="source.id"
-        @select="handleSource(source.id)"
-      >
-        <Server />
-        <span class="truncate">{{ source.name }}</span>
-        <Check
-          v-if="source.id === library.selected"
-          class="ml-auto shrink-0 text-primary"
-        />
-      </DropdownMenuItem>
-      <DropdownMenuSeparator
-        v-if="library.platformSources.length && library.customSources.length"
-      />
-      <SourceMenuLabel v-if="library.customSources.length" custom />
-      <div
-        v-for="source in library.customSources"
-        :key="source.id"
-        data-source-row
-        class="group relative"
-      >
+      <DropdownMenuGroup v-if="library.platformSources.length">
+        <DropdownMenuLabel class="text-xs text-muted-foreground"
+          >播放源</DropdownMenuLabel
+        >
         <DropdownMenuItem
-          class="pr-16"
+          v-for="source in library.platformSources"
+          :key="source.id"
           @select="handleSource(source.id)"
-          @keydown.right.prevent.stop="handleActionFocus"
         >
           <Server />
           <span class="truncate">{{ source.name }}</span>
           <Check
             v-if="source.id === library.selected"
-            class="absolute top-1/2 right-2 -translate-y-1/2 text-primary group-hover:opacity-0 group-focus-within:opacity-0"
+            class="ml-auto shrink-0 text-primary"
           />
         </DropdownMenuItem>
-        <div
-          class="absolute top-1/2 right-1 flex -translate-y-1/2 gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
-          @keydown.enter.stop
-          @keydown.space.stop
-          @keydown.right.prevent.stop="handleNextAction"
-          @keydown.left.prevent.stop="handleRowFocus"
+      </DropdownMenuGroup>
+      <DropdownMenuSeparator
+        v-if="library.platformSources.length && library.customSources.length"
+      />
+      <DropdownMenuGroup v-if="library.customSources.length">
+        <DropdownMenuLabel class="text-xs text-muted-foreground"
+          >我的播放源</DropdownMenuLabel
         >
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            @click.stop="handleEdit(source.id)"
+        <div
+          v-for="source in library.customSources"
+          :key="source.id"
+          data-source-row
+          class="group relative"
+        >
+          <DropdownMenuItem
+            class="pr-16"
+            @select="handleSource(source.id)"
+            @keydown.right.prevent.stop="handleActionFocus"
           >
-            <Pencil class="size-[15px]" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            class="text-destructive hover:text-destructive"
-            @click.stop="handleDelete(source)"
+            <Server />
+            <span class="truncate">{{ source.name }}</span>
+            <Check
+              v-if="source.id === library.selected"
+              class="absolute top-1/2 right-2 -translate-y-1/2 text-primary group-hover:opacity-0 group-focus-within:opacity-0"
+            />
+          </DropdownMenuItem>
+          <div
+            class="absolute top-1/2 right-1 flex -translate-y-1/2 gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+            @keydown.enter.stop
+            @keydown.space.stop
+            @keydown.right.prevent.stop="handleNextAction"
+            @keydown.left.prevent.stop="handleRowFocus"
           >
-            <Trash2 class="size-[15px]" />
-          </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              @click.stop="handleEdit(source.id)"
+            >
+              <Pencil class="size-[15px]" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              class="text-destructive hover:text-destructive"
+              @click.stop="handleDelete(source)"
+            >
+              <Trash2 class="size-[15px]" />
+            </Button>
+          </div>
         </div>
-      </div>
+      </DropdownMenuGroup>
       <DropdownMenuSeparator v-if="library.sources.length" />
       <DropdownMenuItem @select="handleEdit()">
         <Plus class="text-current" />
@@ -179,6 +187,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@ym-video/ui/components/dropdown-menu';
@@ -186,7 +196,6 @@ import { useLibraryStore } from '@/stores/library-store';
 import { eventBus } from '@/utils/event-bus';
 import { successToast } from '@ym-video/ui/lib/toast';
 import type { CustomSource } from '@/types';
-import SourceMenuLabel from './source-menu-label.vue';
 import MobileSourceDrawer from './mobile-source-drawer.vue';
 import { useMobileDrawer } from '@/composables/use-mobile-drawer';
 

@@ -1,20 +1,22 @@
 <template>
   <div :class="cn('relative overflow-hidden bg-muted', props.class)">
     <img
-      v-if="!loaded || failed || !src"
+      v-if="status !== 'loaded' || !src"
       :src="placeholder"
+      alt=""
       class="absolute inset-0 size-full object-cover"
     />
     <img
-      v-if="src && !failed"
+      v-if="src && status !== 'error'"
       :key="src"
       :src="src"
+      alt=""
       loading="lazy"
       referrerpolicy="no-referrer"
       class="size-full object-cover"
-      :class="{ 'opacity-0': !loaded }"
-      @load="loaded = true"
-      @error="failed = true"
+      :class="{ 'opacity-0': status !== 'loaded' }"
+      @load="status = 'loaded'"
+      @error="status = 'error'"
     />
   </div>
 </template>
@@ -30,13 +32,12 @@ const props = defineProps<{
   class?: HTMLAttributes['class'];
 }>();
 
-const loaded = ref(false);
-const failed = ref(false);
+// 加载、成功和失败使用同一份互斥状态。
+const status = ref<'loading' | 'loaded' | 'error'>('loading');
 watch(
   () => props.src,
   () => {
-    loaded.value = false;
-    failed.value = false;
+    status.value = 'loading';
   },
 );
 </script>

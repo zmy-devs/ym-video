@@ -8,7 +8,7 @@ import {
 } from 'vue-router';
 import CataloguePage from '../../src/views/catalogue.vue';
 import HistoryPage from '../../src/views/history.vue';
-import MobileHeader from '../../src/components/mobile-header.vue';
+import MobileHeader from '../../src/layout/mobile-header.vue';
 import { useLibraryStore } from '../../src/stores/library-store';
 import { useHistoryStore } from '../../src/stores/history-store';
 import '../../src/styles/global.css';

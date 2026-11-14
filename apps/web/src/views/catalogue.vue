@@ -15,14 +15,13 @@
         ]"
       >
         <WelcomeGreeting
-          v-if="isOverview && !isMobile"
-          class="mb-10 py-6 text-center text-3xl font-semibold tracking-tight"
-        />
-        <WelcomeGreeting
-          v-else-if="isMobile && isOverview"
-          prefix="Hi"
-          name=""
-          class="mb-6 text-3xl leading-10 font-semibold"
+          v-if="isOverview"
+          class="text-3xl font-semibold"
+          :class="
+            isMobile
+              ? 'mb-6 leading-10'
+              : 'mb-10 py-6 text-center tracking-tight'
+          "
         />
         <MobileCategoryNavigation v-if="isMobile && isCategory" />
         <section v-if="isOverview && history.entries.length" class="mb-10">
@@ -121,7 +120,7 @@ import { ScrollArea } from '@ym-video/ui/components/scroll-area';
 import MovieCard from '@/components/movie-card/index.vue';
 import WelcomeGreeting from '../components/greeting.vue';
 import CatalogueResults from '@/components/catalogue-results.vue';
-import MobileCategoryNavigation from '@/components/mobile-category-navigation.vue';
+import MobileCategoryNavigation from '@/layout/mobile-category-navigation.vue';
 import MobileHistoryActionDrawer from '@/components/mobile-history-action-drawer.vue';
 import MobilePullRefresh from '@/components/mobile-pull-refresh.vue';
 import { useLibraryStore } from '@/stores/library-store';
