@@ -34,7 +34,6 @@ const run = async () => {
 
   // 服务端清单和本轮失败场景。
   let availableVersion = '6.1.6';
-  let invalidUrl = false;
   let failCheck = false;
   let failDownload = false;
   let failInstall = false;
@@ -99,8 +98,7 @@ const run = async () => {
 
       return {
         version: availableVersion,
-        notes: '改善移动播放体验',
-        url: invalidUrl ? 'https://example.com/update.apk' : downloadUrl,
+        url: downloadUrl,
       };
     }
 
@@ -245,16 +243,9 @@ const run = async () => {
   }
 
   assert(!autoUpdateSwitch.disabled, '移动设置页的自动更新可操作');
-  assert(
-    [...fixture.querySelectorAll('a')].some(
-      (link) =>
-        link.textContent?.trim() === '更新内容' &&
-        link.href === 'https://gitee.com/zmy-devs/ym-video/releases/tag/v6.1.6',
-    ),
-    '移动设置页的更新内容链接已接通',
-  );
   autoUpdateSwitch.click();
-  await until(() => update.autoUpdate && update.status === 'up-to-date');
+  await until(() => update.autoUpdate && update.status === 'idle');
+  await until(() => hasToast('当前已是最新版本'));
   assert(
     localStorage.getItem('ym-video:auto-update') === 'true',
     '移动设置页保存自动更新偏好',
@@ -263,20 +254,17 @@ const run = async () => {
   await until(() => !update.autoUpdate);
 
   click('检查更新');
-  await until(() => update.status === 'up-to-date');
+  await until(() => update.status === 'idle');
   availableVersion = '6.1.5';
   await update.check();
-  assert(
-    update.status === 'up-to-date' && downloads === 0,
-    '旧版本不会降级安装',
-  );
+  assert(update.status === 'idle' && downloads === 0, '旧版本不会降级安装');
 
   failCheck = true;
   click('检查更新');
-  await until(() => update.errorType === 'check');
-  await until(() => hasToast('Android 更新清单尚未发布'));
+  await until(() => update.status === 'idle');
+  await until(() => hasToast('更新失败'));
   assert(
-    !fixture.textContent?.includes('Android 更新清单尚未发布'),
+    !fixture.textContent?.includes('更新失败'),
     '设置列表只展示操作与进度',
   );
   assert(
@@ -289,21 +277,12 @@ const run = async () => {
   );
   failCheck = false;
   availableVersion = '6.10.0';
-  invalidUrl = true;
-  await update.check();
-  assert(
-    update.errorType === 'check' && downloads === 0,
-    '无效下载地址在入口拒绝',
-  );
-  await until(() => hasToast('Android 更新清单格式错误'));
-
-  invalidUrl = false;
   failDownload = true;
   click('检查更新');
   await until(() => update.progress === 42);
   assert(fixture.textContent?.includes('42%'), '按累计字节显示下载进度');
   await update.check();
-  assert(checks === 6 && downloads === 1, '下载期间不重复检查');
+  assert(checks === 5 && downloads === 1, '下载期间不重复检查');
   assert(
     [...fixture.querySelectorAll('button')].some(
       (button) =>
@@ -314,7 +293,8 @@ const run = async () => {
     '下载期间展示忙碌状态，避免重复操作',
   );
   finishDownload();
-  await until(() => update.errorType === 'download');
+  await until(() => update.status === 'idle');
+  await until(() => hasToast('更新失败'));
 
   failDownload = false;
   unknownLength = true;
@@ -326,6 +306,8 @@ const run = async () => {
   finishDownload();
   await until(() => update.status === 'downloaded');
   assert(installs === 0, '关闭设置后完成下载，等待用户确认');
+  await update.check();
+  assert(checks === 6 && downloads === 2, '已下载时保留安装资源，不重新检查');
 
   // 返回设置后继续安装已下载的更新。
   const reopened = createApp(SettingsPage).use(pinia);
@@ -333,7 +315,7 @@ const run = async () => {
   await nextTick();
   assert(fixture.textContent?.includes('安装更新'), '重开移动设置保留安装操作');
   click('安装更新');
-  await until(() => update.errorType === 'permission');
+  await until(() => hasToast('请允许安装未知应用'));
   assert(
     installs === 0 &&
       permissionRequests === 1 &&
@@ -344,7 +326,7 @@ const run = async () => {
   grantPermission = true;
   failInstall = true;
   click('安装更新');
-  await until(() => update.errorType === 'install');
+  await until(() => hasToast('安装失败'));
   assert(
     permissionRequests === 2 && downloads === 2,
     '授权后重试安装，无需重新下载',
@@ -352,6 +334,8 @@ const run = async () => {
   failInstall = false;
   click('安装更新');
   await until(() => update.status === 'installer-opened');
+  await update.check();
+  assert(checks === 6 && downloads === 2, '安装器打开后可复用同一安装包');
   assert(
     [...fixture.querySelectorAll('button')].some(
       (button) =>
@@ -379,8 +363,8 @@ const run = async () => {
   // 自动检查不依赖打开设置界面。
   const automatic = useUpdateStore();
   const stopAutomatic = automatic.init();
-  await until(() => automatic.status === 'up-to-date');
-  assert(checks === 8, 'Android 启动时自动检查更新');
+  await until(() => automatic.status === 'idle' && checks === 7);
+  assert(checks === 7, 'Android 启动时自动检查更新');
   stopAutomatic();
   automatic.$dispose();
 

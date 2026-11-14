@@ -18,7 +18,6 @@ export const checkClientUpdate = async (): Promise<ClientUpdate | null> => {
 
   return {
     version: update.version,
-    body: update.body ?? '',
     download: async (onProgress) => {
       // updater 逐块报告接收量，转换为设置页的百分比。
       let total = 0;

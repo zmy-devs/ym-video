@@ -200,8 +200,8 @@ const run = async () => {
   app.mount(fixture);
   await nextTick();
   click('检查更新');
-  await until(() => update.status === 'up-to-date');
-  assert(fixture.textContent?.includes('当前已是最新版本'), '显示检查结果');
+  await until(() => update.status === 'idle');
+  await until(() => hasToast('当前已是最新版本'));
   assert(
     Number(localStorage.getItem('ym-video:last-update-check')) > 0,
     '成功检查记录时间',
@@ -209,12 +209,9 @@ const run = async () => {
 
   failCheck = true;
   click('检查更新');
-  await until(() => update.status === 'error');
-  await until(() => hasToast('检查更新失败'));
-  assert(
-    !fixture.textContent?.includes('检查更新失败'),
-    '检查失败由弹出提示展示',
-  );
+  await until(() => update.status === 'idle');
+  await until(() => hasToast('更新失败'));
+  assert(!fixture.textContent?.includes('更新失败'), '检查失败由弹出提示展示');
 
   failCheck = false;
   available = true;
@@ -225,8 +222,8 @@ const run = async () => {
   await update.check();
   assert(checks === 3 && downloads === 1, '下载期间合并重复检查');
   finishDownload();
-  await until(() => update.status === 'error' && resources.size === 0);
-  await until(() => hasToast('下载或校验失败'));
+  await until(() => update.status === 'idle' && resources.size === 0);
+  await until(() => hasToast('更新失败'));
 
   failDownload = false;
   unknownLength = true;
@@ -240,6 +237,8 @@ const run = async () => {
     update.progress === 100 && installs === 0,
     '关闭设置后继续下载并等待确认',
   );
+  await update.check();
+  assert(checks === 4 && downloads === 2, '已下载时保留安装资源，不重新检查');
 
   // 重开设置使用同一更新任务，保留安装操作。
   const reopened = createApp(UpdateSettings).use(pinia);
@@ -250,22 +249,14 @@ const run = async () => {
     fixture.textContent?.includes('安装并重启'),
     '重开桌面设置保留安装操作',
   );
-  assert(
-    fixture
-      .querySelector('a')
-      ?.href.startsWith('https://gitee.com/zmy-devs/ym-video/'),
-    '发布说明使用 Gitee 仓库',
-  );
 
   failInstall = true;
   click('安装并重启');
-  await until(() => update.errorType === 'install');
+  await until(() => hasToast('安装失败'));
   assert(
     update.status === 'downloaded' && resources.size === 2,
     '安装失败保留下载资源',
   );
-  await until(() => hasToast('安装失败'));
-
   failInstall = false;
   click('安装并重启');
   await until(() => installs === 2 && resources.size === 1);
@@ -296,7 +287,7 @@ const run = async () => {
   const automatic = useUpdateStore();
   const stopAutomatic = automatic.init();
 
-  await until(() => automatic.status === 'up-to-date');
+  await until(() => automatic.status === 'idle' && checks === 5);
   assert(checks === 5, '启用自动更新后按天检查');
   stopAutomatic();
   automatic.$dispose();

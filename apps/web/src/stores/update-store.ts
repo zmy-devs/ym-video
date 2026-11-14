@@ -5,13 +5,8 @@ import { isTauri } from '@tauri-apps/api/core';
 import { isDesktop } from '@/platform';
 import { useStorage } from '@vueuse/core';
 import { checkClientUpdate } from '@/services/update';
-import type { ClientUpdate } from '@/types/update';
-import {
-  UPDATE_ERROR_MESSAGE_MAP,
-  UPDATE_STATUS_MESSAGE_MAP,
-  type UpdateErrorType,
-  type UpdateStatus,
-} from '@/map/update';
+import type { ClientUpdate, UpdateStatus } from '@/types/update';
+import { UPDATE_STATUS_MESSAGE_MAP } from '@/map/update';
 import { errorToast, infoToast, storageError } from '@ym-video/ui/lib/toast';
 
 // 更新任务与已下载资源由应用共享，设置弹窗关闭后继续保留。
@@ -35,17 +30,8 @@ export const useUpdateStore = defineStore('client-update', () => {
   // 版本检查与下载的当前状态。
   const status = ref<UpdateStatus>('idle');
 
-  // 检查或安装失败的类别决定对应提示。
-  const errorType = ref<UpdateErrorType | null>(null);
-
-  // Android 原生检查返回的明确原因优先展示。
-  const checkErrorMessage = ref('');
-
   // 未提供下载总量时不展示百分比。
   const progress = ref<number | null>(null);
-
-  // 可用版本的发布说明。
-  const notes = ref('');
 
   // 当前平台持有的版本信息和已下载资源。
   let update: ClientUpdate | null = null;
@@ -55,14 +41,6 @@ export const useUpdateStore = defineStore('client-update', () => {
 
   // 状态文案从集中映射读取，并填入版本和进度。
   const message = computed(() => {
-    if (errorType.value === 'check' && checkErrorMessage.value) {
-      return checkErrorMessage.value;
-    }
-
-    if (errorType.value) {
-      return UPDATE_ERROR_MESSAGE_MAP[errorType.value];
-    }
-
     if (status.value === 'downloading' && progress.value === null) {
       return `正在下载 v${latestVersion.value}…`;
     }
@@ -84,40 +62,26 @@ export const useUpdateStore = defineStore('client-update', () => {
 
   // 检查后自动下载对应平台安装包，安装由用户确认。
   const check = async () => {
-    if (
-      !isTauri() ||
-      [
-        'checking',
-        'downloading',
-        'downloaded',
-        'installing',
-        'installer-opened',
-      ].includes(status.value)
-    ) {
+    if (!isTauri() || status.value !== 'idle') {
       return;
     }
 
     status.value = 'checking';
-    errorType.value = null;
-    checkErrorMessage.value = '';
     progress.value = null;
     latestVersion.value = '';
-    notes.value = '';
 
     try {
-      await closeUpdate();
-
       update = await checkClientUpdate();
 
       if (!update) {
-        status.value = 'up-to-date';
+        status.value = 'idle';
         lastCheck.value = Date.now();
+        infoToast('当前已是最新版本');
 
         return;
       }
 
       latestVersion.value = update.version;
-      notes.value = update.body;
 
       status.value = 'downloading';
 
@@ -141,18 +105,10 @@ export const useUpdateStore = defineStore('client-update', () => {
         },
       );
     } catch (cause) {
-      errorType.value = status.value === 'downloading' ? 'download' : 'check';
-
-      if (!isDesktop && errorType.value === 'check' && cause instanceof Error) {
-        checkErrorMessage.value = cause.message;
-      }
-
-      status.value = 'error';
       console.error('客户端更新失败', cause);
-
       await closeUpdate().catch(console.error);
-
-      errorToast(message.value, { id: 'client-update-error' });
+      status.value = 'idle';
+      errorToast('更新失败，请重试', { id: 'client-update-error' });
     }
   };
 
@@ -163,13 +119,11 @@ export const useUpdateStore = defineStore('client-update', () => {
     }
 
     status.value = 'installing';
-    errorType.value = null;
 
     try {
       if (!(await update.install())) {
         status.value = 'downloaded';
-        errorType.value = 'permission';
-        errorToast(UPDATE_ERROR_MESSAGE_MAP.permission, {
+        errorToast('请允许安装未知应用，然后重试安装', {
           id: 'client-update-error',
         });
 
@@ -181,9 +135,8 @@ export const useUpdateStore = defineStore('client-update', () => {
       }
     } catch (cause) {
       status.value = 'downloaded';
-      errorType.value = 'install';
       console.error('客户端更新安装失败', cause);
-      errorToast(UPDATE_ERROR_MESSAGE_MAP.install, {
+      errorToast('安装失败，请重试', {
         id: 'client-update-error',
       });
     }
@@ -227,9 +180,7 @@ export const useUpdateStore = defineStore('client-update', () => {
     autoUpdate,
     version,
     latestVersion,
-    notes,
     status,
-    errorType,
     progress,
     message,
     check,

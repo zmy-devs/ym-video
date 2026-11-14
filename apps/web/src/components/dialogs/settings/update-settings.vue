@@ -12,12 +12,6 @@
         />
       </SwitchRoot>
     </ButtonGroupItem>
-    <ButtonGroupItem as-child>
-      <a :href="releaseUrl" target="_blank" rel="noopener noreferrer">
-        <span>更新内容</span>
-        <ChevronRight class="size-5 stroke-muted-foreground" />
-      </a>
-    </ButtonGroupItem>
     <ButtonGroupItem
       :disabled="
         ['checking', 'downloading', 'installing'].includes(update.status)
@@ -58,17 +52,6 @@
       <h2 class="border-b px-4 py-3 text-sm">更新</h2>
       <div class="min-h-17.5 flex items-center gap-2.5 px-4 py-3 text-sm">
         <div class="min-w-0 flex-1 space-y-1">
-          <h3 class="font-medium">更新内容</h3>
-          <p class="text-muted-foreground">查看当前版本更新内容</p>
-        </div>
-        <Button as-child size="sm" variant="outline">
-          <a :href="releaseUrl" target="_blank" rel="noopener noreferrer"
-            >查看</a
-          >
-        </Button>
-      </div>
-      <div class="min-h-17.5 flex items-center gap-2.5 px-4 py-3 text-sm">
-        <div class="min-w-0 flex-1 space-y-1">
           <h3 class="font-medium">检查更新</h3>
           <p class="text-muted-foreground">
             {{
@@ -78,12 +61,7 @@
             }}
           </p>
         </div>
-        <Button
-          v-if="canCheck"
-          size="sm"
-          :variant="update.status === 'idle' ? 'default' : 'outline'"
-          @click="update.check"
-        >
+        <Button v-if="update.status === 'idle'" size="sm" @click="update.check">
           检查更新
         </Button>
         <Button
@@ -100,7 +78,7 @@
         </Button>
       </div>
       <p
-        v-if="update.message && !update.errorType"
+        v-if="update.message"
         role="status"
         class="px-4 text-sm text-muted-foreground"
       >
@@ -140,15 +118,10 @@ const installLabel = computed(() => {
   return isDesktop ? '安装并重启' : '安装更新';
 });
 
-// 空闲、最新版本与失败状态均允许发起检查。
-const canCheck = computed(() =>
-  ['idle', 'up-to-date', 'error'].includes(update.status),
-);
-
 // 移动端保留检查更新标题，行尾展示进度或安装操作。
 const mobileActionLabel = computed(() => {
-  if (canCheck.value) {
-    return update.status === 'up-to-date' ? '已是最新' : '';
+  if (update.status === 'idle') {
+    return '';
   }
 
   if (update.status === 'checking') {
@@ -164,7 +137,7 @@ const mobileActionLabel = computed(() => {
 
 // 移动端操作行按任务阶段发起检查或安装。
 const handleUpdate = async () => {
-  if (canCheck.value) {
+  if (update.status === 'idle') {
     await update.check();
 
     return;
@@ -172,11 +145,4 @@ const handleUpdate = async () => {
 
   await update.install();
 };
-
-// 优先查看当前安装版本对应的发布说明。
-const releaseUrl = computed(() =>
-  update.version
-    ? `https://gitee.com/zmy-devs/ym-video/releases/tag/v${encodeURIComponent(update.version)}`
-    : 'https://gitee.com/zmy-devs/ym-video/releases',
-);
 </script>
